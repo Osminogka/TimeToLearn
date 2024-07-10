@@ -1,4 +1,5 @@
-﻿using Authentication.DL.Models;
+﻿using System.Security.Claims;
+using Authentication.DL.Models;
 using Microsoft.AspNetCore.Identity;
 
 
@@ -15,7 +16,7 @@ namespace Authentication.DL.Services
         Task<IdentityResult> ValidateUser(UserModel user);
         string HashPassword(UserModel user, string password);
         Task SignOutAsync();
-        Task<SignInResult> PasswordSignInAsync(UserModel user, string password, bool lockoutOnFailure,
-            bool isPersistent);
+        Task<SignInResult> CheckPasswordSignInAsync(UserModel user, string password, bool lockoutOnFailure);
+        Task<IdentityResult> AddClaimAsync(UserModel user, Claim claim);
     }
 }

@@ -11,4 +11,15 @@
     <ProjectReference Include="..\Authentication.DL\Authentication.DL.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="Models\RegisterStudentRequestModel.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.7">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
 </Project>

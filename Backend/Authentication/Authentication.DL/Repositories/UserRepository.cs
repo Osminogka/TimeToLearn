@@ -1,4 +1,5 @@
-﻿using Authentication.DAL.Models;
+﻿using System.Security.Claims;
+using Authentication.DAL.Models;
 using Microsoft.AspNetCore.Identity;
 
 
@@ -36,5 +37,7 @@ namespace Authentication.DL.Repositories
         {
             return _userManager;
         }
+
+        public async Task<IdentityResult> AddClaimAsync(AppUser user, Claim claim) => await _userManager.AddClaimAsync(user, claim);
     }
 }

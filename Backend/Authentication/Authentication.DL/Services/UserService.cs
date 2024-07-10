@@ -1,4 +1,5 @@
-﻿using Authentication.DAL.Models;
+﻿using System.Security.Claims;
+using Authentication.DAL.Models;
 using Authentication.DL.Models;
 using Authentication.DL.Repositories;
 using AutoMapper;
@@ -81,11 +82,16 @@ namespace Authentication.DL.Services
             await _signInManager.SignOutAsync();
         }
 
-        public async Task<SignInResult> PasswordSignInAsync(UserModel user, string password, bool lockoutOnFailure, bool isPersistent)
+        public async Task<SignInResult> CheckPasswordSignInAsync(UserModel user, string password, bool lockoutOnFailure)
         {
             var appUser = _mapper.Map<AppUser, UserModel>(user);
-            return await _signInManager.PasswordSignInAsync(appUser, password, isPersistent, lockoutOnFailure);
+            return await _signInManager.CheckPasswordSignInAsync(appUser, password, lockoutOnFailure);
         }
 
+        public async Task<IdentityResult> AddClaimAsync(UserModel user, Claim claim)
+        {
+            var appUser = _mapper.Map<AppUser, UserModel>(user);
+            return await _repository.AddClaimAsync(appUser, claim);
+        }
     }
 }

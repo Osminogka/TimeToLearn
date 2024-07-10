@@ -1,4 +1,5 @@
-﻿using Authentication.DAL.Models;
+﻿using System.Security.Claims;
+using Authentication.DAL.Models;
 using Microsoft.AspNetCore.Identity;
 
 namespace Authentication.DL.Repositories
@@ -11,5 +12,6 @@ namespace Authentication.DL.Repositories
         Task<IdentityResult> Delete(AppUser user);
         Task<IdentityResult> Update(AppUser user);
         UserManager<AppUser> GetUserManager();
+        Task<IdentityResult> AddClaimAsync(AppUser user, Claim claim);
     }
 }

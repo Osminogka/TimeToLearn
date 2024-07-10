@@ -3,18 +3,28 @@ using Authentication.DAL.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
-using System.Security.Principal;
 using System.Text;
+using Authentication.API.Infrastructure;
+using Authentication.DL.Repositories;
+using Authentication.DL.Services;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+
+builder.Services.AddTransient<IUsersRepository, UsersRepository>();
+builder.Services.AddTransient<IUsersService, UsersService>();
+builder.Services.AddTransient<IClaimManager, ClaimManager>();
 
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-builder.Services.AddDefaultIdentity<AppUser>(options => options.SignIn.RequireConfirmedAccount = true)
-    .AddEntityFrameworkStores<IdentityContext>();
+var connectionString = builder.Configuration.GetConnectionString("AccountConnectionString") 
+                       ?? throw new InvalidOperationException("Connection string 'AccountConnectionString' not found.");
+builder.Services.AddDbContext<IdentityContext>(options => options.UseSqlServer(connectionString
+    , b => b.MigrationsAssembly("Authentication.API")));
 
-builder.Services.AddIdentityCore<Student>().AddEntityFrameworkStores<IdentityContext>();
-builder.Services.AddIdentityCore<Teacher>().AddEntityFrameworkStores<IdentityContext>();
+builder.Services.AddIdentity<AppUser, IdentityRole>().AddEntityFrameworkStores<IdentityContext>();
 
 builder.Services.Configure<IdentityOptions>(opts =>
 {
@@ -61,5 +71,7 @@ app.MapControllers();
 
 app.UseDefaultFiles();
 
+var scope = app.Services.CreateScope();
+scope.ServiceProvider.GetRequiredService<IdentityContext>().Database.Migrate();
 
 app.Run();
