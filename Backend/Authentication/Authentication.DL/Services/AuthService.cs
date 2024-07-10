@@ -1,7 +1,5 @@
 ﻿using Authentication.DAL.Models;
-using Authentication.DL.Models;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
+using Authentication.DL.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -13,12 +11,12 @@ namespace Authentication.DL.Services
 {
     public class AuthService : IAuthService
     {
-        private readonly IUsersService _userService;
+        private readonly IUsersRepository _userRepository;
         private readonly IConfiguration _configuration;
 
-        public AuthService(IUsersService userService, IConfiguration configuration)
+        public AuthService(IUsersRepository usersRepository, IConfiguration configuration)
         {
-            _userService = userService;
+            _userRepository = usersRepository;
             _configuration = configuration;
         }
 
@@ -26,14 +24,14 @@ namespace Authentication.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
 
-            var user = _userService.GetByEmail(loginModel.Email);
+            var user = await _userRepository.GetByEmailAsync(loginModel.Email);
             if (user == null)
             {
                 response.Message = "User doesn't exist";
                 return response;
             }
 
-            var result = await _userService.CheckPasswordSignInAsync(user, loginModel.Password, false);
+            var result = await _userRepository.CheckPasswordSignInAsync(user, loginModel.Password, false);
             if (result.Succeeded)
             {
                 response.Success = true;
@@ -41,7 +39,7 @@ namespace Authentication.DL.Services
                 return response;
             }
 
-            await _userService.SetUserRoleAsync(user, Roles.Student);
+            await _userRepository.SetUserRoleAsync(user, Roles.Student);
 
             response.Message = "Invalid password";
             return response;
@@ -50,14 +48,22 @@ namespace Authentication.DL.Services
         public async Task<ResponseMessage> RegisterAsync(RegisterRequestModel model)
         {
             ResponseMessage response = new ResponseMessage();
+            response.Message = "Couldn't create user";
 
-            var user = new UserModel
+            var user = new AppUser
             {
                 UserName = model.Name,
+                SecurityStamp = Guid.NewGuid().ToString(),
                 Email = model.Email
             };
 
-            var result = await _userService.Create(user, model.Password);
+            var userExist = await _userRepository.GetByEmailAsync(model.Email);
+            if (userExist != null)
+            {
+                response.Message = "User already exist";
+                return response;
+            }
+            var result = await _userRepository.CreateAsync(user, model.Password);
 
             if (result.Succeeded)
             {
@@ -66,17 +72,29 @@ namespace Authentication.DL.Services
                 return response;
             }
 
-            response.Message = "Couldn't create user";
             return response;
         }
 
-        public async Task<ResponseMessage> BecomeATeacherAsync([FromBody] TeacherModel model)
+        public async Task<ResponseMessage> BecomeATeacherAsync(AppUser user, TeacherModel model)
         {
             ResponseMessage response = new ResponseMessage();
 
+            var accountTypeClaim = new Claim("AccountType", Roles.Teacher);
+            var universityClaim = new Claim("University", model.UniversityName);
+            var degreeClaim = new Claim("Degree", model.Degree);
+
+            var claims = await _userRepository.GetAllClaimsAsync(user);
+            if (claims.ToArray().Where(claim => claim.Value == "Teacher").Count() != 0)
+                return response;
+
+            await _userRepository.AddClaimAsync(user, accountTypeClaim);
+            await _userRepository.AddClaimAsync(user, universityClaim);
+            await _userRepository.AddClaimAsync(user, degreeClaim);
+
+            response.Success = true;
             return response;
         }
-        private async Task<string> TokenGenerator(UserModel user)
+        private async Task<string> TokenGenerator(AppUser user)
         {
             var handler = new JwtSecurityTokenHandler();
             var key = Encoding.ASCII.GetBytes(_configuration["Jwt:key"]);
@@ -86,20 +104,21 @@ namespace Authentication.DL.Services
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
-                Subject = await GenerateClaims(user),
+                Expires = DateTime.UtcNow.AddDays(30),
                 SigningCredentials = credentials,
+                Subject = await GenerateClaims(user),
             };
 
             var token = handler.CreateToken(tokenDescriptor);
             return handler.WriteToken(token);
         }
 
-        private async Task<ClaimsIdentity> GenerateClaims(UserModel user)
+        private async Task<ClaimsIdentity> GenerateClaims(AppUser user)
         {
             var claims = new ClaimsIdentity();
             claims.AddClaim(new Claim(ClaimTypes.Name, user.Email));
 
-            var roles = await _userService.GetUserRolesAsync(user);
+            var roles = await _userRepository.GetUserRolesAsync(user);
 
             foreach (var role in roles)
                 claims.AddClaim(new Claim(ClaimTypes.Role, role));

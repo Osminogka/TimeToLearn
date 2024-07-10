@@ -1,32 +1,26 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace Authentication.API.Controllers;
 
 [ApiController]
 public class BaseController : ControllerBase
 {
+    protected string getUserEmail()
+    {
+        return HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name).Value;
+    }
+
     protected IActionResult HandleException(Exception ex)
     {
         if (ex is ArgumentNullException)
-        {
-            Console.WriteLine(ex);
-            return StatusCode(500, "An error occurred while processing the request.");
-        }
+            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing the request.");
         else if (ex is InvalidOperationException)
-        {
-            Console.WriteLine(ex);
-            return StatusCode(500, "More than one element satisfies the condition in SingleOrDefault.");
-        }
+                    return StatusCode(StatusCodes.Status500InternalServerError, "More than one element satisfies the condition in SingleOrDefault.");
         else if (ex is DbUpdateException)
-        {
-            Console.WriteLine(ex);
-            return StatusCode(500, "An error occurred while updating the database.");
-        }
+            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while updating the database.");
         else
-        {
-            Console.WriteLine(ex);
-            return StatusCode(500, "An unexpected error occurred.");
-        }
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
     }
 }

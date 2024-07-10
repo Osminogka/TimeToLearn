@@ -14,8 +14,6 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
 builder.Services.AddTransient<IUsersRepository, UsersRepository>();
-builder.Services.AddTransient<IUsersService, UsersService>();
-builder.Services.AddTransient<IClaimManager, ClaimManager>();
 builder.Services.AddTransient<IAuthService, AuthService>();
 
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
@@ -46,9 +44,15 @@ builder.Services.Configure<IdentityOptions>(opts =>
 });
 
 //Jwt configuration starts here
-builder.Services.AddAuthentication()
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+})
     .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, opts =>
     {
+        opts.SaveToken = true;
         opts.TokenValidationParameters = new TokenValidationParameters
         {
             IssuerSigningKey = new SymmetricSecurityKey
@@ -62,13 +66,11 @@ builder.Services.AddAuthentication()
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme);
-
 builder.Services.AddControllers();
 
 var app = builder.Build();
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 app.UseRouting();
 
@@ -79,7 +81,6 @@ app.MapControllers();
 
 app.UseDefaultFiles();
 
-var scope = app.Services.CreateScope();
-scope.ServiceProvider.GetRequiredService<IdentityContext>().Database.Migrate();
+PrepDb.PrepMemberRoles(app);
 
 app.Run();
