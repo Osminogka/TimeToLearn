@@ -1,4 +1,4 @@
-namespace Authentication.API.Models;
+namespace Authentication.DAL.Models;
 
 public class ResponseMessage
 {

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Authentication.API.Models;
+namespace Authentication.DAL.Models;
 
 public class TeacherModel
 {

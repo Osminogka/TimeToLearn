@@ -8,10 +8,12 @@ namespace Authentication.DL.Repositories
     public class UsersRepository : IUsersRepository
     {
         private readonly UserManager<AppUser> _userManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
 
-        public UsersRepository(UserManager<AppUser> userManager)
+        public UsersRepository(UserManager<AppUser> userManager, RoleManager<IdentityRole> roleManager)
         {
             _userManager = userManager;
+            _roleManager = roleManager;
         }
 
         public IQueryable<AppUser> Get() => _userManager.Users;
@@ -39,5 +41,15 @@ namespace Authentication.DL.Repositories
         }
 
         public async Task<IdentityResult> AddClaimAsync(AppUser user, Claim claim) => await _userManager.AddClaimAsync(user, claim);
+
+        public async Task<IList<string>> GetUserRolesAsync(AppUser user) => await _userManager.GetRolesAsync(user);
+
+        public async Task<IdentityResult> SetUserRoleAsync(AppUser user, string role)
+        {
+            if (await _roleManager.RoleExistsAsync(role))
+                return await _userManager.AddToRoleAsync(user, role);
+
+            return IdentityResult.Failed();
+        }
     }
 }

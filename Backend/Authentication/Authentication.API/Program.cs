@@ -16,13 +16,21 @@ builder.Logging.AddConsole();
 builder.Services.AddTransient<IUsersRepository, UsersRepository>();
 builder.Services.AddTransient<IUsersService, UsersService>();
 builder.Services.AddTransient<IClaimManager, ClaimManager>();
+builder.Services.AddTransient<IAuthService, AuthService>();
 
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-var connectionString = builder.Configuration.GetConnectionString("AccountConnectionString") 
-                       ?? throw new InvalidOperationException("Connection string 'AccountConnectionString' not found.");
-builder.Services.AddDbContext<IdentityContext>(options => options.UseSqlServer(connectionString
+
+var connectionString = builder.Configuration.GetConnectionString("AccountConnectionString")
+                    ?? throw new InvalidOperationException("Connection string 'AccountConnectionString' not found.");
+if(builder.Environment.IsProduction())
+    builder.Services.AddDbContext<IdentityContext>(options => options.UseSqlServer(connectionString
     , b => b.MigrationsAssembly("Authentication.API")));
+else
+    builder.Services.AddDbContext<IdentityContext>(options => options.UseSqlite(connectionString
+    , b => b.MigrationsAssembly("Authentication.API")));
+
+
 
 builder.Services.AddIdentity<AppUser, IdentityRole>().AddEntityFrameworkStores<IdentityContext>();
 

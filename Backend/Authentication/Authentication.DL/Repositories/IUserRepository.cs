@@ -13,5 +13,7 @@ namespace Authentication.DL.Repositories
         Task<IdentityResult> Update(AppUser user);
         UserManager<AppUser> GetUserManager();
         Task<IdentityResult> AddClaimAsync(AppUser user, Claim claim);
+        Task<IList<string>> GetUserRolesAsync(AppUser user);
+        Task<IdentityResult> SetUserRoleAsync(AppUser user, string role);
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using Authentication.DAL.Models;
 using Authentication.DL.Models;
 using Microsoft.AspNetCore.Identity;
 
@@ -18,5 +19,7 @@ namespace Authentication.DL.Services
         Task SignOutAsync();
         Task<SignInResult> CheckPasswordSignInAsync(UserModel user, string password, bool lockoutOnFailure);
         Task<IdentityResult> AddClaimAsync(UserModel user, Claim claim);
+        Task<IList<string>> GetUserRolesAsync(UserModel user);
+        Task<IdentityResult> SetUserRoleAsync(UserModel user, string role);
     }
 }

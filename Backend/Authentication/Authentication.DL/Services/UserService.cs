@@ -93,5 +93,17 @@ namespace Authentication.DL.Services
             var appUser = _mapper.Map<AppUser, UserModel>(user);
             return await _repository.AddClaimAsync(appUser, claim);
         }
+
+        public async Task<IList<string>> GetUserRolesAsync(UserModel user)
+        {
+            var appUser = _mapper.Map<AppUser, UserModel>(user);
+            return await _repository.GetUserRolesAsync(appUser);
+        }
+
+        public async Task<IdentityResult> SetUserRoleAsync(UserModel user, string role)
+        {
+            var appUser = _mapper.Map<AppUser, UserModel>(user);
+            return await _repository.SetUserRoleAsync(appUser, role);
+        }
     }
 }
