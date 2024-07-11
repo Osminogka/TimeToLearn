@@ -50,5 +50,10 @@ namespace Users.DL.Repositories
         {
             return _entities.Where(exp);
         }
+
+        public async Task<T?> SingleOrDefaultAsync(System.Linq.Expressions.Expression<Func<T, bool>> exp)
+        {
+            return await _entities.SingleOrDefaultAsync(exp);
+        }
     }
 }

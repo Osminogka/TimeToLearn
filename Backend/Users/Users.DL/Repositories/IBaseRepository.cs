@@ -8,6 +8,7 @@ namespace Users.DL.Repositories
         Task<IEnumerable<T>> GetAllAsync();
         Task<T?> GetByIdAsync(long id);
         IEnumerable<T> Where(Expression<Func<T, bool>> exp);
+        Task<T?> SingleOrDefaultAsync(System.Linq.Expressions.Expression<Func<T, bool>> exp)
         Task<int> AddAsync(T entity);
         Task<int> DeleteAsync(T entity);
     }

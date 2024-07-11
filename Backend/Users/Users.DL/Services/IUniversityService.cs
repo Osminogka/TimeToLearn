@@ -10,7 +10,7 @@ namespace Users.DL.Services
 {
     public interface IUniversityService
     {
-        Task<int> CreateAsync(CreateUniversityDto model);
-        Task<ReadUniversityDto> GetUniverAsync(string name);
+        Task<ReadUniversityDto?> CreateAsync(CreateUniversityDto model);
+        Task<ReadUniversityDto?> GetUniverAsync(string name);
     }
 }
