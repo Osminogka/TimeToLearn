@@ -79,17 +79,17 @@ namespace Authentication.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
 
-            var accountTypeClaim = new Claim("AccountType", Roles.Teacher);
-            var universityClaim = new Claim("University", model.UniversityName);
-            var degreeClaim = new Claim("Degree", model.Degree);
+            //var accountTypeClaim = new Claim("AccountType", Roles.Teacher);
+            //var universityClaim = new Claim("University", model.UniversityName);
+            //var degreeClaim = new Claim("Degree", model.Degree);
 
-            var claims = await _userRepository.GetAllClaimsAsync(user);
-            if (claims.ToArray().Where(claim => claim.Value == "Teacher").Count() != 0)
-                return response;
+            //var claims = await _userRepository.GetAllClaimsAsync(user);
+            //if (claims.ToArray().Where(claim => claim.Value == "Teacher").Count() != 0)
+            //    return response;
 
-            await _userRepository.AddClaimAsync(user, accountTypeClaim);
-            await _userRepository.AddClaimAsync(user, universityClaim);
-            await _userRepository.AddClaimAsync(user, degreeClaim);
+            //await _userRepository.AddClaimAsync(user, accountTypeClaim);
+            //await _userRepository.AddClaimAsync(user, universityClaim);
+            //await _userRepository.AddClaimAsync(user, degreeClaim);
 
             response.Success = true;
             return response;

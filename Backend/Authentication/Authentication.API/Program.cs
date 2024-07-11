@@ -62,7 +62,7 @@ builder.Services.AddAuthentication(options =>
             ValidateAudience = false,
             ValidateLifetime = true,
         };
-    });
+});
 
 builder.Services.AddAuthorization();
 

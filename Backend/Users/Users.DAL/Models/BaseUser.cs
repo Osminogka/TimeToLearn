@@ -1,0 +1,35 @@
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Users.DAL.Models
+{
+    public class BaseUser : BaseEntity
+    {
+        [Required]
+        public Guid OriginalId { get; set; }
+
+        [Required]
+        [MaxLength(50)]
+        public string Username { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(50)]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(50)]
+        public string PhoneNumber { get; set; } = string.Empty;
+
+        [Required]
+        public bool IsTeacher { get; set; }
+
+        public long? TeacherId { get; set; }
+
+        public long? StudentId { get; set; }
+
+        public Teacher? Teacher { get; set; }
+
+        public Student? Student { get; set; }
+
+        public ICollection<EntryRequest> EntryRequests { get; set; }
+    }
+}

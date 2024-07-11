@@ -4,14 +4,13 @@ using Authentication.DL.Repositories;
 using Authentication.DL.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Security.Claims;
 using Xunit;
 
-namespace Authentication.Tests.Controllers
+namespace Authentication.Tests
 {
     public class AuthenticationControllerTests
     {
