@@ -7,7 +7,7 @@ namespace Users.DAL.Models
         [Required]
         public string Degree { get; set; }
 
-        public long UniversityId { get; set; }
+        public long? UniversityId { get; set; }
 
         public University University { get; set; }
 

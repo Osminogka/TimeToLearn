@@ -36,6 +36,11 @@ namespace Users.DAL.Context
                 .OwnsOne(e => e.Address);
 
             modelBuilder.Entity<University>()
+                .HasOne(e => e.Director)
+                .WithOne(e => e.University)
+                .HasForeignKey<University>(e => e.DirectorId);
+
+            modelBuilder.Entity<University>()
                 .HasMany(e => e.Students)
                 .WithOne(e => e.University)
                 .HasForeignKey(e => e.UniversityId);

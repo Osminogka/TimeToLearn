@@ -13,10 +13,15 @@ namespace Users.DAL.Models
         public string Description { get; set; }
 
         [Required]
+        public long DirectorId { get; set; }
+
+        [Required]
         public Address Address { get; set; }
 
         [Required]
         public bool IsOpened { get; set; }
+
+        public BaseUser Director { get; set; }
 
         public ICollection<Teacher> Teachers { get; set; }
 

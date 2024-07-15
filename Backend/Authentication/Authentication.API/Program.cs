@@ -8,6 +8,7 @@ using Authentication.API.Infrastructure;
 using Authentication.DL.Repositories;
 using Authentication.DL.Services;
 using Microsoft.EntityFrameworkCore;
+using Authentication.API.AsyncDataService;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
@@ -15,6 +16,8 @@ builder.Logging.AddConsole();
 
 builder.Services.AddTransient<IUsersRepository, UsersRepository>();
 builder.Services.AddTransient<IAuthService, AuthService>();
+
+builder.Services.AddSingleton<IMessageBusClient, MessageBusClient>();
 
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 

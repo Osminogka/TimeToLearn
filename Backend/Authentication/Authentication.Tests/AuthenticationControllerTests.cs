@@ -1,7 +1,10 @@
-﻿using Authentication.API.Controllers;
+﻿using Authentication.API.AsyncDataService;
+using Authentication.API.Controllers;
+using Authentication.DAL.Dtos;
 using Authentication.DAL.Models;
 using Authentication.DL.Repositories;
 using Authentication.DL.Services;
+using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -29,7 +32,14 @@ namespace Authentication.Tests
                     Email = "test@test.test"
                 }
 
-            }.AsQueryable();
+            };
+
+            BaseUserPublishDto userDto = new BaseUserPublishDto
+            {
+                Email = "osminogka@test.test",
+                OriginalId = Guid.NewGuid(),
+                Username = "Osminogka",
+            };
 
             var list = new List<IdentityRole>()
             {
@@ -52,7 +62,7 @@ namespace Authentication.Tests
             Repository = new Mock<IUsersRepository>();
 
             Repository.Setup(x => x.GetByEmailAsync(It.IsAny<string>()))
-                .Returns((string email) => Task.Run(() => users.SingleOrDefault(obj => obj.Email == email)));
+                .ReturnsAsync((string email) => users.SingleOrDefault(obj => obj.Email == email));
 
             Repository.Setup(x => x.CheckPasswordSignInAsync(It.IsAny<AppUser>(), It.IsAny<string>(), It.IsAny<bool>()))
                 .Returns(Task.Run(() => Microsoft.AspNetCore.Identity.SignInResult.Success));
@@ -61,8 +71,8 @@ namespace Authentication.Tests
                 .Returns(Task.Run(() => IdentityResult.Success));
 
             Repository.Setup(x => x.CreateAsync(It.IsAny<AppUser>(), It.IsAny<string>()))
-                .Callback((AppUser user, string password) => Task.Run(() => users.Append(user)))
-                .ReturnsAsync(IdentityResult.Success);
+                .ReturnsAsync(IdentityResult.Success)
+                .Callback<AppUser, string>((x, y) => users.Add(x));
 
             Repository.Setup(x => x.GetAllClaimsAsync(It.IsAny<AppUser>()))
                 .ReturnsAsync(claims);
@@ -75,9 +85,17 @@ namespace Authentication.Tests
                 .ReturnsAsync(roles);
 
             var authService = new AuthService(Repository.Object, GetTestConfiguration());
-            var mock = new Mock<ILogger<AuthenticationController>>();
-            ILogger<AuthenticationController> logger = mock.Object;
-            Controller = new AuthenticationController(authService, Repository.Object, logger);
+            var logger = new Mock<ILogger<AuthenticationController>>();
+
+            var autoMapper = new Mock<IMapper>();
+            autoMapper.Setup(x => x.Map<BaseUserPublishDto>(It.IsAny<AppUser>()))
+                .Returns(userDto);
+
+
+            var messageBus = new Mock<IMessageBusClient>();
+            messageBus.Setup(x => x.PublishNewUser(It.IsAny<BaseUserPublishDto>()));
+
+            Controller = new AuthenticationController(authService, Repository.Object, messageBus.Object ,autoMapper.Object ,logger.Object);
         }
 
         [Fact]

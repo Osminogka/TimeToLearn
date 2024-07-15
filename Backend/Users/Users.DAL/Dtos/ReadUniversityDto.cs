@@ -14,6 +14,9 @@ namespace Users.DAL.Dtos
         public string Description { get; set; }
 
         [Required]
+        public long DirectorId { get; set; }
+
+        [Required]
         public Address Address { get; set; }
 
         [Required]

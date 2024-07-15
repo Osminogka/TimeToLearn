@@ -12,6 +12,8 @@ namespace Users.API.Infrastructure
             CreateMap<ReadUniversityDto, University>();
 
             CreateMap<CreateUniversityDto, University>();
+
+            CreateMap<BaseUserPublishDto, BaseUser>();
         }
     }
 }

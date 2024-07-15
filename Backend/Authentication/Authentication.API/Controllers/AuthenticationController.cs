@@ -1,6 +1,9 @@
-﻿using Authentication.DAL.Models;
+﻿using Authentication.API.AsyncDataService;
+using Authentication.DAL.Dtos;
+using Authentication.DAL.Models;
 using Authentication.DL.Repositories;
 using Authentication.DL.Services;
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -12,13 +15,17 @@ namespace Authentication.API.Controllers
     {
         private readonly IAuthService _authService;
         private readonly IUsersRepository _userRepository;
+        private readonly IMessageBusClient _messageBusClient;
+        private readonly IMapper _mapper;
         private readonly ILogger<AuthenticationController> _logger;
 
-        public AuthenticationController(IAuthService authService, IUsersRepository usersRepository,ILogger<AuthenticationController> logger)
+        public AuthenticationController(IAuthService authService, IUsersRepository usersRepository, IMessageBusClient messageBusClient, IMapper mapper ,ILogger<AuthenticationController> logger)
 
         {
             _authService = authService;
             _userRepository = usersRepository;
+            _messageBusClient = messageBusClient;
+            _mapper = mapper;
             _logger = logger;
         }
 
@@ -51,6 +58,10 @@ namespace Authentication.API.Controllers
                 var result = await _authService.RegisterAsync(model);
                 if (!result.Success)
                     return BadRequest(result.Message);
+                var userPublishedDto = _mapper.Map<BaseUserPublishDto>(result.User);
+                userPublishedDto.Event = "BaseUser_Published";
+                _messageBusClient.PublishNewUser(userPublishedDto);
+
                 return Ok(result);
             }
             catch(Exception ex)
@@ -58,29 +69,6 @@ namespace Authentication.API.Controllers
                 _logger.LogError(ex.Message);
                 return HandleException(ex);
             }
-        }
-
-        [HttpPost("teacher")]
-        [Authorize(Roles = Roles.Student)]
-        public async Task<IActionResult> BecomeATeacherAsync([FromBody] TeacherModel model)
-        {
-            ResponseMessage response = new ResponseMessage();
-            try
-            {
-                var user = await _userRepository.GetByEmailAsync(getUserEmail());
-                var result = await _authService.BecomeATeacherAsync(user, model);
-                if (!result.Success)
-                    return Ok(response);
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError(ex.Message);
-                return HandleException(ex);
-            }
-
-            response.Success = true;
-            response.Message = "Request is sent";
-            return Ok(response);
         }
     }
 }

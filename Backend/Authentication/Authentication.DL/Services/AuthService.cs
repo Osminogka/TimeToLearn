@@ -50,6 +50,12 @@ namespace Authentication.DL.Services
             ResponseMessage response = new ResponseMessage();
             response.Message = "Couldn't create user";
 
+            if(model.Name.Length > 50 || model.Email.Length > 50)
+            {
+                response.Message = "Name and email length must be under 50 characters";
+                return response;
+            }
+
             var user = new AppUser
             {
                 UserName = model.Name,
@@ -69,31 +75,13 @@ namespace Authentication.DL.Services
             {
                 response.Success = true;
                 response.Message = await TokenGenerator(user);
+                response.User = await _userRepository.GetByEmailAsync(model.Email);
                 return response;
             }
 
             return response;
         }
 
-        public async Task<ResponseMessage> BecomeATeacherAsync(AppUser user, TeacherModel model)
-        {
-            ResponseMessage response = new ResponseMessage();
-
-            //var accountTypeClaim = new Claim("AccountType", Roles.Teacher);
-            //var universityClaim = new Claim("University", model.UniversityName);
-            //var degreeClaim = new Claim("Degree", model.Degree);
-
-            //var claims = await _userRepository.GetAllClaimsAsync(user);
-            //if (claims.ToArray().Where(claim => claim.Value == "Teacher").Count() != 0)
-            //    return response;
-
-            //await _userRepository.AddClaimAsync(user, accountTypeClaim);
-            //await _userRepository.AddClaimAsync(user, universityClaim);
-            //await _userRepository.AddClaimAsync(user, degreeClaim);
-
-            response.Success = true;
-            return response;
-        }
         private async Task<string> TokenGenerator(AppUser user)
         {
             var handler = new JwtSecurityTokenHandler();

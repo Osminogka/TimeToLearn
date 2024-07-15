@@ -2,7 +2,7 @@
 {
     public class Student : BaseEntity
     {
-        public long UniversityId { get; set; }
+        public long? UniversityId { get; set; }
 
         public University University { get; set; }
 

@@ -21,10 +21,26 @@ namespace Users.DL.Repositories
             _entities = context.Set<T>();
         }
 
+        public DataContext GetContext()
+        {
+            return _context;
+        }
+
         public async Task<int> AddAsync(T entity)
         {
             if (entity == null) throw new ArgumentNullException("", "Input data is null");
             await _entities.AddAsync(entity);
+            return await _context.SaveChangesAsync();
+        }
+
+        public async Task<int> UpdateAsync(T entity)
+        {
+            if (entity == null) throw new ArgumentNullException("", "Input data is null");
+
+            var oldEntity = await _context.FindAsync<T>(entity.Id);
+            if(oldEntity == null)
+                throw new ArgumentNullException("", "Input data is null");
+            _context.Entry(oldEntity).CurrentValues.SetValues(entity);
             return await _context.SaveChangesAsync();
         }
 
@@ -46,7 +62,7 @@ namespace Users.DL.Repositories
             return await _entities.SingleOrDefaultAsync(obj => obj.Id == id);
         }
 
-        public IEnumerable<T> Where(System.Linq.Expressions.Expression<Func<T, bool>> exp)
+        public IQueryable<T> Where(System.Linq.Expressions.Expression<Func<T, bool>> exp)
         {
             return _entities.Where(exp);
         }
@@ -54,6 +70,12 @@ namespace Users.DL.Repositories
         public async Task<T?> SingleOrDefaultAsync(System.Linq.Expressions.Expression<Func<T, bool>> exp)
         {
             return await _entities.SingleOrDefaultAsync(exp);
+        }
+
+        public async Task<int> DeleteRangeAsync(List<T> entities)
+        {
+            _context.RemoveRange(entities);
+            return await _context.SaveChangesAsync();
         }
     }
 }

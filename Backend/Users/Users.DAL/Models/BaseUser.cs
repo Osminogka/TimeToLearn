@@ -15,16 +15,17 @@ namespace Users.DAL.Models
         [MaxLength(50)]
         public string Email { get; set; } = string.Empty;
 
-        [Required]
         [MaxLength(50)]
         public string PhoneNumber { get; set; } = string.Empty;
 
         [Required]
-        public bool IsTeacher { get; set; }
+        public bool IsTeacher { get; set; } = false;
 
         public long? TeacherId { get; set; }
 
         public long? StudentId { get; set; }
+
+        public University? University { get; set; }
 
         public Teacher? Teacher { get; set; }
 

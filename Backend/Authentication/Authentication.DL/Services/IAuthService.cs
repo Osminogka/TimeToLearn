@@ -7,6 +7,5 @@ namespace Authentication.DL.Services
     {
         Task<ResponseMessage> LoginAsync(LoginRequestModel loginModel);
         Task<ResponseMessage> RegisterAsync(RegisterRequestModel model);
-        Task<ResponseMessage> BecomeATeacherAsync(AppUser user, TeacherModel model);
     }
 }
