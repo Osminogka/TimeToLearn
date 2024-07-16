@@ -24,7 +24,7 @@ namespace Users.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
 
-            var user = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == email);
+            var user = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == email && obj.StudentId == null);
             if(user == null)
             {
                 response.Message = "Such user doesn't exist";
@@ -38,6 +38,7 @@ namespace Users.DL.Services
 
             await _studentRepository.AddAsync(student);
             user.StudentId = student.Id;
+            user.TeacherId = null;
 
             await _baseUserRepository.UpdateAsync(user);
             response.Success = true;
@@ -46,7 +47,7 @@ namespace Users.DL.Services
             return response;
         }
 
-        public async Task<ResponseMessage> InviteStudentToUniversity(string universityName, string username, string mainUserEmail)
+        public async Task<ResponseMessage> InviteStudentToUniversity(string universityName, string studentEmail, string mainUserEmail)
         {
             ResponseMessage response = new ResponseMessage();
 
@@ -57,7 +58,8 @@ namespace Users.DL.Services
                 return response;
             }
 
-            var baseUser = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Username == username && obj.IsTeacher == false);
+            var baseUser = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == studentEmail && obj.StudentId != null && 
+                obj.UniversityId != checkIfCanSendRequest.Id);
             if (baseUser == null)
             {
                 response.Message = "Such user doesn't exist";
@@ -95,14 +97,20 @@ namespace Users.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
 
-            var university = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == universityName);
-            var mainUser = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == mainUserEmail && obj.IsTeacher == false);
-            if (mainUser == null || university == null)
-                return response;
-
-            if (university.Students.SingleOrDefault(obj => obj.BaseUserId == mainUser.Id) != null)
+            var university = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == universityName && obj.IsOpened == false);
+            
+            if (university == null)
             {
-                response.Message = "You already student of this university";
+                response.Message = "Such university doesn't exist";
+                return response;
+            }
+
+            var mainUser = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == mainUserEmail && obj.StudentId != null &&
+                 obj.UniversityId != university.Id);
+
+            if (mainUser == null)
+            {
+                response.Message = "Invalid user";
                 return response;
             }
 
@@ -120,8 +128,8 @@ namespace Users.DL.Services
 
             EntryRequest entryRequest = new EntryRequest
             {
-                BaseUserId = university.Id,
-                UniversityId = mainUser.Id,
+                BaseUserId = mainUser.Id,
+                UniversityId = university.Id,
                 SentByUniversity = false
             };
 
@@ -138,7 +146,7 @@ namespace Users.DL.Services
             ResponseMessage response = new ResponseMessage();
 
             var university = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == universityName);
-            var user = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == userEmail && obj.IsTeacher == false);
+            var user = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == userEmail && obj.StudentId != null && obj.UniversityId != university.Id);
             if (university == null || user == null)
             {
                 response.Message = "Such university doesn't exist";
@@ -155,7 +163,11 @@ namespace Users.DL.Services
             if (entryRequestCheck.Count > 0)
                 await _entryRequestRepository.DeleteRangeAsync(entryRequestCheck);
 
-            user.Student!.UniversityId = university.Id;
+            user.UniversityId = university.Id;
+            await _baseUserRepository.UpdateAsync(user);
+
+            response.Success = true;
+            response.Message = "You entered this university";
 
             return response;
         }

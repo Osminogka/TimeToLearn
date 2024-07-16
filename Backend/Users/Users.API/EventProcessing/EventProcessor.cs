@@ -66,9 +66,7 @@ namespace Users.API.EventProcessing
                         Console.WriteLine("--> BaseUser added!");
                     }
                     else
-                    {
                         Console.WriteLine("--> BaseUser already exists...");
-                    }
 
                 }
                 catch (Exception ex)

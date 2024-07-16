@@ -49,6 +49,10 @@ namespace Users.DL.Services
                 return response;
             }
             await _universityRepository.AddAsync(university);
+
+            director.UniversityId = university.Id;
+            await _userRepository.UpdateAsync(director);
+
             response.UniversityDto = _mapper.Map<ReadUniversityDto>(university);
             response.Success = true;
             response.Message = "University created";
@@ -76,11 +80,10 @@ namespace Users.DL.Services
         {
             ResponseGetEnum<string> response = new ResponseGetEnum<string>();
 
-            var user = await _userRepository.SingleOrDefaultAsync(obj => obj.Email == userEmail && obj.University.Name == universityName);
+            var user = await _userRepository.SingleOrDefaultAsync(obj => obj.Email == userEmail && obj.UniversityMember.Name == universityName);
 
             var university = await _universityRepository.Where(obj => obj.Name == universityName)
-                    .Include(obj => obj.Teachers)
-                        .ThenInclude(obj => obj.BaseUser)
+                    .Include(obj => obj.Members.Where(obj => obj.IsTeacher == false))
                     .FirstOrDefaultAsync();
 
             if (university == null)
@@ -89,7 +92,7 @@ namespace Users.DL.Services
                 return response;
             }
 
-            response.Enum = university.Students.Select(obj => obj.BaseUser.Username);
+            response.Enum = university.Members.Select(obj => obj.Username);
             response.Success = true;
             response.Message = "Got student list";
             return response;
@@ -99,11 +102,10 @@ namespace Users.DL.Services
         {
             ResponseGetEnum<string> response = new ResponseGetEnum<string>();
 
-            var user = await _userRepository.SingleOrDefaultAsync(obj => obj.Email == userEmail && obj.University.Name == universityName);
+            var user = await _userRepository.SingleOrDefaultAsync(obj => obj.Email == userEmail && obj.UniversityMember.Name == universityName);
 
             var university = await _universityRepository.Where(obj => obj.Name == universityName)
-                    .Include(obj => obj.Teachers)
-                        .ThenInclude(obj => obj.BaseUser)
+                    .Include(obj => obj.Members.Where(obj => obj.IsTeacher == true))
                     .FirstOrDefaultAsync();
             
             if(university == null)
@@ -112,7 +114,7 @@ namespace Users.DL.Services
                 return response;
             }
 
-            response.Enum = university.Teachers.Select(obj => obj.BaseUser.Username);
+            response.Enum = university.Members.Select(obj => obj.Username);
             response.Success = true;
             response.Message = "Got teacher list";
             return response;

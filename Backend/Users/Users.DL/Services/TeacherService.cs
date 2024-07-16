@@ -79,7 +79,7 @@ namespace Users.DL.Services
             if (mainUser == null || university == null)
                 return response;
             
-            if (university.Teachers.SingleOrDefault(obj => obj.BaseUserId == mainUser.Id) != null)
+            if (university.Members.SingleOrDefault(obj => obj.Id == mainUser.Id) != null)
             {
                 response.Message = "You already teacher of this university";
                 return response;

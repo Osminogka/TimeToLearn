@@ -25,7 +25,11 @@ namespace Users.DAL.Models
 
         public long? StudentId { get; set; }
 
-        public University? University { get; set; }
+        public long? UniversityId { get; set; }
+
+        public University? UniversityMember { get; set; }
+
+        public University? UniversityDirector { get; set; }
 
         public Teacher? Teacher { get; set; }
 

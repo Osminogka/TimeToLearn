@@ -14,11 +14,10 @@ namespace Users.Tests;
 
 public class UniversityServiceTests
 {
-    private IBaseRepository<University> UniversityRepository;
-    private IBaseRepository<BaseUser> UserRepository;
-
-    public IBaseRepository<Student> StudentsRepository { get; private set; }
-    public IBaseRepository<Teacher> TeachersRepository { get; private set; }
+    private IBaseRepository<University> UniversityRepository { get; set; }
+    private IBaseRepository<BaseUser> UserRepository { get; set; }
+    private IBaseRepository<Student> StudentsRepository { get;  set; }
+    private IBaseRepository<Teacher> TeachersRepository { get; set; }
 
     private IUniversityService Service;
 
@@ -30,6 +29,7 @@ public class UniversityServiceTests
         OriginalId = Guid.NewGuid(),
         Username = "Osminogka",
         Email = "osminogka@test.com",
+        UniversityId = 1,
         IsTeacher = true
     };
 
@@ -39,6 +39,7 @@ public class UniversityServiceTests
         OriginalId = Guid.NewGuid(),
         Username = "Teacher",
         Email = "teacher@test.com",
+        UniversityId = 1,
         IsTeacher = true
     };
 
@@ -48,6 +49,7 @@ public class UniversityServiceTests
         OriginalId = Guid.NewGuid(),
         Username = "Student",
         Email = "student@test.com",
+        UniversityId = 1,
         IsTeacher = false
     };
 
@@ -55,7 +57,7 @@ public class UniversityServiceTests
     {
         var services = new ServiceCollection();
 
-        services.AddDbContext<DataContext>(options => options.UseInMemoryDatabase("TestDb"));
+        services.AddDbContext<DataContext>(options => options.UseInMemoryDatabase("TestDbUniversity"));
 
         services.AddTransient<IBaseRepository<University>, BaseRepository<University>>();
         services.AddTransient<IBaseRepository<BaseUser>, BaseRepository<BaseUser>>();
@@ -84,6 +86,10 @@ public class UniversityServiceTests
         var context = UserRepository.GetContext();
         context.Database.EnsureDeleted();
 
+        context.Add(User);
+        context.Add(Student);
+        context.Add(Teacher);
+
         //Create university
         University universityDto = new University
         {
@@ -103,13 +109,10 @@ public class UniversityServiceTests
         
         context.Add(universityDto);
 
-        //Create current user and make him a University member
-        context.Add(User);
 
         Student student = new Student
         {
             BaseUserId = User.Id,
-            UniversityId = 1
         };
 
         context.Add(student);
@@ -118,20 +121,9 @@ public class UniversityServiceTests
         {
             Degree = "Master",
             BaseUserId = Teacher.Id,
-            UniversityId = 1
         };
-        context.Add(Teacher);
+        
         context.Add(teacher);
-
-        context.Add(Student);
-
-        student = new Student
-        {
-            BaseUserId = Student.Id,
-            UniversityId = 1
-        };
-
-        context.Add(student);
 
         context.SaveChanges();
     }
@@ -197,7 +189,7 @@ public class UniversityServiceTests
         var response = Assert.IsType<ResponseGetEnum<string>>(result);
         
         Assert.True(response.Success);
-        Assert.Single(response.Enum);
+        Assert.Equal(3, response.Enum.Count());
     }
 
     [Fact]
@@ -210,6 +202,6 @@ public class UniversityServiceTests
         var response = Assert.IsType<ResponseGetEnum<string>>(result);
 
         Assert.True(response.Success);
-        Assert.Equal(2, response.Enum.Count());
+        Assert.Equal(3, response.Enum.Count());
     }
 }

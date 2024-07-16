@@ -1,5 +1,6 @@
 ﻿using Authentication.API.AsyncDataService;
 using Authentication.API.Controllers;
+using Authentication.API.Infrastructure;
 using Authentication.DAL.Dtos;
 using Authentication.DAL.Models;
 using Authentication.DL.Repositories;
@@ -87,15 +88,18 @@ namespace Authentication.Tests
             var authService = new AuthService(Repository.Object, GetTestConfiguration());
             var logger = new Mock<ILogger<AuthenticationController>>();
 
-            var autoMapper = new Mock<IMapper>();
-            autoMapper.Setup(x => x.Map<BaseUserPublishDto>(It.IsAny<AppUser>()))
-                .Returns(userDto);
+            var config = new MapperConfiguration(cfg =>
+            {
+                cfg.AddProfile<MappingProfile>();
+            });
+
+            var autoMapper = config.CreateMapper();
 
 
             var messageBus = new Mock<IMessageBusClient>();
             messageBus.Setup(x => x.PublishNewUser(It.IsAny<BaseUserPublishDto>()));
 
-            Controller = new AuthenticationController(authService, Repository.Object, messageBus.Object ,autoMapper.Object ,logger.Object);
+            Controller = new AuthenticationController(authService, Repository.Object, messageBus.Object ,autoMapper ,logger.Object);
         }
 
         [Fact]

@@ -23,9 +23,7 @@ namespace Users.DAL.Models
 
         public BaseUser Director { get; set; }
 
-        public ICollection<Teacher> Teachers { get; set; }
-
-        public ICollection<Student> Students { get; set; }
+        public ICollection<BaseUser> Members { get; set; }
 
         public ICollection<EntryRequest> EntryRequests { get; set; }
     }
