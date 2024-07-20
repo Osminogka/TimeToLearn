@@ -6,14 +6,13 @@ namespace Users.DAL.Models
     {
         [Required]
         [MaxLength(50)]
-        public string Country { get; set; } = string.Empty;
-
-        [Required]
-        [MaxLength(50)]
-        public string City { get; set; } = string.Empty;
+        public string? Country { get; set; } = string.Empty;
 
         [MaxLength(50)]
-        public string Street { get; set; } = string.Empty;
+        public string? City { get; set; } = string.Empty;
+
+        [MaxLength(50)]
+        public string? Street { get; set; } = string.Empty;
     }
 
 }

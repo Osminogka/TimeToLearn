@@ -149,7 +149,7 @@ public class UniversityServiceTests
         var result = await Service.CreateAsync(universityDto, User.Email);
 
         //Assert
-        var response = Assert.IsType<ResponseUniversity>(result);
+        var response = Assert.IsType< ResponseWithValue<ReadUniversityDto>>(result);
 
         Assert.True(response.Success);
     }
@@ -174,9 +174,9 @@ public class UniversityServiceTests
         var result = await Service.GetAsync("DKU");
 
         //Assert
-        var response = Assert.IsType<ResponseUniversity>(result);
+        var response = Assert.IsType<ResponseWithValue<ReadUniversityDto>>(result);
         Assert.True(response.Success);
-        Assert.Equal("DKU", response.UniversityDto.Name);
+        Assert.Equal("DKU", response.Value.Name);
     }
 
     [Fact]

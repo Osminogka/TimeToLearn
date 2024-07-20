@@ -8,12 +8,16 @@ namespace Users.API.Infrastructure
     {
         public MappingProfile()
         {
+            //Source > Destination
+
             CreateMap<University, ReadUniversityDto>();
             CreateMap<ReadUniversityDto, University>();
 
             CreateMap<CreateUniversityDto, University>();
 
             CreateMap<BaseUserPublishDto, BaseUser>();
+
+            CreateMap<BaseUser, ReadBaseUserDto>();
         }
     }
 }

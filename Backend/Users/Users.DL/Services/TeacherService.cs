@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -25,7 +26,58 @@ namespace Users.DL.Services
             _entryRequestRepository = entryRequestRepository;
         }
 
-        public async Task<ResponseMessage> InviteTeacherToUniversity(string universityName, string username, string mainUserEmail)
+        public async Task<ResponseMessage> BecomeTeacherAsync(string email)
+        {
+            ResponseMessage response = new ResponseMessage();
+
+            var user = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == email && obj.IsTeacher == false);
+            if (user == null)
+            {
+                response.Message = "Such user doesn't exist";
+                return response;
+            }
+
+            Teacher teacher = new Teacher
+            {
+                BaseUserId = user.Id
+            };
+
+            await _teacherRepository.AddAsync(teacher);
+            user.TeacherId = teacher.Id;
+            user.IsTeacher = true;
+            user.StudentId = null;
+
+            await _baseUserRepository.UpdateAsync(user);
+            response.Success = true;
+            response.Message = "You successfully became a teacher";
+
+            return response;
+        }
+
+        public async Task<ResponseMessage> VerifyStatusAsync(string email, string degree)
+        {
+            ResponseMessage response = new ResponseMessage();
+
+            var user = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == email && obj.IsTeacher == true && obj.Teacher.IsVerified == false);
+            if (user == null)
+            {
+                response.Message = "Such user doesn't exist";
+                return response;
+            }
+
+            var teacher = await _teacherRepository.SingleOrDefaultAsync(obj => obj.BaseUserId == user.Id);
+
+            teacher.Degree = degree;
+            teacher.IsVerified = true;
+
+            await _teacherRepository.UpdateAsync(teacher);
+            response.Success = true;
+            response.Message = "You successfully verified";
+
+            return response;
+        }
+
+        public async Task<ResponseMessage> InviteTeacherToUniversity(string universityName, string teacherEmail, string mainUserEmail)
         {
             ResponseMessage response = new ResponseMessage();
 
@@ -36,8 +88,8 @@ namespace Users.DL.Services
                 return response;
             }
 
-            var baseUser = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Username == username && obj.IsTeacher == true);
-            if (baseUser == null)
+            var teacher = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == teacherEmail && obj.IsTeacher == true && obj.Teacher.IsVerified == true);
+            if (teacher == null)
             {
                 response.Message = "Such user doesn't exist";
                 return response;
@@ -45,7 +97,7 @@ namespace Users.DL.Services
 
             var doesEntryRequestExist = await _entryRequestRepository.SingleOrDefaultAsync(
                 er =>
-                    er.BaseUserId == baseUser.Id &&
+                    er.BaseUserId == teacher.Id &&
                     er.UniversityId == checkIfCanSendRequest.Id &&
                     er.SentByUniversity == true);
 
@@ -57,7 +109,7 @@ namespace Users.DL.Services
 
             EntryRequest entryRequest = new EntryRequest
             {
-                BaseUserId = baseUser.Id,
+                BaseUserId = teacher.Id,
                 UniversityId = checkIfCanSendRequest.Id,
                 SentByUniversity = true
             };
@@ -70,16 +122,16 @@ namespace Users.DL.Services
             return response;
         }
 
-        public async Task<ResponseMessage> SendRequestToBecomeTeacherOfUniversity(string universityName, string mainUserEmail)
+        public async Task<ResponseMessage> SendRequestToBecomeTeacherOfUniversity(string universityName, string teacherEmail)
         {
             ResponseMessage response = new ResponseMessage();
 
-            var university = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == universityName);
-            var mainUser = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == mainUserEmail && obj.IsTeacher == true);
-            if (mainUser == null || university == null)
+            var university = await _universityRepository.Where(obj => obj.Name == universityName).Include(obj => obj.Members).FirstAsync();
+            var teacher = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == teacherEmail && obj.IsTeacher == true && obj.Teacher.IsVerified == true);
+            if (teacher == null || university == null)
                 return response;
             
-            if (university.Members.SingleOrDefault(obj => obj.Id == mainUser.Id) != null)
+            if (university.Members.SingleOrDefault(obj => obj.Id == teacher.Id) != null)
             {
                 response.Message = "You already teacher of this university";
                 return response;
@@ -87,7 +139,7 @@ namespace Users.DL.Services
 
             var doesEntryRequestExist = await _entryRequestRepository.SingleOrDefaultAsync(
                 er =>
-                    er.BaseUserId == mainUser.Id &&
+                    er.BaseUserId == teacher.Id &&
                     er.UniversityId == university.Id &&
                     er.SentByUniversity == false);
 
@@ -99,8 +151,8 @@ namespace Users.DL.Services
 
             EntryRequest entryRequest = new EntryRequest
             {
-                BaseUserId = university.Id,
-                UniversityId = mainUser.Id,
+                BaseUserId = teacher.Id,
+                UniversityId = university.Id,
                 SentByUniversity = false
             };
 

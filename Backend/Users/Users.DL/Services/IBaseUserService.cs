@@ -1,14 +1,12 @@
-﻿using System.Linq.Expressions;
-using Users.DAL.Models;
+﻿using Users.DAL.Dtos;
+using Users.DAL.SideModels;
 
 namespace Users.DL.Services
 {
     public interface IBaseUserService
     {
-        Task<int> AddAsync(BaseUser entry);
-        Task<IEnumerable<BaseUser>> GetAsync();
-        Task<BaseUser> GetById(int id);
-        Task<int> DeleteAsync(int id);
-        IEnumerable<BaseUser> Where(Expression<Func<BaseUser, bool>> exp);
+        Task<ResponseGetEnum<string>> GetUsersAsync();
+        Task<ResponseWithValue<ReadBaseUserDto>> GetBaseUserAsync(string email);
+        Task<ResponseMessage> UpdateUserInfoAsync(UpdateUserInfo userInfo, string email);
     }
 }

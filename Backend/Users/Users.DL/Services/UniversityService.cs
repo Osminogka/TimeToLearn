@@ -30,9 +30,9 @@ namespace Users.DL.Services
             return response;
         }
 
-        public async Task<ResponseUniversity> CreateAsync(CreateUniversityDto model, string email)
+        public async Task<ResponseWithValue<ReadUniversityDto>> CreateAsync(CreateUniversityDto model, string email)
         {
-            ResponseUniversity response = new ResponseUniversity();
+            ResponseWithValue<ReadUniversityDto> response = new ResponseWithValue<ReadUniversityDto>();
 
             var director = await _userRepository.SingleOrDefaultAsync(obj => obj.Email == email);
             if(director == null)
@@ -53,15 +53,15 @@ namespace Users.DL.Services
             director.UniversityId = university.Id;
             await _userRepository.UpdateAsync(director);
 
-            response.UniversityDto = _mapper.Map<ReadUniversityDto>(university);
+            response.Value = _mapper.Map<ReadUniversityDto>(university);
             response.Success = true;
             response.Message = "University created";
             return response;
         }
 
-        public async Task<ResponseUniversity> GetAsync(string name)
+        public async Task<ResponseWithValue<ReadUniversityDto>> GetAsync(string name)
         {
-            ResponseUniversity response = new ResponseUniversity();
+            ResponseWithValue<ReadUniversityDto> response = new ResponseWithValue<ReadUniversityDto>();
 
             var university = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == name);
             if(university == null)
@@ -70,7 +70,7 @@ namespace Users.DL.Services
                 return response;
             }
 
-            response.UniversityDto = _mapper.Map<ReadUniversityDto>(university);
+            response.Value = _mapper.Map<ReadUniversityDto>(university);
             response.Success = true;
             response.Message = "Got university";
             return response;

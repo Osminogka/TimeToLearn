@@ -39,6 +39,7 @@ namespace Users.DL.Services
             await _studentRepository.AddAsync(student);
             user.StudentId = student.Id;
             user.TeacherId = null;
+            user.IsTeacher = false;
 
             await _baseUserRepository.UpdateAsync(user);
             response.Success = true;

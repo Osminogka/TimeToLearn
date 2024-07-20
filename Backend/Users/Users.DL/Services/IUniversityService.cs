@@ -12,8 +12,8 @@ namespace Users.DL.Services
     public interface IUniversityService
     {
         Task<ResponseGetEnum<string>> GetAllAsync();
-        Task<ResponseUniversity> GetAsync(string name);
-        Task<ResponseUniversity> CreateAsync(CreateUniversityDto model, string email);
+        Task<ResponseWithValue<ReadUniversityDto>> GetAsync(string name);
+        Task<ResponseWithValue<ReadUniversityDto>> CreateAsync(CreateUniversityDto model, string email);
         Task<ResponseGetEnum<string>> GetStudentsAsync(string universityName, string userEmail);
         Task<ResponseGetEnum<string>> GetTeachersAsync(string universityName, string userEmail);
     }

@@ -3,16 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Users.DAL.Dtos;
 
 namespace Users.DAL.SideModels
 {
-    public class ResponseUniversity
+    public class ResponseWithValue<T>
     {
         public bool Success { get; set; } = false;
 
-        public string Message { get; set; } = "Invalid Request";
+        public string Message { get; set; } = "Invalid request";
 
-        public ReadUniversityDto UniversityDto { get; set; } = new ReadUniversityDto();
+        public T? Value { get; set; }
     }
 }

@@ -7,6 +7,12 @@ namespace Users.DAL.Models
         [Required]
         public Guid OriginalId { get; set; }
 
+        [MaxLength(50)]
+        public string FirstName { get; set; } = string.Empty;
+
+        [MaxLength(50)]
+        public string LastName { get; set; } = string.Empty;
+
         [Required]
         [MaxLength(50)]
         public string Username { get; set; } = string.Empty;
@@ -17,6 +23,8 @@ namespace Users.DAL.Models
 
         [MaxLength(50)]
         public string PhoneNumber { get; set; } = string.Empty;
+
+        public Address Address { get; set; }
 
         [Required]
         public bool IsTeacher { get; set; } = false;

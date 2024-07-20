@@ -4,8 +4,9 @@ namespace Users.DAL.Models
 {
     public class Teacher : BaseEntity
     {
-        [Required]
-        public string Degree { get; set; }
+        public string Degree { get; set; } = string.Empty;
+
+        public bool IsVerified { get; set; } = false;
 
         public long BaseUserId { get; set; }
 

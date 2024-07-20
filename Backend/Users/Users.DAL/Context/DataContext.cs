@@ -32,8 +32,21 @@ namespace Users.DAL.Context
                 .WithOne(e => e.BaseUser)
                 .HasForeignKey(e => e.BaseUserId);
 
+            modelBuilder.Entity<BaseUser>()
+                .OwnsOne(e => e.Address, p =>
+                {
+                    p.Property(p => p.City).IsRequired(false);
+                    p.Property(p => p.Country).IsRequired(false);
+                    p.Property(p => p.Street).IsRequired(false);
+                });
+
             modelBuilder.Entity<University>()
-                .OwnsOne(e => e.Address);
+                .OwnsOne(e => e.Address, p =>
+                {
+                    p.Property(p => p.City).IsRequired(false);
+                    p.Property(p => p.Country).IsRequired(false);
+                    p.Property(p => p.Street).IsRequired(false);
+                });
 
             modelBuilder.Entity<University>()
                 .HasOne(e => e.Director)
