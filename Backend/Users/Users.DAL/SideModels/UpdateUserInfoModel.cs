@@ -8,7 +8,7 @@ using Users.DAL.Models;
 
 namespace Users.DAL.SideModels
 {
-    public class UpdateUserInfo
+    public class UpdateUserInfoModel
     {
         [MaxLength(50)]
         public string? FirstName { get; set; }

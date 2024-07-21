@@ -26,7 +26,11 @@ builder.Services.AddTransient<IBaseRepository<Teacher>, BaseRepository<Teacher>>
 builder.Services.AddTransient<IBaseRepository<EntryRequest>, BaseRepository<EntryRequest>>();
 
 //Services
+builder.Services.AddTransient<IBaseUserService, BaseUserService>();
 builder.Services.AddTransient<IUniversityService, UniversityService>();
+builder.Services.AddTransient<IStudentService, StudentService>();
+builder.Services.AddTransient<ITeacherService, TeacherService>();
+builder.Services.AddTransient<IBaseUserService, BaseUserService>();
 builder.Services.AddSingleton<IEventProcessor, EventProcessor>();
 
 //Background tasks
@@ -36,10 +40,10 @@ builder.Services.AddHostedService<MessageBusSubscriber>();
 var connectionString = builder.Configuration.GetConnectionString("DataConnectionString")
                     ?? throw new InvalidOperationException("Connection string 'DataConnectionString' not found.");
 if (builder.Environment.IsProduction())
-    builder.Services.AddDbContext<DataContext>(options => options.UseLazyLoadingProxies().UseSqlServer(connectionString
+    builder.Services.AddDbContext<DataContext>(options => options.UseSqlServer(connectionString
     , b => b.MigrationsAssembly("Users.API")));
 else
-    builder.Services.AddDbContext<DataContext>(options => options.UseLazyLoadingProxies().UseSqlite(connectionString
+    builder.Services.AddDbContext<DataContext>(options => options.UseSqlite(connectionString
     , b => b.MigrationsAssembly("Users.API")));
 
 //Authentication

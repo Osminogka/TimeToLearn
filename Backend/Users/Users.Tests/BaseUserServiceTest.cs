@@ -19,6 +19,7 @@ namespace Users.Tests
     public class BaseUserServiceTest
     {
         private IBaseRepository<BaseUser> UserRepository { get; set; }
+        private IBaseRepository<EntryRequest> EntryRequestRepository { get; set; }
 
         private BaseUserService Service { get; set; }
 
@@ -31,6 +32,7 @@ namespace Users.Tests
             services.AddDbContext<DataContext>(options => options.UseInMemoryDatabase("TestDbBaseUsers"));
 
             services.AddTransient<IBaseRepository<BaseUser>, BaseRepository<BaseUser>>();
+            services.AddTransient<IBaseRepository<EntryRequest>, BaseRepository<EntryRequest>>();
 
             var serviceProvider = services.BuildServiceProvider();
 
@@ -45,8 +47,9 @@ namespace Users.Tests
             var autoMapper = config.CreateMapper();
 
             UserRepository = scopedServices.GetRequiredService<IBaseRepository<BaseUser>>();
+            EntryRequestRepository = scopedServices.GetRequiredService<IBaseRepository<EntryRequest>>();
 
-            Service = new BaseUserService(UserRepository, autoMapper);
+            Service = new BaseUserService(UserRepository, EntryRequestRepository, autoMapper);
 
             var context = UserRepository.GetContext();
             context.Database.EnsureDeleted();
@@ -57,7 +60,6 @@ namespace Users.Tests
                 OriginalId = Guid.NewGuid(),
                 Username = "Osminogka",
                 Email = "osminogka@test.com",
-                UniversityId = 1,
                 IsTeacher = true
             };
 
@@ -71,8 +73,32 @@ namespace Users.Tests
                 IsTeacher = true
             };
 
+            var university = new University
+            {
+                Id = 1,
+                Name = "DKU",
+                Address = new Address
+                {
+                    City = "Almaty",
+                    Country = "Kaz",
+                    Street = "Pushkina"
+                },
+                Description = "Test",
+                IsOpened = true,
+                DirectorId = 2
+            };
+            context.Add(university);
+
             context.Add(user);
             context.Add(user2);
+
+            var invite = new EntryRequest
+            {
+                BaseUserId = 1,
+                UniversityId = 1,
+                SentByUniversity = true
+            };
+            context.Add(invite);
 
             context.SaveChanges();
         }
@@ -105,7 +131,7 @@ namespace Users.Tests
         public async Task UpdateUserInfoTest()
         {
             //Arrange
-            UpdateUserInfo info = new UpdateUserInfo
+            UpdateUserInfoModel info = new UpdateUserInfoModel
             {
                 FirstName = "Peter",
                 LastName = "Parker",
@@ -118,7 +144,7 @@ namespace Users.Tests
                 Phone = "77777777777"
             };
 
-            UpdateUserInfo info2 = new UpdateUserInfo
+            UpdateUserInfoModel info2 = new UpdateUserInfoModel
             {
                 FirstName = "Peter",
                 LastName = "Parker",
@@ -149,6 +175,53 @@ namespace Users.Tests
             //Assert
             Assert.Equal("Germany", user2.Address.Country);
             Assert.Null(user2.Address.City);
+        }
+
+        [Fact]
+        public async Task GetInvitesTest()
+        {
+            //Act
+            var result = await Service.GetInvitesAsync(UserEmail);
+
+            //Assert
+            var response = Assert.IsType<ResponseGetEnum<string>>(result);
+
+            Assert.Equal("DKU", response.Enum.First());
+            Assert.Single(response.Enum);
+        }
+
+        [Fact]
+        public async Task AcceptInviteTest()
+        {
+            //Act
+            var result = await Service.AcceptInviteAsync("DKU", UserEmail);
+
+            var user = await UserRepository.SingleOrDefaultAsync(obj => obj.Email == UserEmail);
+            var invite = await EntryRequestRepository.SingleOrDefaultAsync(obj => obj.BaseUser.Email == UserEmail);
+            
+            //Assert
+            var response = Assert.IsType<ResponseMessage>(result);
+
+            Assert.True(response.Success);
+            Assert.NotNull(user.UniversityId);
+            Assert.Null(invite);
+        }
+
+        [Fact]
+        public async Task RejectInviteTest()
+        {
+            //Act
+            var result = await Service.RejectInviteAsync("DKU", UserEmail);
+
+            var user = await UserRepository.SingleOrDefaultAsync(obj => obj.Email == UserEmail);
+            var invite = await EntryRequestRepository.SingleOrDefaultAsync(obj => obj.BaseUser.Email == UserEmail);
+
+            //Assert
+            var response = Assert.IsType<ResponseMessage>(result);
+
+            Assert.True(response.Success);
+            Assert.Null(user.UniversityId);
+            Assert.Null(invite);
         }
     }
 }

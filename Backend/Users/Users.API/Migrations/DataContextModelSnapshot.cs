@@ -28,8 +28,18 @@ namespace Users.API.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("IsTeacher")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid>("OriginalId")
                         .HasColumnType("TEXT");
@@ -45,12 +55,17 @@ namespace Users.API.Migrations
                     b.Property<long?>("TeacherId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<long?>("UniversityId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UniversityId");
 
                     b.ToTable("BaseUsers");
                 });
@@ -62,6 +77,9 @@ namespace Users.API.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<long>("BaseUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("SentByUniversity")
                         .HasColumnType("INTEGER");
 
                     b.Property<long>("UniversityId")
@@ -85,15 +103,10 @@ namespace Users.API.Migrations
                     b.Property<long>("BaseUserId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<long>("UniversityId")
-                        .HasColumnType("INTEGER");
-
                     b.HasKey("Id");
 
                     b.HasIndex("BaseUserId")
                         .IsUnique();
-
-                    b.HasIndex("UniversityId");
 
                     b.ToTable("Students");
                 });
@@ -111,15 +124,13 @@ namespace Users.API.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<long>("UniversityId")
+                    b.Property<bool>("IsVerified")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
                     b.HasIndex("BaseUserId")
                         .IsUnique();
-
-                    b.HasIndex("UniversityId");
 
                     b.ToTable("Teachers");
                 });
@@ -135,6 +146,9 @@ namespace Users.API.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<long>("DirectorId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsOpened")
                         .HasColumnType("INTEGER");
 
@@ -145,7 +159,47 @@ namespace Users.API.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DirectorId")
+                        .IsUnique();
+
                     b.ToTable("Universities");
+                });
+
+            modelBuilder.Entity("Users.DAL.Models.BaseUser", b =>
+                {
+                    b.HasOne("Users.DAL.Models.University", "UniversityMember")
+                        .WithMany("Members")
+                        .HasForeignKey("UniversityId");
+
+                    b.OwnsOne("Users.DAL.Models.Address", "Address", b1 =>
+                        {
+                            b1.Property<long>("BaseUserId")
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<string>("City")
+                                .HasMaxLength(50)
+                                .HasColumnType("TEXT");
+
+                            b1.Property<string>("Country")
+                                .HasMaxLength(50)
+                                .HasColumnType("TEXT");
+
+                            b1.Property<string>("Street")
+                                .HasMaxLength(50)
+                                .HasColumnType("TEXT");
+
+                            b1.HasKey("BaseUserId");
+
+                            b1.ToTable("BaseUsers");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BaseUserId");
+                        });
+
+                    b.Navigation("Address")
+                        .IsRequired();
+
+                    b.Navigation("UniversityMember");
                 });
 
             modelBuilder.Entity("Users.DAL.Models.EntryRequest", b =>
@@ -175,15 +229,7 @@ namespace Users.API.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Users.DAL.Models.University", "University")
-                        .WithMany("Students")
-                        .HasForeignKey("UniversityId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("BaseUser");
-
-                    b.Navigation("University");
                 });
 
             modelBuilder.Entity("Users.DAL.Models.Teacher", b =>
@@ -194,36 +240,31 @@ namespace Users.API.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Users.DAL.Models.University", "University")
-                        .WithMany("Teachers")
-                        .HasForeignKey("UniversityId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("BaseUser");
-
-                    b.Navigation("University");
                 });
 
             modelBuilder.Entity("Users.DAL.Models.University", b =>
                 {
+                    b.HasOne("Users.DAL.Models.BaseUser", "Director")
+                        .WithOne("UniversityDirector")
+                        .HasForeignKey("Users.DAL.Models.University", "DirectorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.OwnsOne("Users.DAL.Models.Address", "Address", b1 =>
                         {
                             b1.Property<long>("UniversityId")
                                 .HasColumnType("INTEGER");
 
                             b1.Property<string>("City")
-                                .IsRequired()
                                 .HasMaxLength(50)
                                 .HasColumnType("TEXT");
 
                             b1.Property<string>("Country")
-                                .IsRequired()
                                 .HasMaxLength(50)
                                 .HasColumnType("TEXT");
 
                             b1.Property<string>("Street")
-                                .IsRequired()
                                 .HasMaxLength(50)
                                 .HasColumnType("TEXT");
 
@@ -237,6 +278,8 @@ namespace Users.API.Migrations
 
                     b.Navigation("Address")
                         .IsRequired();
+
+                    b.Navigation("Director");
                 });
 
             modelBuilder.Entity("Users.DAL.Models.BaseUser", b =>
@@ -246,15 +289,15 @@ namespace Users.API.Migrations
                     b.Navigation("Student");
 
                     b.Navigation("Teacher");
+
+                    b.Navigation("UniversityDirector");
                 });
 
             modelBuilder.Entity("Users.DAL.Models.University", b =>
                 {
                     b.Navigation("EntryRequests");
 
-                    b.Navigation("Students");
-
-                    b.Navigation("Teachers");
+                    b.Navigation("Members");
                 });
 #pragma warning restore 612, 618
         }

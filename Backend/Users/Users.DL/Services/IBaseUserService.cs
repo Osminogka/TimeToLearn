@@ -7,6 +7,9 @@ namespace Users.DL.Services
     {
         Task<ResponseGetEnum<string>> GetUsersAsync();
         Task<ResponseWithValue<ReadBaseUserDto>> GetBaseUserAsync(string email);
-        Task<ResponseMessage> UpdateUserInfoAsync(UpdateUserInfo userInfo, string email);
+        Task<ResponseMessage> UpdateUserInfoAsync(UpdateUserInfoModel userInfo, string email);
+        Task<ResponseGetEnum<string>> GetInvitesAsync(string email);
+        Task<ResponseMessage> AcceptInviteAsync(string universityName, string email);
+        Task<ResponseMessage> RejectInviteAsync(string universityName, string email);
     }
 }

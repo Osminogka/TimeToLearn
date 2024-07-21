@@ -48,7 +48,7 @@ namespace Users.DL.Services
             return response;
         }
 
-        public async Task<ResponseMessage> InviteStudentToUniversity(string universityName, string studentEmail, string mainUserEmail)
+        public async Task<ResponseMessage> InviteStudentToUniversity(string universityName, string studentUsername, string mainUserEmail)
         {
             ResponseMessage response = new ResponseMessage();
 
@@ -59,7 +59,7 @@ namespace Users.DL.Services
                 return response;
             }
 
-            var baseUser = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == studentEmail && obj.StudentId != null && 
+            var baseUser = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Username == studentUsername && obj.StudentId != null && 
                 obj.UniversityId != checkIfCanSendRequest.Id);
             if (baseUser == null)
             {
@@ -147,15 +147,21 @@ namespace Users.DL.Services
             ResponseMessage response = new ResponseMessage();
 
             var university = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == universityName);
-            var user = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == userEmail && obj.StudentId != null && obj.UniversityId != university.Id);
-            if (university == null || user == null)
+            if (university == null)
             {
                 response.Message = "Such university doesn't exist";
                 return response;
             }
+            
+            var user = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == userEmail && obj.StudentId != null && obj.UniversityId != university.Id);
+            if (user == null)
+            {
+                response.Message = "Such user doesn't exist";
+                return response;
+            }
 
             var entryRequestCheck = await _entryRequestRepository.Where(obj => obj.UniversityId == university.Id && obj.BaseUserId == user.Id).ToListAsync();
-            if (!university.IsOpened && entryRequestCheck.Where(obj => obj.SentByUniversity == true) == null)
+            if (!university.IsOpened && entryRequestCheck.FirstOrDefault(obj => obj.SentByUniversity) == null)
             {
                 response.Message = "You are not allowed to entry";
                 return response;

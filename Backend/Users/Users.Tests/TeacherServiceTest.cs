@@ -28,6 +28,7 @@ namespace Users.Tests
         private string DirectorEmail = "directorOpen@test.com";
         private string UnverifiedTeacher = "unverifiedteacher@test.com";
         private string VerifiedTeacher = "verifiedteacher@test.com";
+        private string VerifiedTeacherUsername = "VerifiedTeacher";
 
         public TeacherServiceTest()
         {
@@ -163,7 +164,7 @@ namespace Users.Tests
         public async Task InviteTeacherToUniversityTest()
         {
             //Act
-            var result = await Service.InviteTeacherToUniversity("DKU", VerifiedTeacher, DirectorEmail);
+            var result = await Service.InviteTeacherToUniversity("DKU", VerifiedTeacherUsername, DirectorEmail);
 
             //Assert
             var response = Assert.IsType<ResponseMessage>(result);

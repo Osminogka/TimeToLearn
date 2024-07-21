@@ -82,6 +82,12 @@ namespace Users.DL.Services
 
             var user = await _userRepository.SingleOrDefaultAsync(obj => obj.Email == userEmail && obj.UniversityMember.Name == universityName);
 
+            if (user == null)
+            {
+                response.Message = "Such user doesn't exist";
+                return response;
+            }
+
             var university = await _universityRepository.Where(obj => obj.Name == universityName)
                     .Include(obj => obj.Members.Where(obj => obj.IsTeacher == false))
                     .FirstOrDefaultAsync();
@@ -103,6 +109,12 @@ namespace Users.DL.Services
             ResponseGetEnum<string> response = new ResponseGetEnum<string>();
 
             var user = await _userRepository.SingleOrDefaultAsync(obj => obj.Email == userEmail && obj.UniversityMember.Name == universityName);
+
+            if(user == null)
+            {
+                response.Message = "Such user doesn't exist";
+                return response;
+            }
 
             var university = await _universityRepository.Where(obj => obj.Name == universityName)
                     .Include(obj => obj.Members.Where(obj => obj.IsTeacher == true))

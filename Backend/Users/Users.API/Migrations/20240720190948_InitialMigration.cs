@@ -18,12 +18,18 @@ namespace Users.API.Migrations
                     Id = table.Column<long>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     OriginalId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    FirstName = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
+                    LastName = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
                     Username = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
                     Email = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
                     PhoneNumber = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
+                    Address_Country = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
+                    Address_City = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
+                    Address_Street = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
                     IsTeacher = table.Column<bool>(type: "INTEGER", nullable: false),
                     TeacherId = table.Column<long>(type: "INTEGER", nullable: true),
-                    StudentId = table.Column<long>(type: "INTEGER", nullable: true)
+                    StudentId = table.Column<long>(type: "INTEGER", nullable: true),
+                    UniversityId = table.Column<long>(type: "INTEGER", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -31,20 +37,68 @@ namespace Users.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Students",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    BaseUserId = table.Column<long>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Students", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Students_BaseUsers_BaseUserId",
+                        column: x => x.BaseUserId,
+                        principalTable: "BaseUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Teachers",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    Degree = table.Column<string>(type: "TEXT", nullable: false),
+                    IsVerified = table.Column<bool>(type: "INTEGER", nullable: false),
+                    BaseUserId = table.Column<long>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Teachers", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Teachers_BaseUsers_BaseUserId",
+                        column: x => x.BaseUserId,
+                        principalTable: "BaseUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Universities",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "INTEGER", nullable: false),
+                    Id = table.Column<long>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
                     Name = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
                     Description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
-                    Address_Country = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    Address_City = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    Address_Street = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
+                    DirectorId = table.Column<long>(type: "INTEGER", nullable: false),
+                    Address_Country = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
+                    Address_City = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
+                    Address_Street = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
                     IsOpened = table.Column<bool>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Universities", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Universities_BaseUsers_DirectorId",
+                        column: x => x.DirectorId,
+                        principalTable: "BaseUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -54,7 +108,8 @@ namespace Users.API.Migrations
                     Id = table.Column<long>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     BaseUserId = table.Column<long>(type: "INTEGER", nullable: false),
-                    UniversityId = table.Column<long>(type: "INTEGER", nullable: false)
+                    UniversityId = table.Column<long>(type: "INTEGER", nullable: false),
+                    SentByUniversity = table.Column<bool>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -73,58 +128,10 @@ namespace Users.API.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
-                name: "Students",
-                columns: table => new
-                {
-                    Id = table.Column<long>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    UniversityId = table.Column<long>(type: "INTEGER", nullable: false),
-                    BaseUserId = table.Column<long>(type: "INTEGER", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Students", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Students_BaseUsers_BaseUserId",
-                        column: x => x.BaseUserId,
-                        principalTable: "BaseUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_Students_Universities_UniversityId",
-                        column: x => x.UniversityId,
-                        principalTable: "Universities",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Teachers",
-                columns: table => new
-                {
-                    Id = table.Column<long>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Degree = table.Column<string>(type: "TEXT", nullable: false),
-                    UniversityId = table.Column<long>(type: "INTEGER", nullable: false),
-                    BaseUserId = table.Column<long>(type: "INTEGER", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Teachers", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Teachers_BaseUsers_BaseUserId",
-                        column: x => x.BaseUserId,
-                        principalTable: "BaseUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_Teachers_Universities_UniversityId",
-                        column: x => x.UniversityId,
-                        principalTable: "Universities",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
+            migrationBuilder.CreateIndex(
+                name: "IX_BaseUsers_UniversityId",
+                table: "BaseUsers",
+                column: "UniversityId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_EntryRequests_BaseUserId",
@@ -143,25 +150,32 @@ namespace Users.API.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Students_UniversityId",
-                table: "Students",
-                column: "UniversityId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Teachers_BaseUserId",
                 table: "Teachers",
                 column: "BaseUserId",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Teachers_UniversityId",
-                table: "Teachers",
-                column: "UniversityId");
+                name: "IX_Universities_DirectorId",
+                table: "Universities",
+                column: "DirectorId",
+                unique: true);
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_BaseUsers_Universities_UniversityId",
+                table: "BaseUsers",
+                column: "UniversityId",
+                principalTable: "Universities",
+                principalColumn: "Id");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "FK_BaseUsers_Universities_UniversityId",
+                table: "BaseUsers");
+
             migrationBuilder.DropTable(
                 name: "EntryRequests");
 
@@ -172,10 +186,10 @@ namespace Users.API.Migrations
                 name: "Teachers");
 
             migrationBuilder.DropTable(
-                name: "BaseUsers");
+                name: "Universities");
 
             migrationBuilder.DropTable(
-                name: "Universities");
+                name: "BaseUsers");
         }
     }
 }

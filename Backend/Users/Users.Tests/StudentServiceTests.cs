@@ -21,6 +21,7 @@ namespace Users.Tests
 
         private string UserEmail = "osminogka@test.com";
         private string StudentEmail = "student@test.com";
+        private string StudentUsername = "Student";
         private string DirectorOpenEmail = "directorOpen@test.com";
         private string DirectorClosedEmail = "directorClosed@test.com";
         private long UserId = 1;
@@ -151,8 +152,8 @@ namespace Users.Tests
         public async Task InviteStudentToUniversityTest()
         {
             //Act
-            var result = await Service.InviteStudentToUniversity("DKU", StudentEmail, DirectorOpenEmail);
-            var result2 = await Service.InviteStudentToUniversity("DKU", StudentEmail, DirectorOpenEmail);
+            var result = await Service.InviteStudentToUniversity("DKU", StudentUsername, DirectorOpenEmail);
+            var result2 = await Service.InviteStudentToUniversity("DKU", StudentUsername, DirectorOpenEmail);
 
             //Assert
             var response = Assert.IsType<ResponseMessage>(result);

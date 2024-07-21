@@ -77,7 +77,7 @@ namespace Users.DL.Services
             return response;
         }
 
-        public async Task<ResponseMessage> InviteTeacherToUniversity(string universityName, string teacherEmail, string mainUserEmail)
+        public async Task<ResponseMessage> InviteTeacherToUniversity(string universityName, string teacherUsername, string mainUserEmail)
         {
             ResponseMessage response = new ResponseMessage();
 
@@ -88,7 +88,7 @@ namespace Users.DL.Services
                 return response;
             }
 
-            var teacher = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == teacherEmail && obj.IsTeacher == true && obj.Teacher.IsVerified == true);
+            var teacher = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Username == teacherUsername && obj.IsTeacher == true && obj.Teacher.IsVerified == true);
             if (teacher == null)
             {
                 response.Message = "Such user doesn't exist";

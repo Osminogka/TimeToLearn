@@ -1,27 +1,27 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Users.DAL.Dtos;
+using Users.DAL.SideModels;
 using Users.DL.Services;
 
 namespace Users.API.Controllers
 {
-    [Route("api/[controller]/")]
-    public class UniversityController : BaseController
+    [Route("api/user/")]
+    public class BaseUserController : BaseController
     {
-        private readonly IUniversityService _universityService;
-        private readonly ILogger<UniversityController> _logger;
+        private readonly IBaseUserService _baseUserService;
+        private readonly ILogger<BaseUserController> _logger;
 
-        public UniversityController(IUniversityService universityService, ILogger<UniversityController> logger)
+        public BaseUserController(IBaseUserService baseUserService, ILogger<BaseUserController> logger)
         {
-            _universityService = universityService;
+            _baseUserService = baseUserService;
             _logger = logger;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetAllUniversitiesAsync()
+        [HttpGet("all")]
+        public async Task<IActionResult> GetUsersAsync()
         {
             try
             {
-                var result = await _universityService.GetAllAsync();
+                var result = await _baseUserService.GetUsersAsync();
                 if (!result.Success)
                     return BadRequest(result.Message);
                 return Ok(result);
@@ -34,11 +34,11 @@ namespace Users.API.Controllers
         }
 
         [HttpGet("{name}")]
-        public async Task<IActionResult> GetUniversityByNameAsync(string name)
+        public async Task<IActionResult> GetBaseUserAsync(string name)
         {
             try
             {
-                var result = await _universityService.GetAsync(name);
+                var result = await _baseUserService.GetBaseUserAsync(name);
                 if (!result.Success)
                     return BadRequest(result.Message);
                 return Ok(result);
@@ -50,14 +50,12 @@ namespace Users.API.Controllers
             }
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CreateUniversity([FromBody] CreateUniversityDto model)
+        [HttpPost("update")]
+        public async Task<IActionResult> UpdateUserInfoAsync(UpdateUserInfoModel model)
         {
             try
             {
-                if (!ModelState.IsValid)
-                    return BadRequest("Invalid request");
-                var result = await _universityService.CreateAsync(model, getUserEmail());
+                var result = await _baseUserService.UpdateUserInfoAsync(model, getUserEmail());
                 if (!result.Success)
                     return BadRequest(result.Message);
                 return Ok(result);
@@ -69,14 +67,12 @@ namespace Users.API.Controllers
             }
         }
 
-        [HttpGet("{name}/teachers")]
-        public async Task<IActionResult> GetUniversityTeachers(string name)
+        [HttpGet("invites")]
+        public async Task<IActionResult> GetInvitesAsync()
         {
             try
             {
-                if (!ModelState.IsValid)
-                    return BadRequest("Invalid request");
-                var result = await _universityService.GetTeachersAsync(name, getUserEmail());
+                var result = await _baseUserService.GetInvitesAsync(getUserEmail());
                 if (!result.Success)
                     return BadRequest(result.Message);
                 return Ok(result);
@@ -88,14 +84,29 @@ namespace Users.API.Controllers
             }
         }
 
-        [HttpGet("{name}/students")]
-        public async Task<IActionResult> GetUniversityStudents(string name)
+        [HttpPut("invites/{universityName}/accept")]
+        public async Task<IActionResult> AcceptInviteAsync(string universityName)
         {
             try
             {
-                if (!ModelState.IsValid)
-                    return BadRequest("Invalid request");
-                var result = await _universityService.GetStudentsAsync(name, getUserEmail());
+                var result = await _baseUserService.AcceptInviteAsync(universityName, getUserEmail());
+                if (!result.Success)
+                    return BadRequest(result.Message);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return HandleException(ex);
+            }
+        }
+
+        [HttpDelete("invites/{universityName}/reject")]
+        public async Task<IActionResult> RejectInviteAsync(string universityName)
+        {
+            try
+            {
+                var result = await _baseUserService.RejectInviteAsync(universityName, getUserEmail());
                 if (!result.Success)
                     return BadRequest(result.Message);
                 return Ok(result);
