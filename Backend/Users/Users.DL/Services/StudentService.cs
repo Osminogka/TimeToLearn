@@ -47,52 +47,7 @@ namespace Users.DL.Services
 
             return response;
         }
-
-        public async Task<ResponseMessage> InviteStudentToUniversity(string universityName, string studentUsername, string mainUserEmail)
-        {
-            ResponseMessage response = new ResponseMessage();
-
-            var checkIfCanSendRequest = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == universityName && obj.Director.Email == mainUserEmail);
-            if (checkIfCanSendRequest == null)
-            {
-                response.Message = "You cannot make such action";
-                return response;
-            }
-
-            var baseUser = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Username == studentUsername && obj.StudentId != null && 
-                obj.UniversityId != checkIfCanSendRequest.Id);
-            if (baseUser == null)
-            {
-                response.Message = "Such user doesn't exist";
-                return response;
-            }
-
-            var doesEntryRequestExist = await _entryRequestRepository.SingleOrDefaultAsync(
-                er =>
-                    er.BaseUserId == baseUser.Id &&
-                    er.UniversityId == checkIfCanSendRequest.Id &&
-                    er.SentByUniversity == true);
-
-            if (doesEntryRequestExist != null)
-            {
-                response.Message = "You already invited this person";
-                return response;
-            }
-
-            EntryRequest entryRequest = new EntryRequest
-            {
-                BaseUserId = baseUser.Id,
-                UniversityId = checkIfCanSendRequest.Id,
-                SentByUniversity = true
-            };
-
-            await _entryRequestRepository.AddAsync(entryRequest);
-
-            response.Success = true;
-            response.Message = "Invitation is sent";
-
-            return response;
-        }
+        
 
         public async Task<ResponseMessage> SendRequestToBecomeStudentOfUniversity(string universityName, string mainUserEmail)
         {

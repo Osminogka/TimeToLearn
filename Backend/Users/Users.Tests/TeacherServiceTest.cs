@@ -159,21 +159,7 @@ namespace Users.Tests
             Assert.True(response.Success); ;
             Assert.NotNull(teacher);
         }
-
-        [Fact]
-        public async Task InviteTeacherToUniversityTest()
-        {
-            //Act
-            var result = await Service.InviteTeacherToUniversity("DKU", VerifiedTeacherUsername, DirectorEmail);
-
-            //Assert
-            var response = Assert.IsType<ResponseMessage>(result);
-
-            var invite = await EntryRequestRepository.SingleOrDefaultAsync(obj => obj.BaseUser.Email == VerifiedTeacher && obj.SentByUniversity == true);
-
-            Assert.True(response.Success); ;
-            Assert.NotNull(invite);
-        }
+        
 
         [Fact]
         public async Task SendRequestToBecomeTeacherOfUniversityTest()

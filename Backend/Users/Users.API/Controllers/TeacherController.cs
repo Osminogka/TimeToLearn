@@ -4,25 +4,25 @@ using Users.DL.Services;
 namespace Users.API.Controllers;
 
 [Route("api/u/[controller]")]
-public class StudentController : BaseController
+public class TeacherController : BaseController
 {
-    private readonly IStudentService _studentService;
-    private readonly ILogger<StudentController> _logger;
+    private readonly ITeacherService _teacherService;
+    private readonly ILogger<TeacherController> _logger;
 
-    public StudentController(IStudentService studentService, ILogger<StudentController> logger)
+    public TeacherController(ITeacherService teacherService, ILogger<TeacherController> logger)
     {
-        _studentService = studentService;
+        _teacherService = teacherService;
         _logger = logger;
     }
-
+    
     [HttpGet("become")]
-    public async Task<IActionResult> BecomeAStudentAsync()
+    public async Task<IActionResult> BecomeTeacherAsync()
     {
         try
         {
             if (!ModelState.IsValid)
                 return BadRequest("Invalid data");
-            var result = await _studentService.BecomeAStudentAsync(getUserEmail());
+            var result = await _teacherService.BecomeTeacherAsync(getUserEmail());
             if (!result.Success)
                 return BadRequest(result.Message);
             return Ok(result);
@@ -34,14 +34,14 @@ public class StudentController : BaseController
         }
     }
     
-    [HttpGet("request/{universityName}")]
-    public async Task<IActionResult> SendRequestToBecomeStudentOfUniversity(string universityName)
+    [HttpPost("verify")]
+    public async Task<IActionResult> VerifyStatusAsync([FromBody] string degree)
     {
         try
         {
             if (!ModelState.IsValid)
                 return BadRequest("Invalid data");
-            var result = await _studentService.SendRequestToBecomeStudentOfUniversity(universityName, getUserEmail());
+            var result = await _teacherService.VerifyStatusAsync(getUserEmail(), degree);
             if (!result.Success)
                 return BadRequest(result.Message);
             return Ok(result);
@@ -53,14 +53,14 @@ public class StudentController : BaseController
         }
     }
     
-    [HttpGet("entry/{universityName}")]
-    public async Task<IActionResult> EntryUniversityAsync(string universityName)
+    [HttpPost("request/{universityName}")]
+    public async Task<IActionResult> SendRequestToBecomeTeacherOfUniversityAsync(string universityName)
     {
         try
         {
             if (!ModelState.IsValid)
                 return BadRequest("Invalid data");
-            var result = await _studentService.EntryUniversityAsync(universityName, getUserEmail());
+            var result = await _teacherService.SendRequestToBecomeTeacherOfUniversity(universityName, getUserEmail());
             if (!result.Success)
                 return BadRequest(result.Message);
             return Ok(result);

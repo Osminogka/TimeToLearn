@@ -149,25 +149,6 @@ namespace Users.Tests
         }
 
         [Fact]
-        public async Task InviteStudentToUniversityTest()
-        {
-            //Act
-            var result = await Service.InviteStudentToUniversity("DKU", StudentUsername, DirectorOpenEmail);
-            var result2 = await Service.InviteStudentToUniversity("DKU", StudentUsername, DirectorOpenEmail);
-
-            //Assert
-            var response = Assert.IsType<ResponseMessage>(result);
-            var response2 = Assert.IsType<ResponseMessage>(result2);
-
-            var entryRequest = await EntryRequestRepository.SingleOrDefaultAsync(obj => obj.UniversityId == 1 && 
-                obj.BaseUserId == StudentId && obj.SentByUniversity == true);
-
-            Assert.True(response.Success);
-            Assert.False(response2.Success);
-            Assert.NotNull(response);
-        }
-
-        [Fact]
         public async Task SendRequestToBecomeStudentOfUniversityTest()
         {
             //Act

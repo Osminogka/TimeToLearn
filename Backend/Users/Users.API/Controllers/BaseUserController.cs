@@ -4,7 +4,7 @@ using Users.DL.Services;
 
 namespace Users.API.Controllers
 {
-    [Route("api/user/")]
+    [Route("api/u/user/")]
     public class BaseUserController : BaseController
     {
         private readonly IBaseUserService _baseUserService;

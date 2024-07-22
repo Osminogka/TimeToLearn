@@ -4,7 +4,7 @@ using Users.DL.Services;
 
 namespace Users.API.Controllers
 {
-    [Route("api/[controller]/")]
+    [Route("api/u/[controller]/")]
     public class UniversityController : BaseController
     {
         private readonly IUniversityService _universityService;
@@ -51,7 +51,7 @@ namespace Users.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateUniversity([FromBody] CreateUniversityDto model)
+        public async Task<IActionResult> CreateUniversityAsync([FromBody] CreateUniversityDto model)
         {
             try
             {
@@ -70,7 +70,7 @@ namespace Users.API.Controllers
         }
 
         [HttpGet("{name}/teachers")]
-        public async Task<IActionResult> GetUniversityTeachers(string name)
+        public async Task<IActionResult> GetUniversityTeachersAsync(string name)
         {
             try
             {
@@ -89,7 +89,7 @@ namespace Users.API.Controllers
         }
 
         [HttpGet("{name}/students")]
-        public async Task<IActionResult> GetUniversityStudents(string name)
+        public async Task<IActionResult> GetUniversityStudentsAsync(string name)
         {
             try
             {

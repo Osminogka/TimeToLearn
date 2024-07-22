@@ -10,7 +10,7 @@ using System.Security.Claims;
 
 namespace Authentication.API.Controllers
 {
-    [Route("api/[controller]/")]
+    [Route("api/a/[controller]/")]
     public class AuthenticationController : BaseController
     {
         private readonly IAuthService _authService;

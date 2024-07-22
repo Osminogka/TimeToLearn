@@ -7,15 +7,15 @@ namespace Authentication.API.Infrastructure
 {
     public static class PrepDb
     {
-        public static void PrepMemberRoles(IApplicationBuilder app)
+        public async static Task PrepMemberRoles(IApplicationBuilder app)
         {
             using (var serviceScope = app.ApplicationServices.CreateScope())
             {
-                SeedData(serviceScope);
+                await SeedData(serviceScope);
             }
         }
 
-        private static async void SeedData(IServiceScope serviceScope)
+        private async static Task SeedData(IServiceScope serviceScope)
         {
             Console.WriteLine("--> Preparing database...");
 

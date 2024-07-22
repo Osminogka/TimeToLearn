@@ -5,7 +5,7 @@ using Users.DL.Services;
 
 namespace Users.API.Controllers
 {
-    [Route("api/[controller]/")]
+    [Route("api/u/[controller]/")]
     public class DirectorController : BaseController
     {
         private readonly IDirectorService _directorService;
@@ -17,6 +17,44 @@ namespace Users.API.Controllers
             _logger = logger;
         }
 
+        [HttpPost("invites/student")]
+        public async Task<IActionResult> SentInviteToStudentAsync([FromBody] EntryRequestModel model)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest("Invalid data");
+                var result = await _directorService.InviteStudentToUniversityAsync(model.University, model.Username, getUserEmail());
+                if (!result.Success)
+                    return BadRequest(result.Message);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return HandleException(ex);
+            }
+        }
+        
+        [HttpPost("invites/teacher")]
+        public async Task<IActionResult> SentInviteToTeacherAsync([FromBody] EntryRequestModel model)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest("Invalid data");
+                var result = await _directorService.InviteTeacherToUniversityAsync(model.University, model.Username, getUserEmail());
+                if (!result.Success)
+                    return BadRequest(result.Message);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return HandleException(ex);
+            }
+        }
+        
         [HttpPost("invites/approve")]
         public async Task<IActionResult> AcceptEntryRequestAsync([FromBody] EntryRequestModel model)
         {

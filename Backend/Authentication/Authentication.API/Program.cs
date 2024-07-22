@@ -84,6 +84,6 @@ app.MapControllers();
 
 app.UseDefaultFiles();
 
-PrepDb.PrepMemberRoles(app);
+await PrepDb.PrepMemberRoles(app);
 
 app.Run();

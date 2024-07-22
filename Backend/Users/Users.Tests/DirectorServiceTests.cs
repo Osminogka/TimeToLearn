@@ -19,6 +19,8 @@ namespace Users.Tests
         private readonly string UniversityName = "DKU";
         private readonly string DirectorEmail = "director@test.com";
         private readonly string Username = "Osminogka";
+        private readonly string StudentName = "Student";
+        private readonly string TeacherName = "Teacher";
 
         public DirectorServiceTests()
         {
@@ -54,10 +56,39 @@ namespace Users.Tests
                 IsTeacher = false,
             };
             context.Add(user);
-
-            var director = new BaseUser()
+            
+            var student = new BaseUser()
             {
                 Id = 2,
+                OriginalId = Guid.NewGuid(),
+                Username = "Student",
+                Email = "student@test.com",
+                IsTeacher = false,
+                StudentId = 1
+            };
+            context.Add(student);
+            
+            var teacher = new BaseUser()
+            {
+                Id = 3,
+                OriginalId = Guid.NewGuid(),
+                Username = "Teacher",
+                Email = "teacher@test.com",
+                IsTeacher = true
+            };
+
+            var teacherStruct = new Teacher()
+            {
+                BaseUserId = teacher.Id,
+                IsVerified = true,
+                Degree = "Master"
+            };
+            context.Add(teacher);
+            context.Add(teacherStruct);
+            
+            var director = new BaseUser()
+            {
+                Id = 4,
                 OriginalId = Guid.NewGuid(),
                 Username = "Director",
                 Email = "director@test.com",
@@ -187,6 +218,38 @@ namespace Users.Tests
 
             Assert.True(response2.Success);
             Assert.Null(university!.Address.City);
+        }
+
+        [Fact]
+        public async Task InviteStudentToUniversityTest()
+        {
+            //Act
+            var result = await Service.InviteStudentToUniversityAsync(UniversityName, StudentName, DirectorEmail);
+
+            var invite = await EntryRequestRepository.SingleOrDefaultAsync(obj =>
+                obj.BaseUser.Username == StudentName && obj.SentByUniversity == true);
+            
+            //Assert
+            var response = Assert.IsType<ResponseMessage>(result);
+            
+            Assert.NotNull(invite);
+            Assert.True(response.Success);
+        }
+        
+        [Fact]
+        public async Task InviteTeacherToUniversityTest()
+        {
+            //Act
+            var result = await Service.InviteTeacherToUniversityAsync(UniversityName, TeacherName, DirectorEmail);
+
+            var invite = await EntryRequestRepository.SingleOrDefaultAsync(obj =>
+                obj.BaseUser.Username == TeacherName && obj.SentByUniversity == true);
+            
+            //Assert
+            var response = Assert.IsType<ResponseMessage>(result);
+            
+            Assert.NotNull(invite);
+            Assert.True(response.Success);
         }
     }
 }

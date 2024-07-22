@@ -11,7 +11,6 @@ namespace Users.DL.Services
     {
         Task<ResponseMessage> BecomeTeacherAsync(string email);
         Task<ResponseMessage> VerifyStatusAsync(string email, string degree);
-        Task<ResponseMessage> InviteTeacherToUniversity(string universityName, string username, string mainUserEmail);
         Task<ResponseMessage> SendRequestToBecomeTeacherOfUniversity(string universityName, string mainUserEmail);
     }
 }

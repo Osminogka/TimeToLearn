@@ -58,7 +58,8 @@ namespace Users.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
 
-            var user = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == email && obj.IsTeacher == true && obj.Teacher.IsVerified == false);
+            var user = await _baseUserRepository.SingleOrDefaultAsync(obj =>
+                obj.Email == email && obj.IsTeacher == true && obj.Teacher.IsVerified == false);
             if (user == null)
             {
                 response.Message = "Such user doesn't exist";
@@ -76,52 +77,7 @@ namespace Users.DL.Services
 
             return response;
         }
-
-        public async Task<ResponseMessage> InviteTeacherToUniversity(string universityName, string teacherUsername, string mainUserEmail)
-        {
-            ResponseMessage response = new ResponseMessage();
-
-            var checkIfCanSendRequest = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == universityName && obj.Director.Email == mainUserEmail);
-            if (checkIfCanSendRequest == null)
-            {
-                response.Message = "You cannot make such action";
-                return response;
-            }
-
-            var teacher = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Username == teacherUsername && obj.IsTeacher == true && obj.Teacher.IsVerified == true);
-            if (teacher == null)
-            {
-                response.Message = "Such user doesn't exist";
-                return response;
-            }
-
-            var doesEntryRequestExist = await _entryRequestRepository.SingleOrDefaultAsync(
-                er =>
-                    er.BaseUserId == teacher.Id &&
-                    er.UniversityId == checkIfCanSendRequest.Id &&
-                    er.SentByUniversity == true);
-
-            if (doesEntryRequestExist != null)
-            {
-                response.Message = "You already invited this person";
-                return response;
-            }
-
-            EntryRequest entryRequest = new EntryRequest
-            {
-                BaseUserId = teacher.Id,
-                UniversityId = checkIfCanSendRequest.Id,
-                SentByUniversity = true
-            };
-
-            await _entryRequestRepository.AddAsync(entryRequest);
-
-            response.Success = true;
-            response.Message = "Invitation is sent";
-
-            return response;
-        }
-
+        
         public async Task<ResponseMessage> SendRequestToBecomeTeacherOfUniversity(string universityName, string teacherEmail)
         {
             ResponseMessage response = new ResponseMessage();
