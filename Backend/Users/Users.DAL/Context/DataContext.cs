@@ -61,7 +61,8 @@ namespace Users.DAL.Context
             modelBuilder.Entity<University>()
                 .HasMany(e => e.EntryRequests)
                 .WithOne(e => e.University)
-                .HasForeignKey(e => e.UniversityId);
+                .HasForeignKey(e => e.UniversityId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

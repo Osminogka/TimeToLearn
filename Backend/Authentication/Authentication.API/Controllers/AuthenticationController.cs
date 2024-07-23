@@ -62,7 +62,13 @@ namespace Authentication.API.Controllers
                 userPublishedDto.Event = "BaseUser_Published";
                 _messageBusClient.PublishNewUser(userPublishedDto);
 
-                return Ok(result);
+                ResponseMessage response = new ResponseMessage()
+                {
+                    Success = result.Success,
+                    Message = result.Message
+                };
+
+                return Ok(response);
             }
             catch(Exception ex)
             {

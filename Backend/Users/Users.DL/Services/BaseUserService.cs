@@ -27,7 +27,7 @@ namespace Users.DL.Services
             var universities = await _baseUserRepository.GetAllAsync();
 
             response.Success = true;
-            response.Message = "Got all universities";
+            response.Message = "Got all users";
             response.Enum = universities.Select(obj => obj.Username).ToList();
 
             return response;

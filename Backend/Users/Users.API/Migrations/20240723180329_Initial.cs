@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Users.API.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialMigration : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -15,21 +15,21 @@ namespace Users.API.Migrations
                 name: "BaseUsers",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    OriginalId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    FirstName = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    LastName = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    Username = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    Email = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    PhoneNumber = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    Address_Country = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
-                    Address_City = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
-                    Address_Street = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
-                    IsTeacher = table.Column<bool>(type: "INTEGER", nullable: false),
-                    TeacherId = table.Column<long>(type: "INTEGER", nullable: true),
-                    StudentId = table.Column<long>(type: "INTEGER", nullable: true),
-                    UniversityId = table.Column<long>(type: "INTEGER", nullable: true)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    OriginalId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    FirstName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    LastName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Username = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Email = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    PhoneNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_Country = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_City = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_Street = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    IsTeacher = table.Column<bool>(type: "bit", nullable: false),
+                    TeacherId = table.Column<long>(type: "bigint", nullable: true),
+                    StudentId = table.Column<long>(type: "bigint", nullable: true),
+                    UniversityId = table.Column<long>(type: "bigint", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -40,9 +40,9 @@ namespace Users.API.Migrations
                 name: "Students",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    BaseUserId = table.Column<long>(type: "INTEGER", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BaseUserId = table.Column<long>(type: "bigint", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -59,11 +59,11 @@ namespace Users.API.Migrations
                 name: "Teachers",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Degree = table.Column<string>(type: "TEXT", nullable: false),
-                    IsVerified = table.Column<bool>(type: "INTEGER", nullable: false),
-                    BaseUserId = table.Column<long>(type: "INTEGER", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Degree = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    IsVerified = table.Column<bool>(type: "bit", nullable: false),
+                    BaseUserId = table.Column<long>(type: "bigint", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -80,15 +80,15 @@ namespace Users.API.Migrations
                 name: "Universities",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
-                    DirectorId = table.Column<long>(type: "INTEGER", nullable: false),
-                    Address_Country = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
-                    Address_City = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
-                    Address_Street = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
-                    IsOpened = table.Column<bool>(type: "INTEGER", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    DirectorId = table.Column<long>(type: "bigint", nullable: false),
+                    Address_Country = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_City = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Address_Street = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    IsOpened = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -105,11 +105,11 @@ namespace Users.API.Migrations
                 name: "EntryRequests",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    BaseUserId = table.Column<long>(type: "INTEGER", nullable: false),
-                    UniversityId = table.Column<long>(type: "INTEGER", nullable: false),
-                    SentByUniversity = table.Column<bool>(type: "INTEGER", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BaseUserId = table.Column<long>(type: "bigint", nullable: false),
+                    UniversityId = table.Column<long>(type: "bigint", nullable: false),
+                    SentByUniversity = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -125,7 +125,7 @@ namespace Users.API.Migrations
                         column: x => x.UniversityId,
                         principalTable: "Universities",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateIndex(

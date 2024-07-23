@@ -39,11 +39,8 @@ builder.Services.AddHostedService<MessageBusSubscriber>();
 //Databases
 var connectionString = builder.Configuration.GetConnectionString("DataConnectionString")
                     ?? throw new InvalidOperationException("Connection string 'DataConnectionString' not found.");
-if (builder.Environment.IsProduction())
-    builder.Services.AddDbContext<DataContext>(options => options.UseSqlServer(connectionString
-    , b => b.MigrationsAssembly("Users.API")));
-else
-    builder.Services.AddDbContext<DataContext>(options => options.UseSqlite(connectionString
+
+builder.Services.AddDbContext<DataContext>(options => options.UseSqlServer(connectionString
     , b => b.MigrationsAssembly("Users.API")));
 
 //Authentication

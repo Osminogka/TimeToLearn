@@ -4,19 +4,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mssql-depl
+  name: mssql-users-depl
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: mssql-auth
+      app: mssql-users
   template:
     metadata:
       labels:
-        app: mssql-auth
+        app: mssql-users
     spec:
       containers:
-        - name: mssql-auth
+        - name: mssql-users
           image: mcr.microsoft.com/mssql/server:2019-latest
           ports:
             - containerPort: 1433
@@ -32,24 +32,24 @@ spec:
                 key: SA_PASSWORD
           volumeMounts:
           - mountPath: /var/opt/mssql/data
-            name: mssqldb-auth
+            name: mssqldb-users
       volumes:
-      - name: mssqldb-auth
+      - name: mssqldb-users
         persistentVolumeClaim:
-          claimName: mssql-claim-auth
+          claimName: mssql-claim-users
 
 ---
 
 apiVersion: v1
 kind: Service
 metadata:
-  name: mssql-auth-clusterip-srv
+  name: mssql-users-clusterip-srv
 spec:
   type: ClusterIP
   selector:
-    app: mssql-auth
+    app: mssql-users
   ports:
-  - name: mssql-auth
+  - name: mssql-users
     protocol: TCP
     port: 1433
     targetPort: 1433
@@ -59,12 +59,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: mssql-loadbalancer-auth
+  name: mssql-loadbalancer-users
 spec:
   type: LoadBalancer
   selector:
-    app: mssql-auth
+    app: mssql-users
   ports:
   - protocol: TCP
-    port: 1435
+    port: 1434
     targetPort: 1433

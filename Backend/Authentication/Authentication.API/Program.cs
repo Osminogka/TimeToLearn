@@ -24,11 +24,7 @@ builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 var connectionString = builder.Configuration.GetConnectionString("AccountConnectionString")
                     ?? throw new InvalidOperationException("Connection string 'AccountConnectionString' not found.");
-if(builder.Environment.IsProduction())
-    builder.Services.AddDbContext<IdentityContext>(options => options.UseSqlServer(connectionString
-    , b => b.MigrationsAssembly("Authentication.API")));
-else
-    builder.Services.AddDbContext<IdentityContext>(options => options.UseSqlite(connectionString
+builder.Services.AddDbContext<IdentityContext>(options => options.UseSqlServer(connectionString
     , b => b.MigrationsAssembly("Authentication.API")));
 
 
