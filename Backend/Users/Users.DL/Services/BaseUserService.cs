@@ -33,11 +33,11 @@ namespace Users.DL.Services
             return response;
         }
 
-        public async Task<ResponseWithValue<ReadBaseUserDto>> GetBaseUserAsync(string email)
+        public async Task<ResponseWithValue<ReadBaseUserDto>> GetBaseUserAsync(string username)
         {
             ResponseWithValue<ReadBaseUserDto> response = new ResponseWithValue<ReadBaseUserDto>();
 
-            var user = await _baseUserRepository.SingleOrDefaultAsync(obj =>  obj.Email == email);
+            var user = await _baseUserRepository.SingleOrDefaultAsync(obj =>  obj.Username == username);
             if(user == null)
             {
                 response.Message = "Such user doesn't exist";
