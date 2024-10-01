@@ -21,11 +21,6 @@ namespace Forums.DAL.Context
                 .WithMany(e => e.Likes)
                 .HasForeignKey(e => e.PostId);
 
-            modelBuilder.Entity<Dislike>()
-                .HasOne(e => e.Topic)
-                .WithMany(e => e.Dislikes)
-                .HasForeignKey(e => e.PostId);
-
             modelBuilder.Entity<Like>()
                 .HasOne(e => e.Comment)
                 .WithMany(e => e.Likes)
@@ -33,6 +28,11 @@ namespace Forums.DAL.Context
 
             modelBuilder.Entity<Dislike>()
                 .HasOne(e => e.Topic)
+                .WithMany(e => e.Dislikes)
+                .HasForeignKey(e => e.PostId);
+
+            modelBuilder.Entity<Dislike>()
+                .HasOne(e => e.Comment)
                 .WithMany(e => e.Dislikes)
                 .HasForeignKey(e => e.PostId);
         }

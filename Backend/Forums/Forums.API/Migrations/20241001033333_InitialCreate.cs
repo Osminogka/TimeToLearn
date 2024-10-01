@@ -49,17 +49,17 @@ namespace Forums.API.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     UserId = table.Column<long>(type: "bigint", nullable: false),
                     IsTopic = table.Column<bool>(type: "bit", nullable: false),
-                    PostId = table.Column<long>(type: "bigint", nullable: false),
-                    CommentId = table.Column<long>(type: "bigint", nullable: true)
+                    PostId = table.Column<long>(type: "bigint", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Dislikes", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Dislikes_Comments_CommentId",
-                        column: x => x.CommentId,
+                        name: "FK_Dislikes_Comments_PostId",
+                        column: x => x.PostId,
                         principalTable: "Comments",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Dislikes_Topics_PostId",
                         column: x => x.PostId,
@@ -94,11 +94,6 @@ namespace Forums.API.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Dislikes_CommentId",
-                table: "Dislikes",
-                column: "CommentId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Dislikes_PostId",

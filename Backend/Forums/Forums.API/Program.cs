@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Forums.DAL.Context;
 using System.Text;
+using Forums.DAL.Models;
+using Forums.DL.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +13,11 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
+builder.Services.AddTransient<IBaseRepository<Topic>, BaseRepository<Topic>>();
+builder.Services.AddTransient<IBaseRepository<Comment>, BaseRepository<Comment>>();
+builder.Services.AddTransient<IBaseRepository<Like>, BaseRepository<Like>>();
+builder.Services.AddTransient<IBaseRepository<Dislike>, BaseRepository<Dislike>>();
 
 var connectionString = builder.Configuration.GetConnectionString("DataConnectionString")
                     ?? throw new InvalidOperationException("Connection string 'DataConnectionString' not found.");
