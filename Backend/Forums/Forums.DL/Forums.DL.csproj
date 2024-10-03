@@ -19,8 +19,4 @@
     <ProjectReference Include="..\Forums.DAL\Forums.DAL.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Proto\" />
-  </ItemGroup>
-
 </Project>

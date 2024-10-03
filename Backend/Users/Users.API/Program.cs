@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Users.API.AsyncDataService;
 using Users.API.EventProcessing;
+using Users.API.Grpc;
 using Users.DAL.Context;
 using Users.DAL.Models;
 using Users.DL.Repositories;
@@ -14,6 +15,9 @@ var builder = WebApplication.CreateBuilder(args);
 //Logger
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
+
+//Grpc
+builder.Services.AddGrpc();
 
 //Automapper
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
@@ -69,6 +73,13 @@ builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 
 var app = builder.Build();
+
+//Grpc
+app.MapGrpcService<GrpcUserInfoService>();
+app.MapGet("/protos/userinfo.proto", async context =>
+{
+    await context.Response.WriteAsync(File.ReadAllText("Protos/userinfo.proto"));
+});
 
 //app.UseHttpsRedirection();
 
