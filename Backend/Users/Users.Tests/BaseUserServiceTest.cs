@@ -119,7 +119,7 @@ namespace Users.Tests
         public async Task GetBaseUserTest()
         {
             //Act
-            var result = await Service.GetBaseUserAsync(UserEmail);
+            var result = await Service.GetBaseUserAsync("Osminogka");
 
             //Assert
             var response = Assert.IsType<ResponseWithValue<ReadBaseUserDto>>(result);

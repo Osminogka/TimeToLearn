@@ -9,17 +9,19 @@ namespace Forums.API.Grpc
     {
         private readonly IConfiguration _configuration;
         private readonly IMapper _mapper;
+        private readonly GrpcChannel _channel;
+        private readonly GrpcUsers.GrpcUsersClient _client;
 
         public UserInfoClient(IConfiguration configuration, IMapper mapper)
         {
             _configuration = configuration;
             _mapper = mapper;
+            _channel = GrpcChannel.ForAddress(_configuration["GrpcUsersApi"]);
+            _client = new GrpcUsers.GrpcUsersClient(_channel);
         }
 
         public async Task<UserInfoForTopic?> GetUserInfoForTopic(string universityName, string userEmail)
         {
-            var channel = GrpcChannel.ForAddress(_configuration["GrpcUsersApi"]);
-            var client = new GrpcUsers.GrpcUsersClient(channel);
             var request = new GetInfoRequest()
             {
                 UniversityName = universityName,
@@ -28,7 +30,7 @@ namespace Forums.API.Grpc
 
             try
             {
-                var reply = await client.GetInfoForTopicAsync(request);
+                var reply = await _client.GetInfoForTopicAsync(request);
                 return _mapper.Map<UserInfoForTopic>(reply);
             }
             catch(Exception ex)
@@ -40,12 +42,30 @@ namespace Forums.API.Grpc
 
         public async Task<string> GetUniversityName(long universityId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var reply = await _client.GetUniversityNameAsync(_mapper.Map<UniversityId>(universityId));
+                return reply.UniversityName_;
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine($"--> Couldn't call GRPC Server: {ex.Message}");
+                return null;
+            }
         }
 
         public async Task<string> GetUserName(long userId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var reply = await _client.GetUserNameAsync(_mapper.Map<UserId>(userId));
+                return reply.Username;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"--> Couldn't call GRPC Server: {ex.Message}");
+                return null;
+            }
         }
     }
 }

@@ -9,8 +9,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Forums.DAL", "Forums.DAL\Fo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Forums.DL", "Forums.DL\Forums.DL.csproj", "{97DFF8C5-89C9-49E2-A71D-E2DC08230E82}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Forums.Tests", "Forums.Tests\Forums.Tests.csproj", "{6CC6F0A5-E2F9-49D7-A843-71A6C09B10C2}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

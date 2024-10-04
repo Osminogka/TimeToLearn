@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: forums-depl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: forumsservice
+  template:
+    metadata:
+      labels:
+        app: forumsservice
+    spec:
+      containers:
+        - name: forumsservice
+          image: osminogka/forumsservice:latest
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: forums-clusterip-srv
+spec:
+  type: ClusterIP
+  selector:
+    app: forumsservice
+  ports:
+    - name: forumsservice
+      protocol: TCP
+      port: 80
+      targetPort: 8080
