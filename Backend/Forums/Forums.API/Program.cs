@@ -5,7 +5,7 @@ using Forums.DAL.Context;
 using System.Text;
 using Forums.DAL.Models;
 using Forums.DL.Repositories;
-using Forums.API.Grpc;
+using Forums.DL.Grpc;
 
 var builder = WebApplication.CreateBuilder(args);
 

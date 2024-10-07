@@ -1,9 +1,10 @@
 ﻿using AutoMapper;
 using Forums.DAL.SideModels;
 using Grpc.Net.Client;
+using Microsoft.Extensions.Configuration;
 using UserService;
 
-namespace Forums.API.Grpc
+namespace Forums.DL.Grpc
 {
     public class UserInfoClient : IUserInfoClient
     {

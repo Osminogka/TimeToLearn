@@ -1,6 +1,6 @@
 ﻿using Forums.DAL.SideModels;
 
-namespace Forums.API.Grpc
+namespace Forums.DL.Grpc
 {
     public interface IUserInfoClient 
     {

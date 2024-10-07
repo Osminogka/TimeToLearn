@@ -2,8 +2,10 @@
 {
     public class CreateTopicDto
     {
-        public long TopicCreatorId { get; set; }
-
         public string TopicTitle { get; set; } = string.Empty;
+
+        public string TopicContent { get; set; } = string.Empty;
+
+        public string UniversityName { get; set; } = string.Empty;
     }
 }

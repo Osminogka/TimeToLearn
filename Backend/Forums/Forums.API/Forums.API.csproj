@@ -35,12 +35,4 @@
     <ProjectReference Include="..\Forums.DL\Forums.DL.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Proto\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Protobuf Include="Proto\userinfo.proto" GrpcServices="Client" />
-  </ItemGroup>
-
 </Project>

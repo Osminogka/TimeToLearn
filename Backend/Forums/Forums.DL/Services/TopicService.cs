@@ -14,7 +14,7 @@ namespace Forums.DL.Services
             _topicRepository = topicRepository;
         }
 
-        public async Task<ResponseMessage> CreateTopicAsync(CreateTopicDto topic, string creatorEmail, string universityName)
+        public async Task<ResponseMessage> CreateTopicAsync(CreateTopicDto topic, string creatorEmail)
         {
             ResponseMessage response = new ResponseMessage();
 

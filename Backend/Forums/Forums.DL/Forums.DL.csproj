@@ -8,7 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Grpc.AspNetCore" Version="2.66.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.28.2" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.66.0" />
     <PackageReference Include="Grpc.Tools" Version="2.66.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -19,4 +20,12 @@
     <ProjectReference Include="..\Forums.DAL\Forums.DAL.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Proto\" />
+  </ItemGroup>
+
+	<ItemGroup>
+		<Protobuf Include="Proto\userinfo.proto" GrpcServices="Client" />
+	</ItemGroup>
+	
 </Project>
