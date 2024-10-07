@@ -19,4 +19,10 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.1.0" />
   </ItemGroup>
 
+  <PropertyGroup>
+	<HideBinFolder>true</HideBinFolder>
+	<HideObjFolder>true</HideObjFolder>
+  </PropertyGroup>
+
+
 </Project>

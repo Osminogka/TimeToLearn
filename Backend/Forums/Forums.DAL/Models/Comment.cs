@@ -8,7 +8,10 @@ namespace Forums.DAL.Models
         public long CommentCreatorId { get; set; }
 
         [Required]
-        public long TopicId { get; set; }
+        public long PostId { get; set; }
+
+        [Required]
+        public bool IsTopic { get; set; }
 
         [Required]
         [MaxLength(1000)]
