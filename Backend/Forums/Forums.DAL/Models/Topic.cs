@@ -18,6 +18,10 @@ namespace Forums.DAL.Models
         [MaxLength(1000)]
         public string TopicContent { get; set; } = string.Empty;
 
+        public long LikesOverall { get; set; } = 0;
+
+        public long DislikesOverall { get; set; } = 0;
+
         public ICollection<Like> Likes { get; set; }
 
         public ICollection<Dislike> Dislikes { get; set; }
