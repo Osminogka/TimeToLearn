@@ -2,11 +2,7 @@
 using Forums.DAL.SideModels;
 using Forums.DL.Grpc;
 using Forums.DL.Repositories;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace Forums.DL.Services
 {
@@ -85,6 +81,13 @@ namespace Forums.DL.Services
                 return response;
             }
 
+            var isDisliked = await _dislikeRepository.SingleOrDefaultAsync(obj => obj.IsTopic == false && obj.PostId == commentInfo.OriginalId &&
+                obj.UserId == reply.UserId);
+            if(isDisliked != null)
+            {
+                await _dislikeRepository.DeleteAsync(isDisliked);
+            }
+
             Like like = new Like()
             {
                 IsTopic = false,
@@ -117,6 +120,13 @@ namespace Forums.DL.Services
                 response.Success = true;
                 response.Message = "You removed your like";
                 return response;
+            }
+
+            var isLiked = await _likeRepository.SingleOrDefaultAsync(obj => obj.IsTopic == false && obj.PostId == commentInfo.OriginalId &&
+                obj.UserId == reply.UserId);
+            if (isLiked != null)
+            {
+                await _likeRepository.DeleteAsync(isLiked);
             }
 
             Dislike dislike = new Dislike()

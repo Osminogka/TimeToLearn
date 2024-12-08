@@ -99,6 +99,14 @@ namespace Forums.DL.Services
                 return response;
             }
 
+            var isDisliked = await _dislikeRepository.SingleOrDefaultAsync(obj => obj.IsTopic == true && obj.PostId == topicId &&
+                obj.UserId == reply.UserId);
+            if(isDisliked != null)
+            {
+                await _dislikeRepository.DeleteAsync(isDisliked);
+                topic.DislikesOverall--;
+            }
+
             Like like = new Like()
             {
                 IsTopic = true,
@@ -143,6 +151,14 @@ namespace Forums.DL.Services
                 response.Success = true;
                 response.Message = "You removed your dislike";
                 return response;
+            }
+
+            var isLiked = await _likeRepository.SingleOrDefaultAsync(obj => obj.IsTopic == true && obj.PostId == topicId &&
+                obj.UserId == reply.UserId);
+            if(isLiked != null)
+            {
+                await _likeRepository.DeleteAsync(isLiked);
+                topic.LikesOverall--;
             }
 
             Dislike dislike = new Dislike()
