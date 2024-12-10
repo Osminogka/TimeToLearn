@@ -9,6 +9,8 @@ using Forums.API.Infrastructure;
 using Moq;
 using Forums.DL.Grpc;
 using Forums.DAL.SideModels;
+using System.ComponentModel;
+using Forums.DAL.Dtos;
 
 namespace Forums.Tests
 {
@@ -99,31 +101,108 @@ namespace Forums.Tests
                 TopicCreatorId = 1,
                 TopicTitle = "Test Title",
                 TopicContent = "Test Content",
-            }
+            };
+
+            var topic2 = new Topic()
+            {
+                UniversityId = 2,
+                TopicCreatorId = 2,
+                TopicTitle = "Topic 2",
+                TopicContent = "Topic 2 Content"
+            };
+
+            context.Add(topic1);
+            context.Add(topic2);
+
+            context.SaveChanges();
         }
 
         [Fact]
         public async Task GetTopicsTest()
         {
+            //Arrange
+            string userEmail = "tester@gmail.com";
+            string universityName = "DKU";
 
+            //Act
+            var result = await Service.GetUniversityTopicsAsync(universityName, userEmail, 0);
+
+            //Assert
+            var response = Assert.IsType<ResponseArray<ReadTopicDto>>(result);
+
+            Assert.True(response.Success);
+            Assert.Single(response.Values);
         }
 
         [Fact]
         public async Task CreateTopicTest()
         {
+            //Arrange
+            var createTopicInfo = new CreateTopicDto()
+            {
+                UniversityName = "DKU",
+                TopicTitle = "Topic creation test",
+                TopicContent = "I want to test topic creation"
+            };
+            string creatorEmail = "tester@gmail.com";
+            string universityName = "DKU";
 
+            //Act
+            var result = await Service.CreateTopicAsync(createTopicInfo, creatorEmail);
+            var result2 = await Service.GetUniversityTopicsAsync(universityName, creatorEmail, 0);
+
+            //Assert
+            var response = Assert.IsType<ResponseMessage>(result);
+            var response2 = Assert.IsType<ResponseArray<ReadTopicDto>>(result2);
+
+            Assert.True(response.Success);
+
+            Assert.True(response2.Success);
+            Assert.Equal(2, response2.Values.ToArray().Length);
         }
 
         [Fact]
         public async Task LikeTopicTest()
         {
+            //Arrange
+            string userEmail = "tester@gmail.com";
+            string universityName = "DKU";
+            long topicId = 1;
 
+            //Act
+            var result = await Service.LikeTopicAsync(topicId, userEmail);
+            var result2 = await Service.GetUniversityTopicsAsync(universityName, userEmail, 0);
+
+            //Assert
+            var response = Assert.IsType<ResponseMessage>(result);
+            var response2 = Assert.IsType<ResponseArray<ReadTopicDto>>(result2);
+
+            Assert.True(response.Success);
+
+            Assert.True(response2.Success);
+            Assert.Equal(1, response2.Values.FirstOrDefault().Likes);
         }
 
         [Fact]
         public async Task DislikeTopicTest()
         {
+            //Arrange
+            string userEmail = "tester@gmail.com";
+            string universityName = "DKU";
+            long topicId = 1;
 
+            //Act
+            var result = await Service.DislikeTopicAsync(topicId, userEmail);
+            var result2 = await Service.GetUniversityTopicsAsync(universityName, userEmail, 0);
+
+            //Assert
+            var response = Assert.IsType<ResponseMessage>(result);
+            var response2 = Assert.IsType<ResponseArray<ReadTopicDto>>(result2);
+
+            Assert.True(response.Success);
+
+            Assert.True(response2.Success);
+            Assert.Equal(1, response2.Values.FirstOrDefault().Dislikes);
         }
     }
 }

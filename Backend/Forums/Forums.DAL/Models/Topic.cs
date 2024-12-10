@@ -18,6 +18,8 @@ namespace Forums.DAL.Models
         [MaxLength(1000)]
         public string TopicContent { get; set; } = string.Empty;
 
+        public DateTime CreatedAt { get; set; }
+
         public long LikesOverall { get; set; } = 0;
 
         public long DislikesOverall { get; set; } = 0;

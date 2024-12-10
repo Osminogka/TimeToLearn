@@ -51,7 +51,8 @@ namespace Forums.DL.Services
                 CommentContent = commentContent,
                 CommentCreatorId = reply.UserId,
                 IsTopic = commentInfo.IsTopic,
-                PostId = commentInfo.PostId
+                PostId = commentInfo.PostId,
+                CreatedAt = DateTime.UtcNow
             };
 
             await _commentRepository.AddAsync(comment);

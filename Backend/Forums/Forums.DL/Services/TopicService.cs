@@ -61,6 +61,7 @@ namespace Forums.DL.Services
                 TopicCreatorId = reply.UserId,
                 TopicContent = topicInfo.TopicContent,
                 TopicTitle = topicInfo.TopicTitle,
+                CreatedAt = DateTime.UtcNow
             };
 
             await _topicRepository.AddAsync(topic);
