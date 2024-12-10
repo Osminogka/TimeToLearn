@@ -9,14 +9,12 @@ using Forums.API.Infrastructure;
 using Moq;
 using Forums.DL.Grpc;
 using Forums.DAL.SideModels;
-using System.ComponentModel;
 using Forums.DAL.Dtos;
 
 namespace Forums.Tests
 {
     public class TopicServiceTests
     {
-
         private IBaseRepository<Topic> TopicRepository { get; set; }
         private IBaseRepository<Like> LikeRepository { get; set; }
         private IBaseRepository<Dislike> DislikeRepository { get; set; }

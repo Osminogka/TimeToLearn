@@ -8,6 +8,9 @@ namespace Forums.DAL.Models
         public long CommentCreatorId { get; set; }
 
         [Required]
+        public long UniversityOfCreator { get; set; }
+
+        [Required]
         public long PostId { get; set; }
 
         [Required]

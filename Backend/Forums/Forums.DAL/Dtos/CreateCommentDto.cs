@@ -1,6 +1,6 @@
-﻿namespace Forums.DAL.SideModels
+﻿namespace Forums.DAL.Dtos
 {
-    public class CommentInfo
+    public class CreateCommentDto
     {
         public long PostId { get; set; }
 
@@ -8,6 +8,6 @@
 
         public string UniversityName { get; set; } = string.Empty;
 
-        public long OriginalId { get; set; }
+        public string CommentContent { get; set; } = string.Empty;
     }
 }

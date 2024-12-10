@@ -1,4 +1,5 @@
-﻿using Forums.DAL.Models;
+﻿using Forums.DAL.Dtos;
+using Forums.DAL.Models;
 using Forums.DAL.SideModels;
 using Forums.DL.Grpc;
 using Forums.DL.Repositories;
@@ -24,21 +25,28 @@ namespace Forums.DL.Services
             _topicRepository = topicRepository;
         }
 
-        public async Task<ResponseMessage> CreateCommentAsync(CommentInfo commentInfo,string commentContent, string creatorEmail)
+        public async Task<ResponseArray<ReadCommentDto>> GetCommentsAsync(bool isTopic, long recordId)
+        {
+            ResponseArray<ReadCommentDto> response = new ResponseArray<ReadCommentDto>();
+
+            return response;
+        }
+
+        public async Task<ResponseMessage> CreateCommentAsync(CreateCommentDto createCommentDto, string creatorEmail)
         {
             ResponseMessage response = new ResponseMessage();
             response.Message = "You don't have such rights";
 
-            var reply = await _grpcClient.GetUserInfoForTopic(commentInfo.UniversityName, creatorEmail);
+            var reply = await _grpcClient.GetUserInfoForTopic(createCommentDto.UniversityName, creatorEmail);
             if (!reply.IsAllowed)
                 return response;
 
             dynamic doesRecordExist;
 
-            if (commentInfo.IsTopic)
-                doesRecordExist = await _topicRepository.SingleOrDefaultAsync(obj => obj.Id == commentInfo.PostId);
+            if (createCommentDto.IsTopic)
+                doesRecordExist = await _topicRepository.SingleOrDefaultAsync(obj => obj.Id == createCommentDto.PostId);
             else
-                doesRecordExist = await _commentRepository.SingleOrDefaultAsync(obj => obj.Id == commentInfo.PostId);
+                doesRecordExist = await _commentRepository.SingleOrDefaultAsync(obj => obj.Id == createCommentDto.PostId);
 
             if(doesRecordExist == null)
             {
@@ -48,10 +56,11 @@ namespace Forums.DL.Services
 
             Comment comment = new Comment()
             {
-                CommentContent = commentContent,
+                CommentContent = createCommentDto.CommentContent,
                 CommentCreatorId = reply.UserId,
-                IsTopic = commentInfo.IsTopic,
-                PostId = commentInfo.PostId,
+                IsTopic = createCommentDto.IsTopic,
+                PostId = createCommentDto.PostId,
+                UniversityOfCreator = reply.UniversityId,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -63,16 +72,25 @@ namespace Forums.DL.Services
             return response;
         }
 
-        public async Task<ResponseMessage> LikeCommentAsync(CommentInfo commentInfo, string userEmail)
+        public async Task<ResponseMessage> LikeCommentAsync(long commentId, string userEmail)
         {
             ResponseMessage response = new ResponseMessage();
             response.Message = "You don't have such rights";
 
-            var reply = await _grpcClient.GetUserInfoForTopic(commentInfo.UniversityName, userEmail);
+            var comment = await _commentRepository.SingleOrDefaultAsync(obj => obj.Id == commentId);
+            if(comment == null)
+            {
+                response.Message = "Such comment doesn't exist";
+                return response;
+            }
+
+            var universityName = await _grpcClient.GetUniversityName(comment.UniversityOfCreator);
+
+            var reply = await _grpcClient.GetUserInfoForTopic(universityName, userEmail);
             if (!reply.IsAllowed)
                 return response;
 
-            var isAlreadyLiked = await _likeRepository.SingleOrDefaultAsync(obj => obj.IsTopic == false && obj.PostId == commentInfo.OriginalId &&
+            var isAlreadyLiked = await _likeRepository.SingleOrDefaultAsync(obj => obj.IsTopic == false && obj.PostId == commentId &&
                 obj.UserId == reply.UserId);
             if (isAlreadyLiked != null)
             {
@@ -82,7 +100,7 @@ namespace Forums.DL.Services
                 return response;
             }
 
-            var isDisliked = await _dislikeRepository.SingleOrDefaultAsync(obj => obj.IsTopic == false && obj.PostId == commentInfo.OriginalId &&
+            var isDisliked = await _dislikeRepository.SingleOrDefaultAsync(obj => obj.IsTopic == false && obj.PostId == commentId &&
                 obj.UserId == reply.UserId);
             if(isDisliked != null)
             {
@@ -92,7 +110,7 @@ namespace Forums.DL.Services
             Like like = new Like()
             {
                 IsTopic = false,
-                PostId = commentInfo.OriginalId,
+                PostId = commentId,
                 UserId = reply.UserId
             };
 
@@ -104,16 +122,25 @@ namespace Forums.DL.Services
             return response;
         }
 
-        public async Task<ResponseMessage> DislikeCommentAsync(CommentInfo commentInfo, string userEmail)
+        public async Task<ResponseMessage> DislikeCommentAsync(long commentId, string userEmail)
         {
             ResponseMessage response = new ResponseMessage();
             response.Message = "You don't have such rights";
 
-            var reply = await _grpcClient.GetUserInfoForTopic(commentInfo.UniversityName, userEmail);
+            var comment = await _commentRepository.SingleOrDefaultAsync(obj => obj.Id == commentId);
+            if (comment == null)
+            {
+                response.Message = "Such comment doesn't exist";
+                return response;
+            }
+
+            var universityName = await _grpcClient.GetUniversityName(comment.UniversityOfCreator);
+
+            var reply = await _grpcClient.GetUserInfoForTopic(universityName, userEmail);
             if (!reply.IsAllowed)
                 return response;
 
-            var isAlreadyDisliked = await _dislikeRepository.SingleOrDefaultAsync(obj => obj.IsTopic == false && obj.PostId == commentInfo.OriginalId &&
+            var isAlreadyDisliked = await _dislikeRepository.SingleOrDefaultAsync(obj => obj.IsTopic == false && obj.PostId == commentId &&
                 obj.UserId == reply.UserId);
             if (isAlreadyDisliked != null)
             {
@@ -123,7 +150,7 @@ namespace Forums.DL.Services
                 return response;
             }
 
-            var isLiked = await _likeRepository.SingleOrDefaultAsync(obj => obj.IsTopic == false && obj.PostId == commentInfo.OriginalId &&
+            var isLiked = await _likeRepository.SingleOrDefaultAsync(obj => obj.IsTopic == false && obj.PostId == commentId &&
                 obj.UserId == reply.UserId);
             if (isLiked != null)
             {
@@ -133,7 +160,7 @@ namespace Forums.DL.Services
             Dislike dislike = new Dislike()
             {
                 IsTopic = false,
-                PostId = commentInfo.OriginalId,
+                PostId = commentId,
                 UserId = reply.UserId
             };
 
