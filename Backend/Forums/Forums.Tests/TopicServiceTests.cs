@@ -96,7 +96,7 @@ namespace Forums.Tests
             var topic1 = new Topic()
             {
                 UniversityId = 1,
-                TopicCreatorId = 1,
+                CreatorId = 1,
                 TopicTitle = "Test Title",
                 TopicContent = "Test Content",
             };
@@ -104,7 +104,7 @@ namespace Forums.Tests
             var topic2 = new Topic()
             {
                 UniversityId = 2,
-                TopicCreatorId = 2,
+                CreatorId = 2,
                 TopicTitle = "Topic 2",
                 TopicContent = "Topic 2 Content"
             };

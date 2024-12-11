@@ -58,7 +58,7 @@ namespace Forums.DL.Services
             Topic topic = new Topic()
             {
                 UniversityId = reply.UniversityId,
-                TopicCreatorId = reply.UserId,
+                CreatorId = reply.UserId,
                 TopicContent = topicInfo.TopicContent,
                 TopicTitle = topicInfo.TopicTitle,
                 CreatedAt = DateTime.UtcNow

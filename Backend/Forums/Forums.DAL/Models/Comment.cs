@@ -2,14 +2,8 @@
 
 namespace Forums.DAL.Models
 {
-    public class Comment : BaseEntity
+    public class Comment : Record
     {
-        [Required]
-        public long CommentCreatorId { get; set; }
-
-        [Required]
-        public long UniversityOfCreator { get; set; }
-
         [Required]
         public long PostId { get; set; }
 

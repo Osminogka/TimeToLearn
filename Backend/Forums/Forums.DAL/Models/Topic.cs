@@ -2,14 +2,8 @@
 
 namespace Forums.DAL.Models
 {
-    public class Topic : BaseEntity
+    public class Topic : Record
     {
-        [Required]
-        public long UniversityId { get; set; }
-
-        [Required]
-        public long TopicCreatorId { get; set; }
-
         [Required]
         [MaxLength(30)]
         public string TopicTitle { get; set; } = string.Empty;

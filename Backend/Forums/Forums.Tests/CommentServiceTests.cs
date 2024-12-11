@@ -50,6 +50,20 @@ namespace Forums.Tests
                 cfg.AddProfile<MappingProfile>();
             });
 
+            var reply1 = new UserInfoForTopic()
+            {
+                IsAllowed = true,
+                UserId = 1,
+                UniversityId = 1
+            };
+
+            var reply2 = new UserInfoForTopic()
+            {
+                IsAllowed = false,
+                UserId = 1,
+                UniversityId = 2
+            };
+
             var autoMapper = config.CreateMapper();
 
             var mockGrpcClient = new Mock<IUserInfoClient>();
@@ -65,6 +79,29 @@ namespace Forums.Tests
                         return "None";
                 });
 
+            mockGrpcClient
+                .Setup(client => client.GetUserInfoForTopic(
+                    It.IsAny<string>(),
+                    It.IsAny<string>()))
+                .ReturnsAsync((string universityName, string userEmail) =>
+                {
+                    if (universityName == "DKU")
+                        return reply1;
+                    else
+                        return reply2;
+                });
+
+            mockGrpcClient
+                .Setup(client => client.GetUserName(
+                    It.IsAny<long>()))
+                .ReturnsAsync((long userId) =>
+                {
+                    if (userId == 1)
+                        return "tester";
+                    else
+                        return "None";
+                });
+
             Service = new CommentService(TopicRepository, CommentRepository, LikeRepository, DislikeRepository,
                 mockGrpcClient.Object);
 
@@ -73,24 +110,142 @@ namespace Forums.Tests
 
             var topic1 = new Topic()
             {
+                Id = 1,
                 UniversityId = 1,
-                TopicCreatorId = 1,
+                CreatorId = 1,
                 TopicTitle = "Test Title",
                 TopicContent = "Test Content",
             };
 
             var topic2 = new Topic()
             {
+                Id = 2,
                 UniversityId = 2,
-                TopicCreatorId = 2,
+                CreatorId = 2,
                 TopicTitle = "Topic 2",
                 TopicContent = "Topic 2 Content"
             };
 
+            var comment1 = new Comment()
+            {
+                Id = 1,
+                UniversityId = 1,
+                CreatorId = 1,
+                CommentContent = "Comment for topic1",
+                IsTopic = true,
+                PostId = 1
+            };
+
+            var comment2 = new Comment()
+            {
+                Id = 2,
+                UniversityId = 1,
+                CreatorId = 1,
+                CommentContent = "Comment number 2 for topic1",
+                IsTopic = true,
+                PostId = 1
+            };
+
+            var comment3 = new Comment()
+            {
+                Id = 3,
+                UniversityId = 1,
+                CreatorId = 1,
+                CommentContent = "Comment for comment",
+                IsTopic = false,
+                PostId = 1
+            };
+
             context.Add(topic1);
             context.Add(topic2);
+            context.Add(comment1);
+            context.Add(comment2);
+            context.Add(comment3);
 
             context.SaveChanges();
+        }
+
+        [Fact]
+        public async Task GetCommentsTest()
+        {
+            //Arrange
+            string userEmail = "tester@gmail.com";
+
+            //Act
+            var result = await Service.GetCommentsAsync(true, 1, userEmail, 0);
+
+            //Assert
+            var response = Assert.IsType<ResponseArray<ReadCommentDto>>(result);
+
+            Assert.True(response.Success);
+            Assert.Equal(2, response.Values.ToArray().Length);
+        }
+
+        [Fact]
+        public async Task CreateCommentsTest()
+        {
+            //Arrange
+            CreateCommentDto comment = new CreateCommentDto()
+            {
+                UniversityName = "DKU",
+                CommentContent = "Test Creation of comment",
+                IsTopic = false,
+                PostId = 1
+            };
+            string userEmail = "tester@gmail.com";
+
+            //Act
+            var result1 = await Service.CreateCommentAsync(comment, userEmail);
+            var result2 = await Service.GetCommentsAsync(false, 1, userEmail, 0);
+
+            //Assert
+            var response1 = Assert.IsType<ResponseMessage>(result1);
+            var response2 = Assert.IsType<ResponseArray<ReadCommentDto>>(result2);
+
+            Assert.True(response1.Success);
+
+            Assert.True(response2.Success);
+            Assert.Equal(2, response2.Values.ToArray().Length);
+        }
+
+        [Fact]
+        public async Task LikeCommentsTest()
+        {
+            //Arrange
+            string userEmail = "tester@gmail.com";
+
+            //Act
+            var result1 = await Service.LikeCommentAsync(1, userEmail);
+            var result2 = await Service.GetCommentsAsync(true, 1, userEmail, 0);
+
+            //Assert
+            var response1 = Assert.IsType<ResponseMessage>(result1);
+            var response2 = Assert.IsType<ResponseArray<ReadCommentDto>>(result2);
+
+            Assert.True(result1.Success);
+
+            Assert.True(result2.Success);
+            Assert.Equal(1, response2.Values.FirstOrDefault().LikesOverall);
+        }
+
+        [Fact]
+        public async Task DislikeCommentsTest()
+        {
+            //Arrange
+            string userEmail = "tester@gmail.com";
+
+            //Act
+            var result1 = await Service.DislikeCommentAsync(1, userEmail);
+            var result2 = await Service.GetCommentsAsync(true, 1, userEmail, 0);
+
+            //Assert
+            var response1 = Assert.IsType<ResponseMessage>(result1);
+            var response2 = Assert.IsType<ResponseArray<ReadCommentDto>>(result2);
+
+            Assert.True(result1.Success);
+
+            Assert.True(result2.Success);
+            Assert.Equal(1, response2.Values.FirstOrDefault().DislikesOverall);
         }
     }
 }

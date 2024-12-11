@@ -3,6 +3,7 @@ using Forums.DAL.Models;
 using Forums.DAL.SideModels;
 using Forums.DL.Grpc;
 using Forums.DL.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 
 namespace Forums.DL.Services
@@ -25,9 +26,49 @@ namespace Forums.DL.Services
             _topicRepository = topicRepository;
         }
 
-        public async Task<ResponseArray<ReadCommentDto>> GetCommentsAsync(bool isTopic, long recordId)
+        public async Task<ResponseArray<ReadCommentDto>> GetCommentsAsync(bool isTopic, long recordId, string userEmail, int page)
         {
             ResponseArray<ReadCommentDto> response = new ResponseArray<ReadCommentDto>();
+            response.Message = "Wrong request";
+
+            Record? record = isTopic ?
+                await _topicRepository.SingleOrDefaultAsync(obj => obj.Id == recordId) :
+                await _commentRepository.SingleOrDefaultAsync(obj => obj.Id == recordId);
+            if (record == null)
+                return response;
+
+            long universityId = record.UniversityId;
+
+            var universityName = await _grpcClient.GetUniversityName(universityId);
+            var reply = await _grpcClient.GetUserInfoForTopic(universityName, userEmail);
+            if (!reply.IsAllowed)
+            {
+                response.Message = "You aren't allowed to get comments for this record";
+                return response;
+            }
+
+            int commentNumber = isTopic ? 10 : 3;
+            var comments = await _commentRepository
+                .Where(obj => obj.IsTopic == isTopic && obj.PostId == recordId)
+                .Include(obj => obj.Likes)
+                .Include(obj => obj.Dislikes)
+                .Skip(page * commentNumber)
+                .Take(commentNumber).ToListAsync();
+
+            foreach(Comment comment in comments)
+            {
+                ReadCommentDto tempReadCommentDto = new ReadCommentDto();
+
+                tempReadCommentDto.CommentContent = comment.CommentContent;
+                tempReadCommentDto.CreatedAt = comment.CreatedAt;
+                tempReadCommentDto.CreatorName = await _grpcClient.GetUserName(comment.CreatorId);
+                tempReadCommentDto.LikesOverall = comment.Likes.ToArray().Length;
+                tempReadCommentDto.DislikesOverall = comment.Dislikes.ToArray().Length;
+                response.Values.Add(tempReadCommentDto);
+            }
+
+            response.Success = true;
+            response.Message = "You got some comments";
 
             return response;
         }
@@ -57,10 +98,10 @@ namespace Forums.DL.Services
             Comment comment = new Comment()
             {
                 CommentContent = createCommentDto.CommentContent,
-                CommentCreatorId = reply.UserId,
+                CreatorId = reply.UserId,
                 IsTopic = createCommentDto.IsTopic,
                 PostId = createCommentDto.PostId,
-                UniversityOfCreator = reply.UniversityId,
+                UniversityId = reply.UniversityId,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -84,7 +125,7 @@ namespace Forums.DL.Services
                 return response;
             }
 
-            var universityName = await _grpcClient.GetUniversityName(comment.UniversityOfCreator);
+            var universityName = await _grpcClient.GetUniversityName(comment.UniversityId);
 
             var reply = await _grpcClient.GetUserInfoForTopic(universityName, userEmail);
             if (!reply.IsAllowed)
@@ -134,7 +175,7 @@ namespace Forums.DL.Services
                 return response;
             }
 
-            var universityName = await _grpcClient.GetUniversityName(comment.UniversityOfCreator);
+            var universityName = await _grpcClient.GetUniversityName(comment.UniversityId);
 
             var reply = await _grpcClient.GetUserInfoForTopic(universityName, userEmail);
             if (!reply.IsAllowed)

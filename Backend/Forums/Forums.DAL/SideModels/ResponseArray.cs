@@ -12,6 +12,6 @@ namespace Forums.DAL.SideModels
 
         public string Message { get; set; } = "Invalid request";
 
-        public IEnumerable<T> Values { get; set; }
+        public List<T> Values { get; set; } = new List<T>();
     }
 }
