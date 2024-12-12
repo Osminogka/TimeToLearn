@@ -104,7 +104,8 @@ namespace Authentication.DL.Services
         private async Task<ClaimsIdentity> GenerateClaims(AppUser user)
         {
             var claims = new ClaimsIdentity();
-            claims.AddClaim(new Claim(ClaimTypes.Name, user.Email));
+            claims.AddClaim(new Claim(ClaimTypes.Name, user.UserName));
+            claims.AddClaim(new Claim(ClaimTypes.Email, user.Email));
 
             var roles = await _userRepository.GetUserRolesAsync(user);
 

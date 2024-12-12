@@ -82,12 +82,9 @@ namespace Forums.DL.Services
             if (!reply.IsAllowed)
                 return response;
 
-            dynamic doesRecordExist;
-
-            if (createCommentDto.IsTopic)
-                doesRecordExist = await _topicRepository.SingleOrDefaultAsync(obj => obj.Id == createCommentDto.PostId);
-            else
-                doesRecordExist = await _commentRepository.SingleOrDefaultAsync(obj => obj.Id == createCommentDto.PostId);
+            Record? doesRecordExist = createCommentDto.IsTopic ?
+                await _topicRepository.SingleOrDefaultAsync(obj => obj.Id == createCommentDto.PostId) :
+                await _commentRepository.SingleOrDefaultAsync(obj => obj.Id == createCommentDto.PostId);
 
             if(doesRecordExist == null)
             {
