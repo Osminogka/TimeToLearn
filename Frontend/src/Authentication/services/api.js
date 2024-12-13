@@ -1,4 +1,4 @@
-const BASE_URL = 'http://acme.com/api/a/authentication';
+const BASE_URL = '/api/a/authentication';
 
 import { saveToken } from './utils';
 

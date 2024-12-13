@@ -1,0 +1,58 @@
+/* Slide Up to Down with Bounce */
+.slide-up-down-enter-active,
+.slide-up-down-leave-active {
+  animation: slide-up-down 0.6s ease-in-out;
+}
+.slide-up-down-enter-from {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+.slide-up-down-enter-to {
+  transform: translateY(0);
+  opacity: 1;
+}
+.slide-up-down-leave-from {
+  transform: translateY(0);
+  opacity: 1;
+}
+.slide-up-down-leave-to {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+
+/* Keyframes for smooth slide with bounce */
+@keyframes slide-up-down {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  80% {
+    transform: translateY(0%);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-12%);
+  }
+}
+
+/* Slide Left to Right */
+.slide-left-right-enter-active,
+.slide-left-right-leave-active {
+  transition: transform 0.3s ease, opacity 0.5s ease;
+}
+.slide-left-right-enter-from {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+.slide-left-right-enter-to {
+  transform: translateX(0);
+  opacity: 1;
+}
+.slide-left-right-leave-from {
+  transform: translateX(0);
+  opacity: 1;
+}
+.slide-left-right-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}

@@ -3,16 +3,12 @@ import { useRouter } from 'vue-router';
 
 const router = useRouter();
 
-function goToGreetings(){
-    router.push({ name: 'GreetingPage' });
+function goToGreetings() {
+  router.push("/");
 }
 
-function goToLogin(){
-    router.push({ name: 'Login' });
-}
-
-function goToRegister(){
-    router.push({ name: 'Register' });
+function isAuthRoute() {
+  return router.currentRoute.value.name === 'Login' || router.currentRoute.value.name === 'Register';
 }
 
 </script>
@@ -26,60 +22,54 @@ function goToRegister(){
       </div>
   </header>
   <main>
-    <router-view v-slot="{ Component }">
-      <component :is="Component" />
-    </router-view>
-    <div class="info-card">
-      <h1>University Access</h1>
-      <p>
-        Users can join a variety of universities available on the platform, each with its own unique content and features.
-      </p>
-    </div>
-    <div class="info-card">
-      <h1>Collaboration and Community</h1>
-      <p>
-        Users can connect with peers within their university communities to foster learning and networking.
-      </p>
-    </div>
-    <div class="info-card">
-      <h1>Forums</h1>
-      <p>
-        Each university includes a forum system similar to Reddit, allowing users to:
-        <ul>
-          <li>Share ideas, resources, and ask questions.</li>
-          <li>Upvote or downvote posts and comments.</li>
-          <li>Create and participate in discussions.</li>
-        </ul>
-      </p>
-    </div>
-    <div class="info-card">
-      <h1>Mobile and Desktop Friendly</h1>
-      <p>
-        The platform is designed to be responsive and user-friendly on both mobile and desktop devices.
-      </p>
-    </div>
+    <Transition name="slide-left-right">
+      <router-view class="block" v-slot="{ Component }">
+        <component :is="Component" />
+      </router-view>
+    </Transition>
+    <Transition name="slide-left-right">
+      <div class="block" v-if="!isAuthRoute()">
+        <div class="info-card default-text">
+          <h1>University Access</h1>
+          <p>
+            Users can join a variety of universities available on the platform, each with its own unique content and features.
+          </p>
+        </div>
+        <div class="info-card default-text">
+          <h1>Collaboration and Community</h1>
+          <p>
+            Users can connect with peers within their university communities to foster learning and networking.
+          </p>
+        </div>
+        <div class="info-card default-text">
+          <h1>Forums</h1>
+          <p>
+            Each university includes a forum system similar to Reddit, allowing users to:
+            <ul>
+              <li>Share ideas, resources, and ask questions.</li>
+              <li>Upvote or downvote posts and comments.</li>
+              <li>Create and participate in discussions.</li>
+            </ul>
+          </p>
+        </div>
+        <div class="info-card default-text">
+          <h1>Mobile and Desktop Friendly</h1>
+          <p>
+            The platform is designed to be responsive and user-friendly on both mobile and desktop devices.
+          </p>
+        </div>
+      </div>
+    </Transition>
   </main>
 </template>
 
 <style scoped>
+@import '@/assets/css/text-classes.css';
+@import '@/assets/css/transitions.css';
 
-.gradient-title {
-  align-self: center;
-  margin: auto;
-  font-size: 3rem;
-  font-weight: bold;
-  background: linear-gradient(90deg, #6A0572, #8E44AD, #B344C6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  position: relative;
-  text-transform: uppercase;
-  font-family: fantasy;
-}
-
-h1, h2, p, li{
-  color: #810685;
-  font-family: 'Roboto', sans-serif;
-  margin: 0;
+main{
+  display: flex;
+  justify-content: center;
 }
 
 header {
@@ -87,11 +77,6 @@ header {
   display: flex;
   align-items: center;
   background-color: #1C1C1C;
-}
-
-.title{
-  margin-left: auto;
-  margin-right: auto;
 }
 
 .register-buttons{
@@ -122,8 +107,18 @@ header {
   border-width: 1px;
   border-style: solid;
   padding: 1rem;
-  margin: 1rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
   border-radius: 5px;
+}
+
+.block {
+  padding: auto;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  top: 10;
 }
 
 </style>

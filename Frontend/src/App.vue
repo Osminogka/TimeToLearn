@@ -1,16 +1,20 @@
 <script setup>
 
 import { isAuthenticated, getCurrentUser } from './Authentication/services/utils';
+import GreetingPage from './components/GreetingPage.vue';
+import Dashboard from './components/Dashboard.vue';
 
 import { useRouter } from 'vue-router';
 
-getCurrentUser();
-
 const router = useRouter();
-router.push({ name: isAuthenticated() ? 'Dashboard' : 'GreetingPage' });
 
 </script>
 
 <template>
-  <RouterView />
+  <div v-if="!isAuthenticated()">
+    <GreetingPage />
+  </div>
+  <div v-else>
+    <Dashboard />
+  </div>
 </template>

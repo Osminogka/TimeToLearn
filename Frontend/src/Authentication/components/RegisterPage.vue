@@ -23,17 +23,38 @@ async function handleRegister(){
         this.errorMessage = error.message;
       }
 }
+
+function verifyRegister(){
+    if(email.value === '' || password.value === '') {
+        this.errorMessage = 'Please fill in all fields';
+    }
+    if(password.value.length < 8) {
+        this.errorMessage = 'Password must be at least 8 characters';
+    }
+    if(!email.value.includes('@') || !email.value.includes('.')) {
+        this.errorMessage = 'Invalid email address';
+    }
+    if(this.errorMessage === '') {
+        handleLogin();
+    }
+}
 </script>
 
 <template>
-    <div>
-        <h1>Register</h1>
-        <form @submit.prevent="handleRegister">
-            <input v-model="username" type="text" placeholder="Username" required />
-            <input v-model="email" type="email" placeholder="Email" required />
-            <input v-model="password" type="password" placeholder="Password" required />
-            <button type="submit">Login</button>
+    <div class="container">
+        <h1 class="default-text">Register</h1>
+        <form class="login-form" @submit.prevent="verifyRegister">
+            <input class="input-field" v-model="username" type="text" placeholder="Username" required />
+            <input class="input-field" v-model="email" type="email" placeholder="Email" required />
+            <input class="input-field" v-model="password" type="password" placeholder="Password" required />
+            <button class="submit-button" type="submit">Login</button>
         </form>
-        <p>{{ errorMessage }}</p>
+        <p class="default-text">{{ errorMessage }}</p>
     </div>
 </template>
+
+<style scoped>
+@import '@/assets/css/text-classes.css';
+@import '@/assets/css/login-register.css';
+
+</style>

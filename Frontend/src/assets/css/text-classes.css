@@ -1,0 +1,22 @@
+.gradient-title {
+    align-self: center;
+    margin: auto;
+    font-size: 3rem;
+    font-weight: bold;
+    background: linear-gradient(90deg, #6A0572, #8E44AD, #B344C6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    position: relative;
+    text-transform: uppercase;
+    font-family: fantasy;
+}
+
+.gradient-title:hover{
+    cursor: pointer;
+}
+
+.default-text {
+    color: #810685;
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
+}

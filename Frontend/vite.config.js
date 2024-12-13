@@ -12,5 +12,16 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
+  },
+  server: {
+    host: '0.0.0.0',
+    proxy: {
+        '/api': {
+            target: 'http://acme.com',
+            changeOrigin: true,
+            secure: false,
+        }
+    },
+    port: 3000,
   }
 })

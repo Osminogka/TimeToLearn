@@ -28,11 +28,12 @@ export const getToken = () => {
  * @returns {boolean} - True if the user is authenticated, false otherwise.
  */
 export const isAuthenticated = () => {
+  getCurrentUser();
   return user.value.name !== '';
 };
 
 export function getCurrentUser() {
-  const token = JSON.parse(localStorage.getItem(TOKEN_KEY));
+  const token = localStorage.getItem(TOKEN_KEY);
   if (!token) {
       return null;
   }
@@ -59,4 +60,12 @@ export function getCurrentUser() {
  */
 export const clearToken = () => {
   localStorage.removeItem(TOKEN_KEY);
+};
+
+export default {
+  saveToken,
+  getToken,
+  isAuthenticated,
+  clearToken,
+  getCurrentUser,
 };
