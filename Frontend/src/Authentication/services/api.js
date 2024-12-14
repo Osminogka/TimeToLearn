@@ -43,7 +43,21 @@ const register = async (name, email, password) => {
   return result;
 };
 
+const getRole = async (email) => {
+  const result = await fetch(`/api/u/general/${email}`,{
+    method: 'GET'
+  });
+  if (!result.ok) {
+    const error = await result.json();
+    return error;
+  }
+  else{
+    return result.json();
+  }
+};
+
 export default {
   login,
   register,
+  getRole
 };
