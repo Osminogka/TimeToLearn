@@ -1,4 +1,5 @@
-﻿using Users.DAL.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using Users.DAL.Models;
 using Users.DAL.SideModels;
 using Users.DL.Repositories;
 
@@ -21,15 +22,19 @@ namespace Users.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
 
-            var university = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == model.University && obj.Director.Email == mainUserEmail);
+            var university = await _universityRepository.Where(obj => obj.Name == model.University && obj.Director.Email == mainUserEmail)
+                .Include(obj => obj.Director)
+                .FirstOrDefaultAsync();
             if(university == null)
             {
                 response.Message = "Unable to do this action";
                 return response;
             }
 
-            var entryRequest = await _entryRequestRepository.SingleOrDefaultAsync(obj => obj.UniversityId == university.Id && 
-                obj.BaseUser.Username == model.Username && obj.SentByUniversity == false);
+            var entryRequest = await _entryRequestRepository.Where(obj => obj.UniversityId == university.Id && 
+                obj.BaseUser.Username == model.Username && obj.SentByUniversity == false)
+                .Include(obj => obj.BaseUser)
+                .FirstOrDefaultAsync();
 
             if(entryRequest == null)
             {
@@ -38,14 +43,28 @@ namespace Users.DL.Services
             }
             await _entryRequestRepository.DeleteAsync(entryRequest);
 
-            var checkForAnotherRequest = await _entryRequestRepository.SingleOrDefaultAsync(obj => obj.UniversityId == university.Id && 
-                obj.BaseUser.Username == model.Username && obj.SentByUniversity == true);
+            var checkForAnotherRequest = await _entryRequestRepository.Where(obj => obj.UniversityId == university.Id && 
+                obj.BaseUser.Username == model.Username && obj.SentByUniversity == true)
+                .Include(obj => obj.BaseUser)
+                .FirstOrDefaultAsync();
 
             if (checkForAnotherRequest != null)
                 await _entryRequestRepository.DeleteAsync(checkForAnotherRequest);
 
             var user = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Username == model.Username);
-            user!.UniversityId = university.Id;
+            if(user == null)
+            {
+                response.Message = "User not found";
+                return response;
+            }
+
+            if(user.UniversityId != null)
+            {
+                response.Message = "User already belongs to a university";
+                return response;
+            }
+
+            user.UniversityId = university.Id;
 
             await _baseUserRepository.UpdateAsync(user);
 
@@ -59,15 +78,19 @@ namespace Users.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
 
-            var university = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == model.University && obj.Director.Email == mainUserEmail);
+            var university = await _universityRepository.Where(obj => obj.Name == model.University && obj.Director.Email == mainUserEmail)
+                .Include(obj => obj.Director)
+                .FirstOrDefaultAsync();
             if (university == null)
             {
                 response.Message = "Unable to do this action";
                 return response;
             }
 
-            var entryRequest = await _entryRequestRepository.SingleOrDefaultAsync(obj => obj.UniversityId == university.Id &&
-                obj.BaseUser.Username == model.Username && obj.SentByUniversity == false);
+            var entryRequest = await _entryRequestRepository.Where(obj => obj.UniversityId == university.Id &&
+                obj.BaseUser.Username == model.Username && obj.SentByUniversity == false)
+                .Include(obj => obj.BaseUser)
+                .FirstOrDefaultAsync();
 
             if (entryRequest == null)
             {
@@ -86,15 +109,19 @@ namespace Users.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
 
-            var university = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == model.Name && obj.Director.Email == email);
+            var university = await _universityRepository.Where(obj => obj.Name == model.Name && obj.Director.Email == email)
+                .Include(obj => obj.Director)
+                .FirstOrDefaultAsync();
             if(university == null)
             {
                 response.Message = "Unable to do this action";
                 return response;
             }
 
-            university.Description = string.IsNullOrEmpty(model.Description) ? university.Description : model.Description;
-            university.Address = model.Address;
+            if (!string.IsNullOrEmpty(model.Description))
+                university.Description = model.Description;
+            if (model.Address != null)
+                university.Address = model.Address;
 
             await _universityRepository.UpdateAsync(university);
 
@@ -108,7 +135,9 @@ namespace Users.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
 
-            var checkIfCanSendRequest = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == universityName && obj.Director.Email == mainUserEmail);
+            var checkIfCanSendRequest = await _universityRepository.Where(obj => obj.Name == universityName && obj.Director.Email == mainUserEmail)
+                .Include(obj => obj.Director)
+                .FirstOrDefaultAsync();
             if (checkIfCanSendRequest == null)
             {
                 response.Message = "You cannot make such action";
@@ -116,10 +145,10 @@ namespace Users.DL.Services
             }
 
             var baseUser = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Username == studentUsername && obj.StudentId != null && 
-                obj.UniversityId != checkIfCanSendRequest.Id);
+                obj.UniversityId == null);
             if (baseUser == null)
             {
-                response.Message = "Such user doesn't exist";
+                response.Message = "Such user doesn't exist or already belongs to a university";
                 return response;
             }
 
@@ -154,17 +183,27 @@ namespace Users.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
 
-            var checkIfCanSendRequest = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == universityName && obj.Director.Email == mainUserEmail);
+            var checkIfCanSendRequest = await _universityRepository.Where(obj => obj.Name == universityName && obj.Director.Email == mainUserEmail)
+                .Include(obj => obj.Director)
+                .FirstOrDefaultAsync();
             if (checkIfCanSendRequest == null)
             {
                 response.Message = "You cannot make such action";
                 return response;
             }
 
-            var teacher = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Username == teacherUsername && obj.IsTeacher == true && obj.Teacher.IsVerified == true);
+            var teacher = await _baseUserRepository.Where(obj => obj.Username == teacherUsername && obj.IsTeacher == true && obj.Teacher.IsVerified == true)
+                .Include(obj => obj.Teacher)
+                .FirstOrDefaultAsync();
             if (teacher == null)
             {
-                response.Message = "Such user doesn't exist";
+                response.Message = "Such user doesn't exist or is not a verified teacher";
+                return response;
+            }
+
+            if (teacher.UniversityId != null)
+            {
+                response.Message = "Teacher already belongs to a university";
                 return response;
             }
 

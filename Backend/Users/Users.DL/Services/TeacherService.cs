@@ -45,7 +45,11 @@ namespace Users.DL.Services
             await _teacherRepository.AddAsync(teacher);
             user.TeacherId = teacher.Id;
             user.IsTeacher = true;
-            user.StudentId = null;
+            
+            if (user.StudentId != null)
+            {
+                user.StudentId = null;
+            }
 
             await _baseUserRepository.UpdateAsync(user);
             response.Success = true;
@@ -58,15 +62,22 @@ namespace Users.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
 
-            var user = await _baseUserRepository.SingleOrDefaultAsync(obj =>
-                obj.Email == email && obj.IsTeacher == true && obj.Teacher.IsVerified == false);
+            var user = await _baseUserRepository.Where(obj =>
+                obj.Email == email && obj.IsTeacher == true && obj.Teacher.IsVerified == false)
+                .Include(obj => obj.Teacher)
+                .FirstOrDefaultAsync();
             if (user == null)
             {
-                response.Message = "Such user doesn't exist";
+                response.Message = "Such user doesn't exist or is already verified";
                 return response;
             }
 
             var teacher = await _teacherRepository.SingleOrDefaultAsync(obj => obj.BaseUserId == user.Id);
+            if (teacher == null)
+            {
+                response.Message = "Teacher record not found";
+                return response;
+            }
 
             teacher.Degree = degree;
             teacher.IsVerified = true;
@@ -82,14 +93,33 @@ namespace Users.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
 
-            var university = await _universityRepository.Where(obj => obj.Name == universityName).Include(obj => obj.Members).FirstAsync();
-            var teacher = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == teacherEmail && obj.IsTeacher == true && obj.Teacher.IsVerified == true);
-            if (teacher == null || university == null)
-                return response;
-            
-            if (university.Members.SingleOrDefault(obj => obj.Id == teacher.Id) != null)
+            var university = await _universityRepository.Where(obj => obj.Name == universityName)
+                .Include(obj => obj.Members)
+                .FirstOrDefaultAsync();
+            if (university == null)
             {
-                response.Message = "You already teacher of this university";
+                response.Message = "Such university doesn't exist";
+                return response;
+            }
+
+            var teacher = await _baseUserRepository.Where(obj => obj.Email == teacherEmail && obj.IsTeacher == true && obj.Teacher.IsVerified == true)
+                .Include(obj => obj.Teacher)
+                .FirstOrDefaultAsync();
+            if (teacher == null)
+            {
+                response.Message = "Such user doesn't exist or is not a verified teacher";
+                return response;
+            }
+
+            if (teacher.UniversityId != null)
+            {
+                response.Message = "You already belong to a university";
+                return response;
+            }
+            
+            if (university.Members.Any(obj => obj.Id == teacher.Id))
+            {
+                response.Message = "You are already a teacher of this university";
                 return response;
             }
 

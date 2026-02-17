@@ -28,16 +28,8 @@ namespace Users.DL.Services
             if (baseUser == null)
                 return response;
 
-            if(baseUser.StudentId == null && baseUser.TeacherId == null)
-            {
-                response.Value.isTeacher = false;
-                response.Value.isStudent = false;
-            }
-            else
-            {
-                response.Value.isTeacher = baseUser.IsTeacher;
-                response.Value.isStudent = !baseUser.IsTeacher;
-            }
+            response.Value.isStudent = baseUser.StudentId != null;
+            response.Value.isTeacher = baseUser.IsTeacher;
 
             response.Success = true;
             response.Message = "You got user role info";

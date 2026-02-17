@@ -34,20 +34,41 @@ namespace Users.DL.Services
         {
             ResponseWithValue<ReadUniversityDto> response = new ResponseWithValue<ReadUniversityDto>();
 
+            if (string.IsNullOrWhiteSpace(model.Name))
+            {
+                response.Message = "University name cannot be empty";
+                return response;
+            }
+
+            var doesUniversityExist = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == model.Name);
+            if (doesUniversityExist != null)
+            {
+                response.Message = "Such university already exists";
+                return response;
+            }
+
             var director = await _userRepository.SingleOrDefaultAsync(obj => obj.Email == email);
             if(director == null)
             {
                 response.Message = "Such user doesn't exist";
                 return response;
             }
-            var university = _mapper.Map<University>(model);
-            university.DirectorId = director.Id;
-            var doesUniversityExist = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == model.Name);
-            if (doesUniversityExist != null)
+
+            if (director.UniversityId != null)
             {
-                response.Message = "Such university already exist";
+                response.Message = "You already belong to a university";
                 return response;
             }
+
+            var isAlreadyDirector = await _universityRepository.SingleOrDefaultAsync(obj => obj.DirectorId == director.Id);
+            if (isAlreadyDirector != null)
+            {
+                response.Message = "You are already a director of another university";
+                return response;
+            }
+
+            var university = _mapper.Map<University>(model);
+            university.DirectorId = director.Id;
             await _universityRepository.AddAsync(university);
 
             director.UniversityId = university.Id;
@@ -80,11 +101,13 @@ namespace Users.DL.Services
         {
             ResponseGetEnum<string> response = new ResponseGetEnum<string>();
 
-            var user = await _userRepository.SingleOrDefaultAsync(obj => obj.Email == userEmail && obj.UniversityMember.Name == universityName);
+            var user = await _userRepository.Where(obj => obj.Email == userEmail && obj.UniversityMember.Name == universityName)
+                .Include(obj => obj.UniversityMember)
+                .FirstOrDefaultAsync();
 
             if (user == null)
             {
-                response.Message = "Such user doesn't exist";
+                response.Message = "Such user doesn't exist or you are not a member of this university";
                 return response;
             }
 
@@ -108,11 +131,13 @@ namespace Users.DL.Services
         {
             ResponseGetEnum<string> response = new ResponseGetEnum<string>();
 
-            var user = await _userRepository.SingleOrDefaultAsync(obj => obj.Email == userEmail && obj.UniversityMember.Name == universityName);
+            var user = await _userRepository.Where(obj => obj.Email == userEmail && obj.UniversityMember.Name == universityName)
+                .Include(obj => obj.UniversityMember)
+                .FirstOrDefaultAsync();
 
             if(user == null)
             {
-                response.Message = "Such user doesn't exist";
+                response.Message = "Such user doesn't exist or you are not a member of this university";
                 return response;
             }
 

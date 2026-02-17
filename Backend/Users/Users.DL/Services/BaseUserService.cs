@@ -62,10 +62,14 @@ namespace Users.DL.Services
                 return response;
             }
 
-            user.FirstName = userInfo.FirstName ?? "";
-            user.LastName = userInfo.LastName ?? "";
-            user.PhoneNumber = userInfo.Phone ?? "";
-            user.Address = userInfo.Address ?? new Address();
+            if (userInfo.FirstName != null)
+                user.FirstName = userInfo.FirstName;
+            if (userInfo.LastName != null)
+                user.LastName = userInfo.LastName;
+            if (userInfo.Phone != null)
+                user.PhoneNumber = userInfo.Phone;
+            if (userInfo.Address != null)
+                user.Address = userInfo.Address;
 
             await _baseUserRepository.UpdateAsync(user);
 
@@ -81,7 +85,7 @@ namespace Users.DL.Services
 
             var user = await _baseUserRepository.Where(obj => obj.Email == email)
                 .Include(obj => obj.EntryRequests)
-                .ThenInclude(obj => obj.University).FirstAsync();
+                .ThenInclude(obj => obj.University).FirstOrDefaultAsync();
 
             if(user == null)
             {
@@ -100,7 +104,10 @@ namespace Users.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
 
-            var doesRequestExist = await _entryRequestRepository.SingleOrDefaultAsync(obj => obj.BaseUser.Email == email && obj.University.Name == universityName && obj.SentByUniversity == true);
+            var doesRequestExist = await _entryRequestRepository.Where(obj => obj.BaseUser.Email == email && obj.University.Name == universityName && obj.SentByUniversity == true)
+                .Include(obj => obj.BaseUser)
+                .Include(obj => obj.University)
+                .FirstOrDefaultAsync();
             
             if(doesRequestExist == null)
             {
@@ -110,12 +117,25 @@ namespace Users.DL.Services
             await _entryRequestRepository.DeleteAsync(doesRequestExist);
             
             var user = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == email);
+            if(user == null)
+            {
+                response.Message = "User not found";
+                return response;
+            }
 
-            var checkForAnotherRequest = await _entryRequestRepository.SingleOrDefaultAsync(obj => obj.BaseUserId == user.Id && obj.University.Name == universityName && obj.SentByUniversity == false);
+            if(user.UniversityId != null)
+            {
+                response.Message = "User already belongs to a university";
+                return response;
+            }
+
+            var checkForAnotherRequest = await _entryRequestRepository.Where(obj => obj.BaseUserId == user.Id && obj.University.Name == universityName && obj.SentByUniversity == false)
+                .Include(obj => obj.University)
+                .FirstOrDefaultAsync();
             if(checkForAnotherRequest != null)
                 await _entryRequestRepository.DeleteAsync(checkForAnotherRequest);
 
-            user!.UniversityId = doesRequestExist.UniversityId;
+            user.UniversityId = doesRequestExist.UniversityId;
 
             await _baseUserRepository.UpdateAsync(user);
 
@@ -129,7 +149,10 @@ namespace Users.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
 
-            var doesRequestExist = await _entryRequestRepository.SingleOrDefaultAsync(obj => obj.BaseUser.Email == email && obj.University.Name == universityName && obj.SentByUniversity == true);
+            var doesRequestExist = await _entryRequestRepository.Where(obj => obj.BaseUser.Email == email && obj.University.Name == universityName && obj.SentByUniversity == true)
+                .Include(obj => obj.BaseUser)
+                .Include(obj => obj.University)
+                .FirstOrDefaultAsync();
 
             if (doesRequestExist == null)
             {

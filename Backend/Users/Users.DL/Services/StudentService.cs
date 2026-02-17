@@ -38,8 +38,12 @@ namespace Users.DL.Services
 
             await _studentRepository.AddAsync(student);
             user.StudentId = student.Id;
-            user.TeacherId = null;
-            user.IsTeacher = false;
+            
+            if (user.IsTeacher)
+            {
+                user.TeacherId = null;
+                user.IsTeacher = false;
+            }
 
             await _baseUserRepository.UpdateAsync(user);
             response.Success = true;
@@ -53,20 +57,20 @@ namespace Users.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
 
-            var university = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == universityName && obj.IsOpened == false);
+            var university = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == universityName && obj.IsOpened == true);
             
             if (university == null)
             {
-                response.Message = "Such university doesn't exist";
+                response.Message = "Such university doesn't exist or is not open for requests";
                 return response;
             }
 
             var mainUser = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == mainUserEmail && obj.StudentId != null &&
-                 obj.UniversityId != university.Id);
+                 obj.UniversityId == null);
 
             if (mainUser == null)
             {
-                response.Message = "Invalid user";
+                response.Message = "Invalid user or user already belongs to a university";
                 return response;
             }
 
@@ -108,10 +112,10 @@ namespace Users.DL.Services
                 return response;
             }
             
-            var user = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == userEmail && obj.StudentId != null && obj.UniversityId != university.Id);
+            var user = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == userEmail && obj.StudentId != null && obj.UniversityId == null);
             if (user == null)
             {
-                response.Message = "Such user doesn't exist";
+                response.Message = "Such user doesn't exist or already belongs to a university";
                 return response;
             }
 
