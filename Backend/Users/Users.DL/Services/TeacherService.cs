@@ -104,6 +104,7 @@ namespace Users.DL.Services
 
             var teacher = await _baseUserRepository.Where(obj => obj.Email == teacherEmail && obj.IsTeacher == true && obj.Teacher.IsVerified == true)
                 .Include(obj => obj.Teacher)
+                .Include(obj => obj.Universities)
                 .FirstOrDefaultAsync();
             if (teacher == null)
             {
@@ -111,9 +112,9 @@ namespace Users.DL.Services
                 return response;
             }
 
-            if (teacher.UniversityId != null)
+            if (teacher.Universities.Any(u => u.Id == university.Id))
             {
-                response.Message = "You already belong to a university";
+                response.Message = "You already belong to this university";
                 return response;
             }
             

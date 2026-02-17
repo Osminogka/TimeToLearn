@@ -11,12 +11,14 @@ namespace Users.DL.Services
     {
         private readonly IBaseRepository<BaseUser> _baseUserRepository;
         private readonly IBaseRepository<EntryRequest> _entryRequestRepository;
+        private readonly IBaseRepository<University> _universityRepository;
         private readonly IMapper _mapper;
 
-        public BaseUserService(IBaseRepository<BaseUser> baseUserRepository,IBaseRepository<EntryRequest> entryRequestRepository,IMapper mapper)
+        public BaseUserService(IBaseRepository<BaseUser> baseUserRepository, IBaseRepository<EntryRequest> entryRequestRepository, IBaseRepository<University> universityRepository, IMapper mapper)
         {
             _baseUserRepository = baseUserRepository;
             _entryRequestRepository = entryRequestRepository;
+            _universityRepository = universityRepository;
             _mapper = mapper;
         }
 
@@ -93,7 +95,9 @@ namespace Users.DL.Services
                 return response;
             }
 
-            response.Enum = user.EntryRequests.Select(obj => obj.University.Name);
+            response.Enum = user.EntryRequests
+                .Where(er => er.SentByUniversity && !user.Universities.Any(u => u.Id == er.UniversityId))
+                .Select(obj => obj.University.Name);
             response.Success = true;
             response.Message = "Got invites of user";
 
@@ -116,16 +120,18 @@ namespace Users.DL.Services
             }
             await _entryRequestRepository.DeleteAsync(doesRequestExist);
             
-            var user = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == email);
+            var user = await _baseUserRepository.Where(obj => obj.Email == email)
+                .Include(obj => obj.Universities)
+                .FirstOrDefaultAsync();
             if(user == null)
             {
                 response.Message = "User not found";
                 return response;
             }
 
-            if(user.UniversityId != null)
+            if(user.Universities.Any(u => u.Id == doesRequestExist.UniversityId))
             {
-                response.Message = "User already belongs to a university";
+                response.Message = "User already belongs to this university";
                 return response;
             }
 
@@ -135,9 +141,13 @@ namespace Users.DL.Services
             if(checkForAnotherRequest != null)
                 await _entryRequestRepository.DeleteAsync(checkForAnotherRequest);
 
-            user.UniversityId = doesRequestExist.UniversityId;
-
-            await _baseUserRepository.UpdateAsync(user);
+            var university = await _universityRepository.SingleOrDefaultAsync(obj => obj.Id == doesRequestExist.UniversityId);
+            if (university != null)
+            {
+                university.Members ??= new List<BaseUser>();
+                university.Members.Add(user);
+                await _universityRepository.UpdateAsync(university);
+            }
 
             response.Success = true;
             response.Message = "Invite accepted";
@@ -163,6 +173,43 @@ namespace Users.DL.Services
 
             response.Success = true;
             response.Message = "Invite rejected";
+
+            return response;
+        }
+
+        public async Task<ResponseMessage> LeaveUniversityAsync(string universityName, string email)
+        {
+            ResponseMessage response = new ResponseMessage();
+
+            var user = await _baseUserRepository.Where(obj => obj.Email == email)
+                .Include(obj => obj.Universities)
+                .Include(obj => obj.UniversityDirector)
+                .FirstOrDefaultAsync();
+
+            if (user == null)
+            {
+                response.Message = "User not found";
+                return response;
+            }
+
+            var university = user.Universities.FirstOrDefault(u => u.Name == universityName);
+            if (university == null)
+            {
+                response.Message = "You are not a member of this university";
+                return response;
+            }
+
+            if (user.UniversityDirector != null && user.UniversityDirector.Id == university.Id)
+            {
+                response.Message = "You cannot leave a university you are directing. Transfer directorship first";
+                return response;
+            }
+
+            user.Universities.Remove(university);
+            await _baseUserRepository.UpdateAsync(user);
+
+            response.Success = true;
+            response.Message = "You have left the university";
 
             return response;
         }

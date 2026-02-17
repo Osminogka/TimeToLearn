@@ -33,9 +33,7 @@ namespace Users.DAL.Models
 
         public long? StudentId { get; set; }
 
-        public long? UniversityId { get; set; }
-
-        public University? UniversityMember { get; set; }
+        public ICollection<University> Universities { get; set; }
 
         public University? UniversityDirector { get; set; }
 

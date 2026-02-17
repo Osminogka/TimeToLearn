@@ -55,8 +55,7 @@ namespace Users.DAL.Context
 
             modelBuilder.Entity<University>()
                 .HasMany(e => e.Members)
-                .WithOne(e => e.UniversityMember)
-                .HasForeignKey(e => e.UniversityId);
+                .WithMany(e => e.Universities);
 
             modelBuilder.Entity<University>()
                 .HasMany(e => e.EntryRequests)

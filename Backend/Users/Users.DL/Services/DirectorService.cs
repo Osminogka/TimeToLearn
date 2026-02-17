@@ -51,22 +51,24 @@ namespace Users.DL.Services
             if (checkForAnotherRequest != null)
                 await _entryRequestRepository.DeleteAsync(checkForAnotherRequest);
 
-            var user = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Username == model.Username);
+            var user = await _baseUserRepository.Where(obj => obj.Username == model.Username)
+                .Include(obj => obj.Universities)
+                .FirstOrDefaultAsync();
             if(user == null)
             {
                 response.Message = "User not found";
                 return response;
             }
 
-            if(user.UniversityId != null)
+            if(user.Universities.Any(u => u.Id == university.Id))
             {
-                response.Message = "User already belongs to a university";
+                response.Message = "User already belongs to this university";
                 return response;
             }
 
-            user.UniversityId = university.Id;
-
-            await _baseUserRepository.UpdateAsync(user);
+            university.Members ??= new List<BaseUser>();
+            university.Members.Add(user);
+            await _universityRepository.UpdateAsync(university);
 
             response.Success = true;
             response.Message = "User entry request accepted";
@@ -144,11 +146,12 @@ namespace Users.DL.Services
                 return response;
             }
 
-            var baseUser = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Username == studentUsername && obj.StudentId != null && 
-                obj.UniversityId == null);
-            if (baseUser == null)
+            var baseUser = await _baseUserRepository.Where(obj => obj.Username == studentUsername && obj.StudentId != null)
+                .Include(obj => obj.Universities)
+                .FirstOrDefaultAsync();
+            if (baseUser == null || baseUser.Universities.Any(u => u.Id == checkIfCanSendRequest.Id))
             {
-                response.Message = "Such user doesn't exist or already belongs to a university";
+                response.Message = "Such user doesn't exist or already belongs to this university";
                 return response;
             }
 
@@ -201,9 +204,9 @@ namespace Users.DL.Services
                 return response;
             }
 
-            if (teacher.UniversityId != null)
+            if (teacher.Universities.Any(u => u.Id == checkIfCanSendRequest.Id))
             {
-                response.Message = "Teacher already belongs to a university";
+                response.Message = "Teacher already belongs to this university";
                 return response;
             }
 

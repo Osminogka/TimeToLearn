@@ -54,12 +54,6 @@ namespace Users.DL.Services
                 return response;
             }
 
-            if (director.UniversityId != null)
-            {
-                response.Message = "You already belong to a university";
-                return response;
-            }
-
             var isAlreadyDirector = await _universityRepository.SingleOrDefaultAsync(obj => obj.DirectorId == director.Id);
             if (isAlreadyDirector != null)
             {
@@ -69,10 +63,8 @@ namespace Users.DL.Services
 
             var university = _mapper.Map<University>(model);
             university.DirectorId = director.Id;
+            university.Members = new List<BaseUser> { director };
             await _universityRepository.AddAsync(university);
-
-            director.UniversityId = university.Id;
-            await _userRepository.UpdateAsync(director);
 
             response.Value = _mapper.Map<ReadUniversityDto>(university);
             response.Success = true;
@@ -101,13 +93,19 @@ namespace Users.DL.Services
         {
             ResponseGetEnum<string> response = new ResponseGetEnum<string>();
 
-            var user = await _userRepository.Where(obj => obj.Email == userEmail && obj.UniversityMember.Name == universityName)
-                .Include(obj => obj.UniversityMember)
+            var user = await _userRepository.Where(obj => obj.Email == userEmail)
+                .Include(obj => obj.Universities)
                 .FirstOrDefaultAsync();
 
             if (user == null)
             {
-                response.Message = "Such user doesn't exist or you are not a member of this university";
+                response.Message = "Such user doesn't exist";
+                return response;
+            }
+
+            if (!user.Universities.Any(u => u.Name == universityName))
+            {
+                response.Message = "You are not a member of this university";
                 return response;
             }
 
@@ -131,13 +129,19 @@ namespace Users.DL.Services
         {
             ResponseGetEnum<string> response = new ResponseGetEnum<string>();
 
-            var user = await _userRepository.Where(obj => obj.Email == userEmail && obj.UniversityMember.Name == universityName)
-                .Include(obj => obj.UniversityMember)
+            var user = await _userRepository.Where(obj => obj.Email == userEmail)
+                .Include(obj => obj.Universities)
                 .FirstOrDefaultAsync();
 
             if(user == null)
             {
-                response.Message = "Such user doesn't exist or you are not a member of this university";
+                response.Message = "Such user doesn't exist";
+                return response;
+            }
+
+            if (!user.Universities.Any(u => u.Name == universityName))
+            {
+                response.Message = "You are not a member of this university";
                 return response;
             }
 

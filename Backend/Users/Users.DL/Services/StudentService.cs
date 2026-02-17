@@ -65,12 +65,19 @@ namespace Users.DL.Services
                 return response;
             }
 
-            var mainUser = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == mainUserEmail && obj.StudentId != null &&
-                 obj.UniversityId == null);
+            var mainUser = await _baseUserRepository.Where(obj => obj.Email == mainUserEmail && obj.StudentId != null)
+                .Include(obj => obj.Universities)
+                .FirstOrDefaultAsync();
 
             if (mainUser == null)
             {
-                response.Message = "Invalid user or user already belongs to a university";
+                response.Message = "Invalid user";
+                return response;
+            }
+
+            if (mainUser.Universities.Any(u => u.Id == university.Id))
+            {
+                response.Message = "You already belong to this university";
                 return response;
             }
 
@@ -112,10 +119,18 @@ namespace Users.DL.Services
                 return response;
             }
             
-            var user = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == userEmail && obj.StudentId != null && obj.UniversityId == null);
+            var user = await _baseUserRepository.Where(obj => obj.Email == userEmail && obj.StudentId != null)
+                .Include(obj => obj.Universities)
+                .FirstOrDefaultAsync();
             if (user == null)
             {
-                response.Message = "Such user doesn't exist or already belongs to a university";
+                response.Message = "Such user doesn't exist";
+                return response;
+            }
+
+            if (user.Universities.Any(u => u.Id == university.Id))
+            {
+                response.Message = "You already belong to this university";
                 return response;
             }
 
@@ -129,8 +144,9 @@ namespace Users.DL.Services
             if (entryRequestCheck.Count > 0)
                 await _entryRequestRepository.DeleteRangeAsync(entryRequestCheck);
 
-            user.UniversityId = university.Id;
-            await _baseUserRepository.UpdateAsync(user);
+            university.Members ??= new List<BaseUser>();
+            university.Members.Add(user);
+            await _universityRepository.UpdateAsync(university);
 
             response.Success = true;
             response.Message = "You entered this university";

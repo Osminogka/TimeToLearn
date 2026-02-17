@@ -11,5 +11,6 @@ namespace Users.DL.Services
         Task<ResponseGetEnum<string>> GetInvitesAsync(string email);
         Task<ResponseMessage> AcceptInviteAsync(string universityName, string email);
         Task<ResponseMessage> RejectInviteAsync(string universityName, string email);
+        Task<ResponseMessage> LeaveUniversityAsync(string universityName, string email);
     }
 }
