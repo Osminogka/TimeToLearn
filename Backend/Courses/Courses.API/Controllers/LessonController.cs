@@ -1,10 +1,12 @@
 using Courses.DAL.Dtos;
 using Courses.DL.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Courses.API.Controllers
 {
     [Route("api/c/lessons")]
+    [Authorize]
     public class LessonController : BaseController
     {
         private readonly ILessonService _lessonService;
@@ -17,6 +19,7 @@ namespace Courses.API.Controllers
         }
 
         [HttpGet("course/{courseId}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetCourseLessonsAsync(long courseId)
         {
             try
@@ -34,6 +37,7 @@ namespace Courses.API.Controllers
         }
 
         [HttpGet("lesson/{lessonId}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetLessonAsync(long lessonId)
         {
             try

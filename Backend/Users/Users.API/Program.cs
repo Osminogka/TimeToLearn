@@ -34,7 +34,8 @@ builder.Services.AddTransient<IBaseUserService, BaseUserService>();
 builder.Services.AddTransient<IUniversityService, UniversityService>();
 builder.Services.AddTransient<IStudentService, StudentService>();
 builder.Services.AddTransient<ITeacherService, TeacherService>();
-builder.Services.AddTransient<IBaseUserService, BaseUserService>();
+builder.Services.AddTransient<IDirectorService, DirectorService>();
+builder.Services.AddTransient<IGeneralInfoService, GeneralUserInfoService>();
 builder.Services.AddSingleton<IEventProcessor, EventProcessor>();
 
 //Background tasks

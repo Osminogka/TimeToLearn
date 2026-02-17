@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Users.DAL.SideModels;
 using Users.DL.Services;
 
 namespace Users.API.Controllers
 {
     [Route("api/u/user/")]
+    [Authorize]
     public class BaseUserController : BaseController
     {
         private readonly IBaseUserService _baseUserService;

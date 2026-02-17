@@ -1,10 +1,12 @@
 using Courses.DAL.Dtos;
 using Courses.DL.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Courses.API.Controllers
 {
     [Route("api/c/courses")]
+    [Authorize]
     public class CourseController : BaseController
     {
         private readonly ICourseService _courseService;
@@ -17,6 +19,7 @@ namespace Courses.API.Controllers
         }
 
         [HttpGet("{universityName}/{page}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetUniversityCoursesAsync(string universityName, int page)
         {
             try
@@ -34,6 +37,7 @@ namespace Courses.API.Controllers
         }
 
         [HttpGet("course/{courseId}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetCourseAsync(long courseId)
         {
             try

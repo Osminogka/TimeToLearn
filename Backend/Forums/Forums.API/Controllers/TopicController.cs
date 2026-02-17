@@ -1,11 +1,13 @@
 ﻿using Forums.DAL.Dtos;
 using Forums.DAL.Models;
 using Forums.DL.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Forums.API.Controllers
 {
     [Route("api/f/topics")]
+    [Authorize]
     public class TopicController : BaseController
     {
         private readonly ITopicService _topicService;
@@ -18,6 +20,7 @@ namespace Forums.API.Controllers
         }
 
         [HttpGet("{universityName}/{page}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetUniversityTopicsAsync(string universityName, int page)
         {
             try

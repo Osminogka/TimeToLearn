@@ -22,12 +22,17 @@ namespace Users.API.Grpc
             GrpcTopicInfoModel response = new GrpcTopicInfoModel();
             response.IsAllowed = false;
 
-            BaseUser? user = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == request.Useremail);
+            BaseUser? user = await _baseUserRepository.Where(obj => obj.Email == request.Useremail)
+                .Include(obj => obj.Universities)
+                .FirstOrDefaultAsync();
             if (user == null)
                 return response;
 
-            University? university = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == request.UniversityName && obj.Members.SingleOrDefault(member => member.Id == user.Id) != null);
-            if (university == null)
+            University? university = await _universityRepository.Where(obj => obj.Name == request.UniversityName)
+                .Include(obj => obj.Members)
+                .FirstOrDefaultAsync();
+            
+            if (university == null || !university.Members.Any(member => member.Id == user.Id))
                 return response;
 
             response.UserId = user.Id;

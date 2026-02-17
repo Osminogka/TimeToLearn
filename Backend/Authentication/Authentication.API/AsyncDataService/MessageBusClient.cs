@@ -41,34 +41,44 @@ namespace Authentication.API.AsyncDataService
         {
             var message = JsonSerializer.Serialize(baseUserPublishDto);
 
-            if (_connection.IsOpen)
+            if (_connection != null && _connection.IsOpen)
             {
                 Console.WriteLine("--> RabbitMQ Connection Open, sending message...");
                 SendMessage(message);
             }
             else
             {
-                Console.WriteLine("--> RabbitMQ connectionis closed, not sending");
+                Console.WriteLine("--> RabbitMQ connection is closed, not sending");
             }
         }
 
         private void SendMessage(string message)
         {
-            var body = Encoding.UTF8.GetBytes(message);
+            try
+            {
+                var body = Encoding.UTF8.GetBytes(message);
 
-            _channel.BasicPublish(exchange: "trigger",
-                            routingKey: "",
-                            basicProperties: null,
-                            body: body);
-            Console.WriteLine($"--> We have sent {message}");
+                _channel.BasicPublish(exchange: "trigger",
+                                routingKey: "",
+                                basicProperties: null,
+                                body: body);
+                Console.WriteLine($"--> We have sent {message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"--> Could not send message: {ex.Message}");
+            }
         }
 
         public void Dispose()
         {
             Console.WriteLine("MessageBus Disposed");
-            if (_channel.IsOpen)
+            if (_channel != null && _channel.IsOpen)
             {
                 _channel.Close();
+            }
+            if (_connection != null && _connection.IsOpen)
+            {
                 _connection.Close();
             }
         }

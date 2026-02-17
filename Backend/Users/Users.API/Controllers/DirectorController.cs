@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Users.DAL.SideModels;
 using Users.DL.Services;
@@ -6,6 +7,7 @@ using Users.DL.Services;
 namespace Users.API.Controllers
 {
     [Route("api/u/[controller]/")]
+    [Authorize]
     public class DirectorController : BaseController
     {
         private readonly IDirectorService _directorService;

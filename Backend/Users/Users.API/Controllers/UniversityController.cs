@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Users.DAL.Dtos;
 using Users.DL.Services;
 
@@ -17,6 +18,7 @@ namespace Users.API.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAllUniversitiesAsync()
         {
             try
@@ -34,6 +36,7 @@ namespace Users.API.Controllers
         }
 
         [HttpGet("{name}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetUniversityByNameAsync(string name)
         {
             try
@@ -51,6 +54,7 @@ namespace Users.API.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         public async Task<IActionResult> CreateUniversityAsync([FromBody] CreateUniversityDto model)
         {
             try

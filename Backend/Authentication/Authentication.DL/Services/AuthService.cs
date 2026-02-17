@@ -39,8 +39,6 @@ namespace Authentication.DL.Services
                 return response;
             }
 
-            await _userRepository.SetUserRoleAsync(user, Roles.Student);
-
             response.Message = "Invalid password";
             return response;
         }
@@ -49,6 +47,12 @@ namespace Authentication.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
             response.Message = "Couldn't create user";
+
+            if (string.IsNullOrWhiteSpace(model.Name) || string.IsNullOrWhiteSpace(model.Email))
+            {
+                response.Message = "Name and email cannot be empty";
+                return response;
+            }
 
             if(model.Name.Length > 50 || model.Email.Length > 50)
             {

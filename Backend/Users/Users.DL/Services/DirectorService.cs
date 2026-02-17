@@ -197,6 +197,7 @@ namespace Users.DL.Services
 
             var teacher = await _baseUserRepository.Where(obj => obj.Username == teacherUsername && obj.IsTeacher == true && obj.Teacher.IsVerified == true)
                 .Include(obj => obj.Teacher)
+                .Include(obj => obj.Universities)
                 .FirstOrDefaultAsync();
             if (teacher == null)
             {

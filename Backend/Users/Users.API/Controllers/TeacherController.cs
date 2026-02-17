@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Users.DL.Services;
 
 namespace Users.API.Controllers;
 
 [Route("api/u/[controller]")]
+[Authorize]
 public class TeacherController : BaseController
 {
     private readonly ITeacherService _teacherService;
