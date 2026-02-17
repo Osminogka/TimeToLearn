@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Users.API", "Users.API\Users.API.csproj", "{810DE138-CF08-4EB6-9414-1975389F58A6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Users.API", "Core.API\Users.API.csproj", "{810DE138-CF08-4EB6-9414-1975389F58A6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Users.DAL", "Users.DAL\Users.DAL.csproj", "{B7EB1311-6C45-43E4-8BA1-D5E09363851D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Users.DAL", "Core.DAL\Users.DAL.csproj", "{B7EB1311-6C45-43E4-8BA1-D5E09363851D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Users.DL", "Users.DL\Users.DL.csproj", "{A55DF6CF-0B03-400A-B2D6-F9BF46A143D4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Users.DL", "Core.DL\Users.DL.csproj", "{A55DF6CF-0B03-400A-B2D6-F9BF46A143D4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
