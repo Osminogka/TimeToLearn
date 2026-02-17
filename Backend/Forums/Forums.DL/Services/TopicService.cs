@@ -30,7 +30,13 @@ namespace Forums.DL.Services
         {
             ResponseArray<ReadTopicDto> response = new ResponseArray<ReadTopicDto>();
             response.Message = "You don't have such rights";
-            const int topicNumbers = 10; 
+            const int topicNumbers = 10;
+
+            if (page < 0)
+            {
+                response.Message = "Invalid page number";
+                return response;
+            }
 
             var reply = await _grpcClient.GetUserInfoForTopic(universityName, userEmail);
             if (!reply.IsAllowed)
@@ -50,6 +56,18 @@ namespace Forums.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
             response.Message = "You don't have such rights";
+
+            if (string.IsNullOrWhiteSpace(topicInfo.TopicTitle))
+            {
+                response.Message = "Topic title cannot be empty";
+                return response;
+            }
+
+            if (string.IsNullOrWhiteSpace(topicInfo.TopicContent))
+            {
+                response.Message = "Topic content cannot be empty";
+                return response;
+            }
 
             var reply = await _grpcClient.GetUserInfoForTopic(topicInfo.UniversityName, creatorEmail);
             if (!reply.IsAllowed)
@@ -83,6 +101,11 @@ namespace Forums.DL.Services
                 return response;
             }
             var universityName = await _grpcClient.GetUniversityName(topic.UniversityId);
+            if (string.IsNullOrEmpty(universityName))
+            {
+                response.Message = "University not found";
+                return response;
+            }
 
             var reply = await _grpcClient.GetUserInfoForTopic(universityName, creatorEmail);
             if (!reply.IsAllowed)
@@ -93,7 +116,8 @@ namespace Forums.DL.Services
             if(isAlreadyLiked != null)
             {
                 await _likeRepository.DeleteAsync(isAlreadyLiked);
-                topic.LikesOverall--;
+                if (topic.LikesOverall > 0)
+                    topic.LikesOverall--;
                 await _topicRepository.UpdateAsync(topic);
                 response.Success = true;
                 response.Message = "You removed your like";
@@ -105,7 +129,8 @@ namespace Forums.DL.Services
             if(isDisliked != null)
             {
                 await _dislikeRepository.DeleteAsync(isDisliked);
-                topic.DislikesOverall--;
+                if (topic.DislikesOverall > 0)
+                    topic.DislikesOverall--;
             }
 
             Like like = new Like()
@@ -137,6 +162,11 @@ namespace Forums.DL.Services
                 return response;
             }
             var universityName = await _grpcClient.GetUniversityName(topic.UniversityId);
+            if (string.IsNullOrEmpty(universityName))
+            {
+                response.Message = "University not found";
+                return response;
+            }
 
             var reply = await _grpcClient.GetUserInfoForTopic(universityName, creatorEmail);
             if (!reply.IsAllowed)
@@ -147,7 +177,8 @@ namespace Forums.DL.Services
             if (isAlreadyDisliked != null)
             {
                 await _dislikeRepository.DeleteAsync(isAlreadyDisliked);
-                topic.DislikesOverall--;
+                if (topic.DislikesOverall > 0)
+                    topic.DislikesOverall--;
                 await _topicRepository.UpdateAsync(topic);
                 response.Success = true;
                 response.Message = "You removed your dislike";
@@ -159,7 +190,8 @@ namespace Forums.DL.Services
             if(isLiked != null)
             {
                 await _likeRepository.DeleteAsync(isLiked);
-                topic.LikesOverall--;
+                if (topic.LikesOverall > 0)
+                    topic.LikesOverall--;
             }
 
             Dislike dislike = new Dislike()
@@ -174,7 +206,7 @@ namespace Forums.DL.Services
             await _topicRepository.UpdateAsync(topic);
 
             response.Success = true;
-            response.Message = "You liked the topic";
+            response.Message = "You disliked the topic";
 
             return response;
         }

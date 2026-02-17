@@ -31,6 +31,12 @@ namespace Forums.DL.Services
             ResponseArray<ReadCommentDto> response = new ResponseArray<ReadCommentDto>();
             response.Message = "Wrong request";
 
+            if (page < 0)
+            {
+                response.Message = "Invalid page number";
+                return response;
+            }
+
             Record? record = isTopic ?
                 await _topicRepository.SingleOrDefaultAsync(obj => obj.Id == recordId) :
                 await _commentRepository.SingleOrDefaultAsync(obj => obj.Id == recordId);
@@ -40,6 +46,11 @@ namespace Forums.DL.Services
             long universityId = record.UniversityId;
 
             var universityName = await _grpcClient.GetUniversityName(universityId);
+            if (string.IsNullOrEmpty(universityName))
+            {
+                response.Message = "University not found";
+                return response;
+            }
             var reply = await _grpcClient.GetUserInfoForTopic(universityName, userEmail);
             if (!reply.IsAllowed)
             {
@@ -77,6 +88,12 @@ namespace Forums.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
             response.Message = "You don't have such rights";
+
+            if (string.IsNullOrWhiteSpace(createCommentDto.CommentContent))
+            {
+                response.Message = "Comment content cannot be empty";
+                return response;
+            }
 
             var reply = await _grpcClient.GetUserInfoForTopic(createCommentDto.UniversityName, creatorEmail);
             if (!reply.IsAllowed)
@@ -123,6 +140,11 @@ namespace Forums.DL.Services
             }
 
             var universityName = await _grpcClient.GetUniversityName(comment.UniversityId);
+            if (string.IsNullOrEmpty(universityName))
+            {
+                response.Message = "University not found";
+                return response;
+            }
 
             var reply = await _grpcClient.GetUserInfoForTopic(universityName, userEmail);
             if (!reply.IsAllowed)
@@ -155,7 +177,7 @@ namespace Forums.DL.Services
             await _likeRepository.AddAsync(like);
 
             response.Success = true;
-            response.Message = "You liked the topic";
+            response.Message = "You liked the comment";
 
             return response;
         }
@@ -173,6 +195,11 @@ namespace Forums.DL.Services
             }
 
             var universityName = await _grpcClient.GetUniversityName(comment.UniversityId);
+            if (string.IsNullOrEmpty(universityName))
+            {
+                response.Message = "University not found";
+                return response;
+            }
 
             var reply = await _grpcClient.GetUserInfoForTopic(universityName, userEmail);
             if (!reply.IsAllowed)
@@ -184,7 +211,7 @@ namespace Forums.DL.Services
             {
                 await _dislikeRepository.DeleteAsync(isAlreadyDisliked);
                 response.Success = true;
-                response.Message = "You removed your like";
+                response.Message = "You removed your dislike";
                 return response;
             }
 
@@ -205,7 +232,7 @@ namespace Forums.DL.Services
             await _dislikeRepository.AddAsync(dislike);
 
             response.Success = true;
-            response.Message = "You liked the topic";
+            response.Message = "You disliked the comment";
 
             return response;
         }
