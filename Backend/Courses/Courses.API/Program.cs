@@ -1,13 +1,65 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Courses.DAL.Context;
+using System.Text;
+using Courses.DAL.Models;
+using Courses.DL.Repositories;
+using Courses.DL.Grpc;
+using Courses.DL.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
+builder.Services.AddScoped<IUserInfoClient, UserInfoClient>();
+
+builder.Services.AddTransient<IBaseRepository<Course>, BaseRepository<Course>>();
+builder.Services.AddTransient<IBaseRepository<Lesson>, BaseRepository<Lesson>>();
+
+builder.Services.AddTransient<IMarkdownService, MarkdownService>();
+builder.Services.AddTransient<ICourseService, CourseService>();
+builder.Services.AddTransient<ILessonService, LessonService>();
+
+
+var connectionString = builder.Configuration.GetConnectionString("DataConnectionString")
+                    ?? throw new InvalidOperationException("Connection string 'DataConnectionString' not found.");
+
+builder.Services.AddDbContext<DataContext>(options => options.UseSqlServer(connectionString
+        , b => b.MigrationsAssembly("Courses.API")));
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, opts =>
+    {
+        opts.SaveToken = true;
+        opts.TokenValidationParameters = new TokenValidationParameters
+        {
+            IssuerSigningKey = new SymmetricSecurityKey
+            (Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
+            ValidateIssuerSigningKey = true,
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+builder.Services.AddControllers();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -16,29 +68,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+app.UseRouting();
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.UseDefaultFiles();
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

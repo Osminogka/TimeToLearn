@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+option csharp_namespace = "UserService";
+
+service GrpcUsers {
+    rpc GetInfoForTopic (GetInfoRequest) returns (GrpcTopicInfoModel);
+    rpc GetUniversityName (UniversityId) returns (UniversityName);
+    rpc GetUserName (UserId) returns (UserName);
+}
+
+message GetInfoRequest {
+    string universityName = 1;
+    string useremail = 2;
+}
+
+message GrpcTopicInfoModel {
+    int64 universityId = 1;
+    int64 userId = 2;
+    bool isAllowed = 3;
+}
+
+message UniversityName {
+    string universityName = 1;
+}
+
+message UniversityId {
+    int64 universityId = 1;
+}
+
+message UserName{
+    string username = 1;
+}
+
+message UserId{
+    int64 userId = 1;
+}
