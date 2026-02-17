@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
-namespace Users.API.Controllers
+namespace Core.API.Controllers
 {
     [ApiController]
     [Authorize]

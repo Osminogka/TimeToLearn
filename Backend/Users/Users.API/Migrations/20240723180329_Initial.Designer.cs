@@ -5,11 +5,11 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Users.DAL.Context;
+using Core.DAL.Context;
 
 #nullable disable
 
-namespace Users.API.Migrations
+namespace Core.API.Migrations
 {
     [DbContext(typeof(DataContext))]
     [Migration("20240723180329_Initial")]
@@ -25,7 +25,7 @@ namespace Users.API.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("Users.DAL.Models.BaseUser", b =>
+            modelBuilder.Entity("Core.DAL.Models.BaseUser", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -79,7 +79,7 @@ namespace Users.API.Migrations
                     b.ToTable("BaseUsers");
                 });
 
-            modelBuilder.Entity("Users.DAL.Models.EntryRequest", b =>
+            modelBuilder.Entity("Core.DAL.Models.EntryRequest", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -105,7 +105,7 @@ namespace Users.API.Migrations
                     b.ToTable("EntryRequests");
                 });
 
-            modelBuilder.Entity("Users.DAL.Models.Student", b =>
+            modelBuilder.Entity("Core.DAL.Models.Student", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -124,7 +124,7 @@ namespace Users.API.Migrations
                     b.ToTable("Students");
                 });
 
-            modelBuilder.Entity("Users.DAL.Models.Teacher", b =>
+            modelBuilder.Entity("Core.DAL.Models.Teacher", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -150,7 +150,7 @@ namespace Users.API.Migrations
                     b.ToTable("Teachers");
                 });
 
-            modelBuilder.Entity("Users.DAL.Models.University", b =>
+            modelBuilder.Entity("Core.DAL.Models.University", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -182,13 +182,13 @@ namespace Users.API.Migrations
                     b.ToTable("Universities");
                 });
 
-            modelBuilder.Entity("Users.DAL.Models.BaseUser", b =>
+            modelBuilder.Entity("Core.DAL.Models.BaseUser", b =>
                 {
-                    b.HasOne("Users.DAL.Models.University", "UniversityMember")
+                    b.HasOne("Core.DAL.Models.University", "UniversityMember")
                         .WithMany("Members")
                         .HasForeignKey("UniversityId");
 
-                    b.OwnsOne("Users.DAL.Models.Address", "Address", b1 =>
+                    b.OwnsOne("Core.DAL.Models.Address", "Address", b1 =>
                         {
                             b1.Property<long>("BaseUserId")
                                 .HasColumnType("bigint");
@@ -219,15 +219,15 @@ namespace Users.API.Migrations
                     b.Navigation("UniversityMember");
                 });
 
-            modelBuilder.Entity("Users.DAL.Models.EntryRequest", b =>
+            modelBuilder.Entity("Core.DAL.Models.EntryRequest", b =>
                 {
-                    b.HasOne("Users.DAL.Models.BaseUser", "BaseUser")
+                    b.HasOne("Core.DAL.Models.BaseUser", "BaseUser")
                         .WithMany("EntryRequests")
                         .HasForeignKey("BaseUserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Users.DAL.Models.University", "University")
+                    b.HasOne("Core.DAL.Models.University", "University")
                         .WithMany("EntryRequests")
                         .HasForeignKey("UniversityId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -238,37 +238,37 @@ namespace Users.API.Migrations
                     b.Navigation("University");
                 });
 
-            modelBuilder.Entity("Users.DAL.Models.Student", b =>
+            modelBuilder.Entity("Core.DAL.Models.Student", b =>
                 {
-                    b.HasOne("Users.DAL.Models.BaseUser", "BaseUser")
+                    b.HasOne("Core.DAL.Models.BaseUser", "BaseUser")
                         .WithOne("Student")
-                        .HasForeignKey("Users.DAL.Models.Student", "BaseUserId")
+                        .HasForeignKey("Core.DAL.Models.Student", "BaseUserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("BaseUser");
                 });
 
-            modelBuilder.Entity("Users.DAL.Models.Teacher", b =>
+            modelBuilder.Entity("Core.DAL.Models.Teacher", b =>
                 {
-                    b.HasOne("Users.DAL.Models.BaseUser", "BaseUser")
+                    b.HasOne("Core.DAL.Models.BaseUser", "BaseUser")
                         .WithOne("Teacher")
-                        .HasForeignKey("Users.DAL.Models.Teacher", "BaseUserId")
+                        .HasForeignKey("Core.DAL.Models.Teacher", "BaseUserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("BaseUser");
                 });
 
-            modelBuilder.Entity("Users.DAL.Models.University", b =>
+            modelBuilder.Entity("Core.DAL.Models.University", b =>
                 {
-                    b.HasOne("Users.DAL.Models.BaseUser", "Director")
+                    b.HasOne("Core.DAL.Models.BaseUser", "Director")
                         .WithOne("UniversityDirector")
-                        .HasForeignKey("Users.DAL.Models.University", "DirectorId")
+                        .HasForeignKey("Core.DAL.Models.University", "DirectorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.OwnsOne("Users.DAL.Models.Address", "Address", b1 =>
+                    b.OwnsOne("Core.DAL.Models.Address", "Address", b1 =>
                         {
                             b1.Property<long>("UniversityId")
                                 .HasColumnType("bigint");
@@ -299,7 +299,7 @@ namespace Users.API.Migrations
                     b.Navigation("Director");
                 });
 
-            modelBuilder.Entity("Users.DAL.Models.BaseUser", b =>
+            modelBuilder.Entity("Core.DAL.Models.BaseUser", b =>
                 {
                     b.Navigation("EntryRequests");
 
@@ -310,7 +310,7 @@ namespace Users.API.Migrations
                     b.Navigation("UniversityDirector");
                 });
 
-            modelBuilder.Entity("Users.DAL.Models.University", b =>
+            modelBuilder.Entity("Core.DAL.Models.University", b =>
                 {
                     b.Navigation("EntryRequests");
 

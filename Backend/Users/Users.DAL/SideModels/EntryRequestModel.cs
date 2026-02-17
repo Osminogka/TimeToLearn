@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Users.DAL.SideModels;
+namespace Core.DAL.SideModels;
 
 public class EntryRequestModel
 {

@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Users.DAL.SideModels;
+using Core.DAL.SideModels;
 
-namespace Users.DL.Services
+namespace Core.DL.Services
 {
     public interface IGeneralInfoService
     {

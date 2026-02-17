@@ -19,9 +19,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Users.API\Users.API.csproj" />
-    <ProjectReference Include="..\Users.DAL\Users.DAL.csproj" />
-    <ProjectReference Include="..\Users.DL\Users.DL.csproj" />
+    <ProjectReference Include="..\Users.API\Core.API.csproj" />
+    <ProjectReference Include="..\Users.DAL\Core.DAL.csproj" />
+    <ProjectReference Include="..\Users.DL\Core.DL.csproj" />
   </ItemGroup>
 
   <ItemGroup>

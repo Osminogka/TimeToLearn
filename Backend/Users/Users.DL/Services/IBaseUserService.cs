@@ -1,7 +1,7 @@
-﻿using Users.DAL.Dtos;
-using Users.DAL.SideModels;
+﻿using Core.DAL.Dtos;
+using Core.DAL.SideModels;
 
-namespace Users.DL.Services
+namespace Core.DL.Services
 {
     public interface IBaseUserService
     {

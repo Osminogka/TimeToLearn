@@ -4,10 +4,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Users.DAL.Context;
-using Users.DAL.Models;
+using Core.DAL.Context;
+using Core.DAL.Models;
 
-namespace Users.DL.Repositories
+namespace Core.DL.Repositories
 {
     public class BaseRepository<T> : IBaseRepository<T> where T : BaseEntity
     {

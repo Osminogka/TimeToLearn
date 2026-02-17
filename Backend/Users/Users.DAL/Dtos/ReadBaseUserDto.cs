@@ -4,9 +4,9 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Users.DAL.Models;
+using Core.DAL.Models;
 
-namespace Users.DAL.Dtos
+namespace Core.DAL.Dtos
 {
     public class ReadBaseUserDto
     {

@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Users.DAL.Dtos;
-using Users.DAL.Models;
-using Users.DAL.SideModels;
+using Core.DAL.Dtos;
+using Core.DAL.Models;
+using Core.DAL.SideModels;
 
-namespace Users.DL.Services
+namespace Core.DL.Services
 {
     public interface IUniversityService
     {

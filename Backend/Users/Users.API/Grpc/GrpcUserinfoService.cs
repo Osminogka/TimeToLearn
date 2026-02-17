@@ -1,10 +1,10 @@
 ﻿using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
-using Users.DAL.Models;
-using Users.DL.Repositories;
+using Core.DAL.Models;
+using Core.DL.Repositories;
 using UserService;
 
-namespace Users.API.Grpc
+namespace Core.API.Grpc
 {
     public class GrpcUserInfoService : GrpcUsers.GrpcUsersBase
     {

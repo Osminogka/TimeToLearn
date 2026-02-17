@@ -1,10 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using Users.DL.Services;
+using Core.DL.Services;
 
 
-namespace Users.API.Controllers
+namespace Core.API.Controllers
 {
     [ApiController]
     [Route("api/u/general")]

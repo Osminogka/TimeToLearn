@@ -1,8 +1,8 @@
 ﻿using AutoMapper;
-using Users.DAL.Dtos;
-using Users.DAL.Models;
+using Core.DAL.Dtos;
+using Core.DAL.Models;
 
-namespace Users.API.Infrastructure
+namespace Core.API.Infrastructure
 {
     public class MappingProfile : Profile
     {

@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Users.DAL.SideModels;
-using Users.DL.Services;
+using Core.DAL.SideModels;
+using Core.DL.Services;
 
-namespace Users.API.Controllers
+namespace Core.API.Controllers
 {
     [Route("api/u/user/")]
     [Authorize]

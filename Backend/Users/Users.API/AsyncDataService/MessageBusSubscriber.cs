@@ -6,9 +6,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using Users.API.EventProcessing;
+using Core.API.EventProcessing;
 
-namespace Users.API.AsyncDataService
+namespace Core.API.AsyncDataService
 {
     public class MessageBusSubscriber : BackgroundService
     {

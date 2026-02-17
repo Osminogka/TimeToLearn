@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Users.DAL.Models
+namespace Core.DAL.Models
 {
     public class BaseEntity
     {

@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Users.DAL.Dtos;
-using Users.DL.Services;
+using Core.DAL.Dtos;
+using Core.DL.Services;
 
-namespace Users.API.Controllers
+namespace Core.API.Controllers
 {
     [Route("api/u/[controller]/")]
     public class UniversityController : BaseController

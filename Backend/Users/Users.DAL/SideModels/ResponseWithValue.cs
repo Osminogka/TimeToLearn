@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Users.DAL.SideModels
+namespace Core.DAL.SideModels
 {
     public class ResponseWithValue<T>
     {

@@ -1,8 +1,8 @@
 ﻿using System.Linq.Expressions;
-using Users.DAL.Context;
-using Users.DAL.Models;
+using Core.DAL.Context;
+using Core.DAL.Models;
 
-namespace Users.DL.Repositories
+namespace Core.DL.Repositories
 {
     public interface IBaseRepository<T> where T : BaseEntity
     {

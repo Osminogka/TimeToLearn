@@ -1,10 +1,10 @@
 ﻿using AutoMapper;
 using System.Text.Json;
-using Users.DAL.Dtos;
-using Users.DAL.Models;
-using Users.DL.Repositories;
+using Core.DAL.Dtos;
+using Core.DAL.Models;
+using Core.DL.Repositories;
 
-namespace Users.API.EventProcessing
+namespace Core.API.EventProcessing
 {
     public class EventProcessor : IEventProcessor
     {

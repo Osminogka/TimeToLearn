@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.31903.59
+# Visual Studio Version 18
+VisualStudioVersion = 18.2.11415.280 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Backend", "Backend", "{B7D0B9E3-3B49-4C80-A428-866E3B4F0C2C}"
 EndProject
@@ -15,17 +15,17 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Authentication.DAL", "Backe
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Authentication.DL", "Backend\Authentication\Authentication.DL\Authentication.DL.csproj", "{C210980C-94A5-4A7F-B044-73DE56742D43}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Users", "Users", "{36161940-5B51-4F2D-86B9-A39500D4666B}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{36161940-5B51-4F2D-86B9-A39500D4666B}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.API", "Backend\Users\Users.API\Users.API.csproj", "{00506D2E-B492-4276-BBBA-29C74C81FD54}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core.API", "Backend\Users\Users.API\Core.API.csproj", "{00506D2E-B492-4276-BBBA-29C74C81FD54}"
 	ProjectSection(ProjectDependencies) = postProject
 		{5D3D837A-42CD-439F-97CA-FA8809A59AEA} = {5D3D837A-42CD-439F-97CA-FA8809A59AEA}
 		{DB73D3C2-2AF5-4DF0-9D3F-8A554DC6A237} = {DB73D3C2-2AF5-4DF0-9D3F-8A554DC6A237}
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.DAL", "Backend\Users\Users.DAL\Users.DAL.csproj", "{5D3D837A-42CD-439F-97CA-FA8809A59AEA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core.DAL", "Backend\Users\Users.DAL\Core.DAL.csproj", "{5D3D837A-42CD-439F-97CA-FA8809A59AEA}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.DL", "Backend\Users\Users.DL\Users.DL.csproj", "{DB73D3C2-2AF5-4DF0-9D3F-8A554DC6A237}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core.DL", "Backend\Users\Users.DL\Core.DL.csproj", "{DB73D3C2-2AF5-4DF0-9D3F-8A554DC6A237}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Authentication.Tests", "Backend\Authentication\Authentication.Tests\Authentication.Tests.csproj", "{BC4335A0-479A-4CAF-8A54-5D992599EC8A}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -34,7 +34,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Authentication.Tests", "Bac
 		{E1ACAC40-7E7F-4057-BC83-4A792CEBDCC9} = {E1ACAC40-7E7F-4057-BC83-4A792CEBDCC9}
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.Tests", "Backend\Users\Users.Tests\Users.Tests.csproj", "{455246E4-3F85-48A7-AE21-BE52565E8E0E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core.Tests", "Backend\Users\Users.Tests\Core.Tests.csproj", "{455246E4-3F85-48A7-AE21-BE52565E8E0E}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{EB253F0F-0986-4634-BC59-1D10B05BB594}"
 	ProjectSection(SolutionItems) = preProject

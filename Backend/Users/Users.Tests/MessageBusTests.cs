@@ -7,13 +7,13 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Users.API.EventProcessing;
-using Users.API.Infrastructure;
-using Users.DAL.Context;
-using Users.DAL.Dtos;
-using Users.DAL.Models;
-using Users.DL.Repositories;
-using Users.DL.Services;
+using Core.API.EventProcessing;
+using Core.API.Infrastructure;
+using Core.DAL.Context;
+using Core.DAL.Dtos;
+using Core.DAL.Models;
+using Core.DL.Repositories;
+using Core.DL.Services;
 
 namespace Users.Tests
 {

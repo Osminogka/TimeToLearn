@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Users.DAL.Dtos
+namespace Core.DAL.Dtos
 {
     public class GenericEventDto
     {

@@ -1,4 +1,4 @@
-﻿namespace Users.DAL.SideModels
+﻿namespace Core.DAL.SideModels
 {
     public class RoleUserInfo
     {

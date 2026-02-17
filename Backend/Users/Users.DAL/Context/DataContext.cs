@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Users.DAL.Models;
+using Core.DAL.Models;
 
-namespace Users.DAL.Context
+namespace Core.DAL.Context
 {
     public class DataContext : DbContext
     {

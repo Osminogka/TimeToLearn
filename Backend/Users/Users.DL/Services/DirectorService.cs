@@ -1,9 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Users.DAL.Models;
-using Users.DAL.SideModels;
-using Users.DL.Repositories;
+using Core.DAL.Models;
+using Core.DAL.SideModels;
+using Core.DL.Repositories;
 
-namespace Users.DL.Services
+namespace Core.DL.Services
 {
     public class DirectorService : IDirectorService
     {

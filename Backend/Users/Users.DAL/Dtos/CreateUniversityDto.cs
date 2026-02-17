@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using Users.DAL.Models;
+using Core.DAL.Models;
 
-namespace Users.DAL.Dtos
+namespace Core.DAL.Dtos
 {
     public class CreateUniversityDto
     {

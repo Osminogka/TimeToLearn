@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Users.DAL.Dtos
+namespace Core.DAL.Dtos
 {
     public class BaseUserPublishDto
     {

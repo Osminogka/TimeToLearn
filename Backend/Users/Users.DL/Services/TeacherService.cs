@@ -5,11 +5,11 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Users.DAL.Models;
-using Users.DAL.SideModels;
-using Users.DL.Repositories;
+using Core.DAL.Models;
+using Core.DAL.SideModels;
+using Core.DL.Repositories;
 
-namespace Users.DL.Services
+namespace Core.DL.Services
 {
     public class TeacherService : ITeacherService
     {

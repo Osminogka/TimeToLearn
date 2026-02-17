@@ -2,13 +2,13 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Users.API.AsyncDataService;
-using Users.API.EventProcessing;
-using Users.API.Grpc;
-using Users.DAL.Context;
-using Users.DAL.Models;
-using Users.DL.Repositories;
-using Users.DL.Services;
+using Core.API.AsyncDataService;
+using Core.API.EventProcessing;
+using Core.API.Grpc;
+using Core.DAL.Context;
+using Core.DAL.Models;
+using Core.DL.Repositories;
+using Core.DL.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 

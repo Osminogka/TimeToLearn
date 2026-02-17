@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Users.DL.Services;
+using Core.DL.Services;
 
-namespace Users.API.Controllers;
+namespace Core.API.Controllers;
 
 [Route("api/u/[controller]")]
 [Authorize]

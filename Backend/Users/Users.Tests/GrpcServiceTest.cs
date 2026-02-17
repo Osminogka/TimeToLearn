@@ -2,10 +2,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
-using Users.API.Grpc;
-using Users.DAL.Context;
-using Users.DAL.Models;
-using Users.DL.Repositories;
+using Core.API.Grpc;
+using Core.DAL.Context;
+using Core.DAL.Models;
+using Core.DL.Repositories;
 using UserService;
 
 namespace Users.Tests

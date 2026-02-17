@@ -1,14 +1,14 @@
 using AutoMapper;
 using Microsoft.Extensions.DependencyInjection;
-using Users.DAL.Context;
-using Users.DAL.Models;
-using Users.DL.Repositories;
-using Users.DL.Services;
+using Core.DAL.Context;
+using Core.DAL.Models;
+using Core.DL.Repositories;
+using Core.DL.Services;
 using Microsoft.EntityFrameworkCore;
 using Moq;
-using Users.DAL.Dtos;
-using Users.DAL.SideModels;
-using Users.API.Infrastructure;
+using Core.DAL.Dtos;
+using Core.DAL.SideModels;
+using Core.API.Infrastructure;
 
 namespace Users.Tests;
 

@@ -1,4 +1,4 @@
-﻿namespace Users.API.EventProcessing
+﻿namespace Core.API.EventProcessing
 {
     public interface IEventProcessor
     {

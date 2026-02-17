@@ -1,4 +1,4 @@
-﻿namespace Users.DAL.Models
+﻿namespace Core.DAL.Models
 {
     public class Student : BaseEntity
     {
