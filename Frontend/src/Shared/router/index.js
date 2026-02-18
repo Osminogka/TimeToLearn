@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { isAuthenticated } from '@/Authentication/services/utils';
+import { isAuthenticated } from '@/Shared/services/utils';
 
 const routes = [
   {

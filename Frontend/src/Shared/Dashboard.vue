@@ -1,5 +1,5 @@
 <script setup>
-import authUtils from '@/Authentication/services/utils';
+import authUtils from '@/Shared/services/utils';
 
 import { useRouter } from 'vue-router';
 
