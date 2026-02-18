@@ -1,5 +1,4 @@
 <script setup>
-
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -14,28 +13,28 @@ const router = useRouter();
 
 async function handleRegister(){
     try {
-        let result = await authApi.register(this.email, this.password);
+        let result = await authApi.register(username.value, email.value, password.value);
         if(result.success)
             router.push({ name: 'Dashboard'})
         else
-            this.errorMessage = result.message;
+            errorMessage.value = result.message;
       } catch (error) {
-        this.errorMessage = error.message;
+        errorMessage.value = error.message;
       }
 }
 
 function verifyRegister(){
-    if(email.value === '' || password.value === '') {
-        this.errorMessage = 'Please fill in all fields';
+    if(email.value === '' || password.value === '' || username.value === '') {
+        errorMessage.value = 'Please fill in all fields';
     }
     if(password.value.length < 8) {
-        this.errorMessage = 'Password must be at least 8 characters';
+        errorMessage.value = 'Password must be at least 8 characters';
     }
     if(!email.value.includes('@') || !email.value.includes('.')) {
-        this.errorMessage = 'Invalid email address';
+        errorMessage.value = 'Invalid email address';
     }
-    if(this.errorMessage === '') {
-        handleLogin();
+    if(errorMessage.value === '') {
+        handleRegister();
     }
 }
 </script>
@@ -54,7 +53,6 @@ function verifyRegister(){
 </template>
 
 <style scoped>
-@import '@/assets/css/text-classes.css';
-@import '@/assets/css/login-register.css';
-
+@import '../assets/css/text-classes.css';
+@import '../assets/css/login-register.css';
 </style>

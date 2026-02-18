@@ -2,56 +2,54 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { isAuthenticated } from '@/Shared/services/utils';
 
 const routes = [
-  {
-    path: '/login',
-    name: "Login",
-    component: () => import("@/Authentication/components/LoginPage.vue"), // Login page
-    meta: { 
-        title : "Login",
-        requiresAuth: false 
+    {
+        path: '/',
+        name: "Main",
+        component: () => isAuthenticated()
+            ? import('@/Core/universities/pages/DashboardUniversties.vue')
+            : import('@/Shared/pages/GreetingPage.vue'),
+        meta: {
+            title: "Time to Learn",
+            requiresAuth: false
+        },
+        children: [
+            {
+                path: 'login',
+                name: 'Login',
+                component: () => import("@/Authentication/pages/LoginPage.vue"),
+            },
+            {
+                path: 'register',
+                name: 'Register',
+                component: () => import("@/Authentication/pages/RegisterPage.vue"),
+            }
+        ]
     }
-  },
-  {
-    path: '/register',
-    name: "Register",
-    component: () => import("@/Authentication/components/RegisterPage.vue"), // Register page
-    meta: { 
-        title : "Register",
-        requiresAuth: false 
-    }
-  }
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
-  routes
+    history: createWebHistory(),
+    routes
 });
 
 // Navigation Guard
 router.beforeEach((to, from, next) => {
-  const isAuth = isAuthenticated(); // Check if the user is authenticated
+    const isAuth = isAuthenticated();
 
-  if (to.matched.some((record) => record.meta.requiresAuth)) {
-    // Redirect to login if route requires authentication and user is not authenticated
-    if (!isAuth) {
-      next('/');
-    } else {
-      next();
+    if (to.meta.guestOnly && isAuth) {
+        return next({ name: 'Dashboard' });
     }
-  } else {
-    // Redirect authenticated users away from public routes
-    if (isAuth && (to.path === '/login' || to.path === '/register')) {
-      to.path = '/'
-      next('/');
-    } else {
-      next();
+
+    if (to.meta.requiresAuth && !isAuth) {
+        return next({ name: 'Login' });
     }
-  }
+
+    next();
 });
 
 router.beforeEach((to, from, next) => {
-  document.title = to.meta.title || 'Time to Learn';
-  next();
+    document.title = to.meta.title || 'Time to Learn';
+    next();
 });
 
 export default router;

@@ -24,7 +24,6 @@ async function handleLogin() {
 }
 
 function verifyLogin() {
-    // Reset the error message before validation starts
     errorMessage.value = '';
 
     if (email.value === '' || password.value === '') {
@@ -35,7 +34,6 @@ function verifyLogin() {
         errorMessage.value = 'Invalid email address';
     }
 
-    // If no error message, proceed to login
     if (errorMessage.value === '') {
         handleLogin();
     }
@@ -55,6 +53,6 @@ function verifyLogin() {
 </template>
 
 <style scoped>
-@import '@/Authentication/assets/css/text-classes.css';
-@import '@/Authentication/assets/css/login-register.css';
+@import '../assets/css/text-classes.css';
+@import '../assets/css/login-register.css';
 </style>

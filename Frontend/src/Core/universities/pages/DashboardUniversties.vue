@@ -1,10 +1,6 @@
 <script setup>
 import authUtils from '@/Shared/services/utils';
 
-import { useRouter } from 'vue-router';
-
-const router = useRouter();
-
 function logout(){
     authUtils.clearToken();
     window.location.reload();
@@ -17,5 +13,4 @@ function logout(){
 </template>
 
 <style scoped>
-@import '@/assets/css/text-classes.css';
 </style>

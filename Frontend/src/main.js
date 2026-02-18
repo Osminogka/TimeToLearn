@@ -1,5 +1,5 @@
 import { createApp } from 'vue'
-import router from '@/router'
+import router from './Shared/router'
 import App from './App.vue'
 
 createApp(App)
