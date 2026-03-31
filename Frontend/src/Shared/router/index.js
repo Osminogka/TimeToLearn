@@ -24,6 +24,15 @@ const routes = [
                 component: () => import("@/Authentication/pages/RegisterPage.vue"),
             }
         ]
+    },
+    {
+        path: '/define-role',
+        name: 'DefineRole',
+        component: () => import('@/Core/roles/pages/DefineRole.vue'),
+        meta: {
+            title: "Define Role",
+            requiresAuth: false
+        }
     }
 ];
 
