@@ -29,7 +29,7 @@ namespace Core.DL.Services
                 return response;
 
             response.Value.isStudent = baseUser.StudentId != null;
-            response.Value.isTeacher = baseUser.IsTeacher;
+            response.Value.isTeacher = baseUser.TeacherId != null;
 
             response.Success = true;
             response.Message = "You got user role info";

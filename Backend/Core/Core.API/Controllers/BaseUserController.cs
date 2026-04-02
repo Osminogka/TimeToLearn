@@ -119,5 +119,22 @@ namespace Core.API.Controllers
                 return HandleException(ex);
             }
         }
+
+        [HttpDelete("university/{universityName}/leave")]
+        public async Task<IActionResult> LeaveUniversityAsync(string universityName)
+        {
+            try
+            {
+                var result = await _baseUserService.LeaveUniversityAsync(universityName, getUserEmail());
+                if (!result.Success)
+                    return BadRequest(result.Message);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return HandleException(ex);
+            }
+        }
     }
 }

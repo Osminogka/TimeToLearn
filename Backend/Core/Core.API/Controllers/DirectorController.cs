@@ -95,6 +95,25 @@ namespace Core.API.Controllers
             }
         }
         
+        [HttpDelete("members/remove")]
+        public async Task<IActionResult> RemoveMemberFromUniversityAsync([FromBody] EntryRequestModel model)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest("Invalid data");
+                var result = await _directorService.RemoveMemberFromUniversityAsync(model, getUserEmail());
+                if (!result.Success)
+                    return BadRequest(result.Message);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return HandleException(ex);
+            }
+        }
+
         [HttpPost("update")]
         public async Task<IActionResult> UpdateUniversityInfoAsync([FromBody] UpdateUniversityInfoModel model)
         {

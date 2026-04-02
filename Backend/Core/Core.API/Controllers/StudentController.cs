@@ -17,7 +17,7 @@ public class StudentController : BaseController
         _logger = logger;
     }
 
-    [HttpGet("become")]
+    [HttpPost("become")]
     public async Task<IActionResult> BecomeAStudentAsync()
     {
         try
@@ -36,7 +36,7 @@ public class StudentController : BaseController
         }
     }
     
-    [HttpGet("request/{universityName}")]
+    [HttpPost("request/{universityName}")]
     public async Task<IActionResult> SendRequestToBecomeStudentOfUniversity(string universityName)
     {
         try
@@ -55,7 +55,7 @@ public class StudentController : BaseController
         }
     }
     
-    [HttpGet("entry/{universityName}")]
+    [HttpPost("entry/{universityName}")]
     public async Task<IActionResult> EntryUniversityAsync(string universityName)
     {
         try

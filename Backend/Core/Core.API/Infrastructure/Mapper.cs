@@ -17,7 +17,8 @@ namespace Core.API.Infrastructure
 
             CreateMap<BaseUserPublishDto, BaseUser>();
 
-            CreateMap<BaseUser, ReadBaseUserDto>();
+            CreateMap<BaseUser, ReadBaseUserDto>()
+                .ForMember(dest => dest.IsTeacher, opt => opt.MapFrom(src => src.TeacherId != null));
         }
     }
 }

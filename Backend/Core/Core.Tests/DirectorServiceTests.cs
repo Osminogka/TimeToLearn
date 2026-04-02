@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Core.DAL.Context;
 using Core.DAL.Models;
@@ -53,49 +53,57 @@ namespace Users.Tests
                 OriginalId = Guid.NewGuid(),
                 Username = "Osminogka",
                 Email = "osminogka@test.com",
-                IsTeacher = false,
+                StudentId = 1
             };
             context.Add(user);
-            
+
             var student = new BaseUser()
             {
                 Id = 2,
                 OriginalId = Guid.NewGuid(),
                 Username = "Student",
                 Email = "student@test.com",
-                IsTeacher = false,
-                StudentId = 1
+                StudentId = 2
             };
             context.Add(student);
-            
+
             var teacher = new BaseUser()
             {
                 Id = 3,
                 OriginalId = Guid.NewGuid(),
                 Username = "Teacher",
                 Email = "teacher@test.com",
-                IsTeacher = true
+                TeacherId = 1
             };
 
             var teacherStruct = new Teacher()
             {
+                Id = 1,
                 BaseUserId = teacher.Id,
                 IsVerified = true,
                 Degree = "Master"
             };
             context.Add(teacher);
             context.Add(teacherStruct);
-            
+
             var director = new BaseUser()
             {
                 Id = 4,
                 OriginalId = Guid.NewGuid(),
                 Username = "Director",
                 Email = "director@test.com",
-                IsTeacher = true,
-                UniversityId = 1
+                TeacherId = 2
             };
             context.Add(director);
+
+            var directorTeacher = new Teacher()
+            {
+                Id = 2,
+                BaseUserId = director.Id,
+                IsVerified = true,
+                Degree = "PhD"
+            };
+            context.Add(directorTeacher);
 
             var university = new University()
             {
@@ -133,17 +141,18 @@ namespace Users.Tests
                 Username = Username,
                 University = UniversityName
             };
-            
+
             //Act
             var result = await Service.AcceptEntryRequestAsync(model, DirectorEmail);
 
-            var user = await UserRepository.SingleOrDefaultAsync(obj => obj.Username == Username);
-
             //Assert
             var response = Assert.IsType<ResponseMessage>(result);
-
             Assert.True(response.Success);
-            Assert.NotNull(user!.UniversityId);
+
+            var university = await UniversityRepository.Where(obj => obj.Name == UniversityName)
+                .Include(obj => obj.Members)
+                .FirstOrDefaultAsync();
+            Assert.Contains(university!.Members, m => m.Username == Username);
         }
 
         [Fact]
@@ -155,17 +164,18 @@ namespace Users.Tests
                 Username = Username,
                 University = UniversityName
             };
-            
+
             //Act
             var result = await Service.RejectEntryRequestAsync(model, DirectorEmail);
 
-            var user = await UserRepository.SingleOrDefaultAsync(obj => obj.Username == Username);
-
             //Assert
             var response = Assert.IsType<ResponseMessage>(result);
-
             Assert.True(response.Success);
-            Assert.Null(user!.UniversityId);
+
+            var university = await UniversityRepository.Where(obj => obj.Name == UniversityName)
+                .Include(obj => obj.Members)
+                .FirstOrDefaultAsync();
+            Assert.DoesNotContain(university!.Members, m => m.Username == Username);
         }
 
         [Fact]
@@ -228,14 +238,14 @@ namespace Users.Tests
 
             var invite = await EntryRequestRepository.SingleOrDefaultAsync(obj =>
                 obj.BaseUser.Username == StudentName && obj.SentByUniversity == true);
-            
+
             //Assert
             var response = Assert.IsType<ResponseMessage>(result);
-            
+
             Assert.NotNull(invite);
             Assert.True(response.Success);
         }
-        
+
         [Fact]
         public async Task InviteTeacherToUniversityTest()
         {
@@ -244,10 +254,10 @@ namespace Users.Tests
 
             var invite = await EntryRequestRepository.SingleOrDefaultAsync(obj =>
                 obj.BaseUser.Username == TeacherName && obj.SentByUniversity == true);
-            
+
             //Assert
             var response = Assert.IsType<ResponseMessage>(result);
-            
+
             Assert.NotNull(invite);
             Assert.True(response.Success);
         }

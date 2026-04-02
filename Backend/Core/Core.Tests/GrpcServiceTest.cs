@@ -1,4 +1,4 @@
-﻿using Grpc.Core;
+using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -45,8 +45,6 @@ namespace Users.Tests
                 OriginalId = Guid.NewGuid(),
                 Username = "Osminogka",
                 Email = "osminogka@test.com",
-                UniversityId = 1,
-                IsTeacher = false,
             };
             context.Add(simpleUser);
 
@@ -56,8 +54,7 @@ namespace Users.Tests
                 OriginalId = Guid.NewGuid(),
                 Username = "Director",
                 Email = "directorOpen@test.com",
-                UniversityId = 1,
-                IsTeacher = true
+                TeacherId = 1
             };
             context.Add(directorOpen);
 
@@ -73,7 +70,8 @@ namespace Users.Tests
                 },
                 Description = "Test",
                 IsOpened = true,
-                DirectorId = directorOpen.Id
+                DirectorId = directorOpen.Id,
+                Members = new List<BaseUser> { simpleUser, directorOpen }
             };
             context.Add(universityOpen);
 

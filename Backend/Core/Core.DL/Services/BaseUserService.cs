@@ -86,6 +86,7 @@ namespace Core.DL.Services
             ResponseGetEnum<string> response = new ResponseGetEnum<string>();
 
             var user = await _baseUserRepository.Where(obj => obj.Email == email)
+                .Include(obj => obj.Universities)
                 .Include(obj => obj.EntryRequests)
                 .ThenInclude(obj => obj.University).FirstOrDefaultAsync();
 

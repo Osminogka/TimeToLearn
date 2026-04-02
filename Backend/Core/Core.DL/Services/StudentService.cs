@@ -11,43 +11,78 @@ namespace Core.DL.Services
         private readonly IBaseRepository<BaseUser> _baseUserRepository;
         private readonly IBaseRepository<University> _universityRepository;
         private readonly IBaseRepository<EntryRequest> _entryRequestRepository;
+        private readonly IBaseRepository<Teacher> _teacherRepository;
 
-        public StudentService(IBaseRepository<Student> studentRepository, IBaseRepository<BaseUser> baseUserRepository, IBaseRepository<University> universityRepository, IBaseRepository<EntryRequest> entryRequestRepository)
+        public StudentService(IBaseRepository<Student> studentRepository, IBaseRepository<BaseUser> baseUserRepository, IBaseRepository<University> universityRepository, IBaseRepository<EntryRequest> entryRequestRepository, IBaseRepository<Teacher> teacherRepository)
         {
             _studentRepository = studentRepository;
             _baseUserRepository = baseUserRepository;
             _universityRepository = universityRepository;
             _entryRequestRepository = entryRequestRepository;
+            _teacherRepository = teacherRepository;
         }
 
         public async Task<ResponseMessage> BecomeAStudentAsync(string email)
         {
             ResponseMessage response = new ResponseMessage();
 
-            var user = await _baseUserRepository.SingleOrDefaultAsync(obj => obj.Email == email && obj.StudentId == null);
+            var user = await _baseUserRepository.Where(obj => obj.Email == email && obj.StudentId == null)
+                .Include(obj => obj.Universities)
+                .FirstOrDefaultAsync();
             if(user == null)
             {
-                response.Message = "Such user doesn't exist";
+                response.Message = "Such user doesn't exist or is already a student";
                 return response;
             }
 
-            Student student = new Student
-            {
-                BaseUserId = user.Id
-            };
+            var context = _baseUserRepository.GetContext();
+            var transaction = context.Database.IsRelational()
+                ? await context.Database.BeginTransactionAsync()
+                : null;
 
-            await _studentRepository.AddAsync(student);
-            user.StudentId = student.Id;
-            
-            if (user.IsTeacher)
+            try
             {
-                user.TeacherId = null;
-                user.IsTeacher = false;
+                if (user.TeacherId != null)
+                {
+                    var oldTeacher = await _teacherRepository.SingleOrDefaultAsync(obj => obj.BaseUserId == user.Id);
+                    if (oldTeacher != null)
+                        await _teacherRepository.DeleteAsync(oldTeacher);
+
+                    user.TeacherId = null;
+                }
+
+                var entryRequests = await _entryRequestRepository.Where(obj => obj.BaseUserId == user.Id).ToListAsync();
+                if (entryRequests.Count > 0)
+                    await _entryRequestRepository.DeleteRangeAsync(entryRequests);
+
+                user.Universities?.Clear();
+
+                Student student = new Student
+                {
+                    BaseUserId = user.Id
+                };
+
+                await _studentRepository.AddAsync(student);
+                user.StudentId = student.Id;
+
+                await _baseUserRepository.UpdateAsync(user);
+
+                if (transaction != null)
+                    await transaction.CommitAsync();
+
+                response.Success = true;
+                response.Message = "You successfully became a student";
             }
-
-            await _baseUserRepository.UpdateAsync(user);
-            response.Success = true;
-            response.Message = "You successfully became a student";
+            catch
+            {
+                if (transaction != null)
+                    await transaction.RollbackAsync();
+                throw;
+            }
+            finally
+            {
+                transaction?.Dispose();
+            }
 
             return response;
         }

@@ -12,5 +12,7 @@ namespace Core.DL.Services
 
         Task<ResponseMessage> InviteTeacherToUniversityAsync(string universityName, string teacherUsername,
             string mainUserEmail);
+
+        Task<ResponseMessage> RemoveMemberFromUniversityAsync(EntryRequestModel model, string mainUserEmail);
     }
 }

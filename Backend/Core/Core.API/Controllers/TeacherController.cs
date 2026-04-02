@@ -17,7 +17,7 @@ public class TeacherController : BaseController
         _logger = logger;
     }
     
-    [HttpGet("become")]
+    [HttpPost("become")]
     public async Task<IActionResult> BecomeTeacherAsync()
     {
         try

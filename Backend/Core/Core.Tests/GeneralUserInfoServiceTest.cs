@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Core.API.Infrastructure;
@@ -33,13 +33,6 @@ namespace Users.Tests
             var scope = serviceProvider.CreateScope();
             var scopedServices = scope.ServiceProvider;
 
-            var config = new MapperConfiguration(cfg =>
-            {
-                cfg.AddProfile<MappingProfile>();
-            });
-
-            var autoMapper = config.CreateMapper();
-
             UserRepository = scopedServices.GetRequiredService<IBaseRepository<BaseUser>>();
 
             Service = new GeneralUserInfoService(UserRepository);
@@ -53,7 +46,6 @@ namespace Users.Tests
                 OriginalId = Guid.NewGuid(),
                 Username = "Osminogka",
                 Email = "osminogka@test.com",
-                IsTeacher = true,
                 TeacherId = 1
             };
 
@@ -63,8 +55,6 @@ namespace Users.Tests
                 OriginalId = Guid.NewGuid(),
                 Username = "Redter",
                 Email = "redter@test.com",
-                UniversityId = 1,
-                IsTeacher = false,
                 StudentId = 1
             };
 
@@ -72,10 +62,8 @@ namespace Users.Tests
             {
                 Id = 3,
                 OriginalId = Guid.NewGuid(),
-                Username = "Redter",
-                Email = "none@test.com",
-                UniversityId = 1,
-                IsTeacher = false
+                Username = "Nobody",
+                Email = "none@test.com"
             };
 
             context.Add(user);

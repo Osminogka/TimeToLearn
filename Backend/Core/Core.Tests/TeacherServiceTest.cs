@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Core.DAL.Context;
 using Core.DAL.Models;
@@ -13,6 +13,7 @@ namespace Users.Tests
         private IBaseRepository<University> UniversityRepository { get; set; }
         private IBaseRepository<BaseUser> UserRepository { get; set; }
         private IBaseRepository<Teacher> TeacherRepository { get; set; }
+        private IBaseRepository<Student> StudentRepository { get; set; }
         private IBaseRepository<EntryRequest> EntryRequestRepository { get; set; }
 
         private ServiceProvider ServiceProvider { get; set; }
@@ -34,6 +35,7 @@ namespace Users.Tests
             services.AddTransient<IBaseRepository<University>, BaseRepository<University>>();
             services.AddTransient<IBaseRepository<BaseUser>, BaseRepository<BaseUser>>();
             services.AddTransient<IBaseRepository<Teacher>, BaseRepository<Teacher>>();
+            services.AddTransient<IBaseRepository<Student>, BaseRepository<Student>>();
             services.AddTransient<IBaseRepository<EntryRequest>, BaseRepository<EntryRequest>>();
 
             ServiceProvider = services.BuildServiceProvider();
@@ -44,9 +46,10 @@ namespace Users.Tests
             UniversityRepository = scopedServices.GetRequiredService<IBaseRepository<University>>();
             UserRepository = scopedServices.GetRequiredService<IBaseRepository<BaseUser>>();
             TeacherRepository = scopedServices.GetRequiredService<IBaseRepository<Teacher>>();
+            StudentRepository = scopedServices.GetRequiredService<IBaseRepository<Student>>();
             EntryRequestRepository = scopedServices.GetRequiredService<IBaseRepository<EntryRequest>>();
 
-            Service = new TeacherService(TeacherRepository, UserRepository, UniversityRepository, EntryRequestRepository);
+            Service = new TeacherService(TeacherRepository, UserRepository, UniversityRepository, EntryRequestRepository, StudentRepository);
 
             var context = UserRepository.GetContext();
             context.Database.EnsureDeleted();
@@ -57,7 +60,6 @@ namespace Users.Tests
                 OriginalId = Guid.NewGuid(),
                 Username = "Osminogka",
                 Email = "osminogka@test.com",
-                IsTeacher = false,
             };
             context.Add(simpleUser);
 
@@ -67,9 +69,18 @@ namespace Users.Tests
                 OriginalId = Guid.NewGuid(),
                 Username = "Director",
                 Email = "directorOpen@test.com",
-                IsTeacher = true
+                TeacherId = 1
             };
             context.Add(directorOpen);
+
+            var directorTeacher = new Teacher
+            {
+                Id = 1,
+                BaseUserId = directorOpen.Id,
+                IsVerified = true,
+                Degree = "Master"
+            };
+            context.Add(directorTeacher);
 
             University universityOpen = new University
             {
@@ -93,11 +104,12 @@ namespace Users.Tests
                 OriginalId = Guid.NewGuid(),
                 Username = "UnverifiedTeacher",
                 Email = "unverifiedteacher@test.com",
-                IsTeacher = true
+                TeacherId = 2
             };
 
             var unverifiedTeacherStruct = new Teacher()
             {
+                Id = 2,
                 BaseUserId = unverifiedTeacher.Id
             };
             context.Add(unverifiedTeacher);
@@ -109,11 +121,12 @@ namespace Users.Tests
                 OriginalId = Guid.NewGuid(),
                 Username = "VerifiedTeacher",
                 Email = "verifiedteacher@test.com",
-                IsTeacher = true
+                TeacherId = 3
             };
 
             var verifiedTeacherStruct = new Teacher()
             {
+                Id = 3,
                 BaseUserId = verifiedTeacher.Id,
                 IsVerified = true,
                 Degree = "Master"
@@ -154,7 +167,7 @@ namespace Users.Tests
             Assert.True(response.Success); ;
             Assert.NotNull(teacher);
         }
-        
+
 
         [Fact]
         public async Task SendRequestToBecomeTeacherOfUniversityTest()

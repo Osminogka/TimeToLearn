@@ -26,9 +26,6 @@ namespace Core.DAL.Models
 
         public Address Address { get; set; }
 
-        [Required]
-        public bool IsTeacher { get; set; } = false;
-
         public long? TeacherId { get; set; }
 
         public long? StudentId { get; set; }

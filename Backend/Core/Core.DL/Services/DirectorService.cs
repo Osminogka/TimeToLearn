@@ -60,6 +60,12 @@ namespace Core.DL.Services
                 return response;
             }
 
+            if (user.StudentId == null && user.TeacherId == null)
+            {
+                response.Message = "User does not have a role assigned";
+                return response;
+            }
+
             if(user.Universities.Any(u => u.Id == university.Id))
             {
                 response.Message = "User already belongs to this university";
@@ -195,7 +201,7 @@ namespace Core.DL.Services
                 return response;
             }
 
-            var teacher = await _baseUserRepository.Where(obj => obj.Username == teacherUsername && obj.IsTeacher == true && obj.Teacher.IsVerified == true)
+            var teacher = await _baseUserRepository.Where(obj => obj.Username == teacherUsername && obj.TeacherId != null && obj.Teacher.IsVerified == true)
                 .Include(obj => obj.Teacher)
                 .Include(obj => obj.Universities)
                 .FirstOrDefaultAsync();
@@ -234,6 +240,42 @@ namespace Core.DL.Services
 
             response.Success = true;
             response.Message = "Invitation is sent";
+
+            return response;
+        }
+
+        public async Task<ResponseMessage> RemoveMemberFromUniversityAsync(EntryRequestModel model, string mainUserEmail)
+        {
+            ResponseMessage response = new ResponseMessage();
+
+            var university = await _universityRepository.Where(obj => obj.Name == model.University && obj.Director.Email == mainUserEmail)
+                .Include(obj => obj.Director)
+                .Include(obj => obj.Members)
+                .FirstOrDefaultAsync();
+            if (university == null)
+            {
+                response.Message = "Unable to do this action";
+                return response;
+            }
+
+            var member = university.Members.FirstOrDefault(obj => obj.Username == model.Username);
+            if (member == null)
+            {
+                response.Message = "User is not a member of this university";
+                return response;
+            }
+
+            if (member.Id == university.DirectorId)
+            {
+                response.Message = "Cannot remove the director from their own university";
+                return response;
+            }
+
+            university.Members.Remove(member);
+            await _universityRepository.UpdateAsync(university);
+
+            response.Success = true;
+            response.Message = "Member removed from university";
 
             return response;
         }

@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -20,6 +20,7 @@ namespace Users.Tests
     {
         private IBaseRepository<BaseUser> UserRepository { get; set; }
         private IBaseRepository<EntryRequest> EntryRequestRepository { get; set; }
+        private IBaseRepository<University> UniversityRepository { get; set; }
 
         private BaseUserService Service { get; set; }
 
@@ -33,6 +34,7 @@ namespace Users.Tests
 
             services.AddTransient<IBaseRepository<BaseUser>, BaseRepository<BaseUser>>();
             services.AddTransient<IBaseRepository<EntryRequest>, BaseRepository<EntryRequest>>();
+            services.AddTransient<IBaseRepository<University>, BaseRepository<University>>();
 
             var serviceProvider = services.BuildServiceProvider();
 
@@ -48,8 +50,9 @@ namespace Users.Tests
 
             UserRepository = scopedServices.GetRequiredService<IBaseRepository<BaseUser>>();
             EntryRequestRepository = scopedServices.GetRequiredService<IBaseRepository<EntryRequest>>();
+            UniversityRepository = scopedServices.GetRequiredService<IBaseRepository<University>>();
 
-            Service = new BaseUserService(UserRepository, EntryRequestRepository, autoMapper);
+            Service = new BaseUserService(UserRepository, EntryRequestRepository, UniversityRepository, autoMapper);
 
             var context = UserRepository.GetContext();
             context.Database.EnsureDeleted();
@@ -60,7 +63,7 @@ namespace Users.Tests
                 OriginalId = Guid.NewGuid(),
                 Username = "Osminogka",
                 Email = "osminogka@test.com",
-                IsTeacher = true
+                TeacherId = 1
             };
 
             var user2 = new BaseUser
@@ -69,8 +72,7 @@ namespace Users.Tests
                 OriginalId = Guid.NewGuid(),
                 Username = "Redter",
                 Email = "redter@test.com",
-                UniversityId = 1,
-                IsTeacher = true
+                TeacherId = 2
             };
 
             var university = new University
@@ -196,14 +198,16 @@ namespace Users.Tests
             //Act
             var result = await Service.AcceptInviteAsync("DKU", UserEmail);
 
-            var user = await UserRepository.SingleOrDefaultAsync(obj => obj.Email == UserEmail);
+            var user = await UserRepository.Where(obj => obj.Email == UserEmail)
+                .Include(obj => obj.Universities)
+                .FirstOrDefaultAsync();
             var invite = await EntryRequestRepository.SingleOrDefaultAsync(obj => obj.BaseUser.Email == UserEmail);
-            
+
             //Assert
             var response = Assert.IsType<ResponseMessage>(result);
 
             Assert.True(response.Success);
-            Assert.NotNull(user.UniversityId);
+            Assert.Contains(user!.Universities, u => u.Name == "DKU");
             Assert.Null(invite);
         }
 
@@ -213,14 +217,16 @@ namespace Users.Tests
             //Act
             var result = await Service.RejectInviteAsync("DKU", UserEmail);
 
-            var user = await UserRepository.SingleOrDefaultAsync(obj => obj.Email == UserEmail);
+            var user = await UserRepository.Where(obj => obj.Email == UserEmail)
+                .Include(obj => obj.Universities)
+                .FirstOrDefaultAsync();
             var invite = await EntryRequestRepository.SingleOrDefaultAsync(obj => obj.BaseUser.Email == UserEmail);
 
             //Assert
             var response = Assert.IsType<ResponseMessage>(result);
 
             Assert.True(response.Success);
-            Assert.Null(user.UniversityId);
+            Assert.Empty(user!.Universities);
             Assert.Null(invite);
         }
     }

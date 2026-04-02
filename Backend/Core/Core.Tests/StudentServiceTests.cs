@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Core.DAL.Context;
 using Core.DAL.Models;
@@ -13,6 +13,7 @@ namespace Users.Tests
         private IBaseRepository<University> UniversityRepository { get; set; }
         private IBaseRepository<BaseUser> UserRepository { get; set; }
         private IBaseRepository<Student> StudentsRepository { get; set; }
+        private IBaseRepository<Teacher> TeacherRepository { get; set; }
         private IBaseRepository<EntryRequest> EntryRequestRepository { get; set; }
 
         private ServiceProvider ServiceProvider { get; set; }
@@ -40,6 +41,7 @@ namespace Users.Tests
             services.AddTransient<IBaseRepository<University>, BaseRepository<University>>();
             services.AddTransient<IBaseRepository<BaseUser>, BaseRepository<BaseUser>>();
             services.AddTransient<IBaseRepository<Student>, BaseRepository<Student>>();
+            services.AddTransient<IBaseRepository<Teacher>, BaseRepository<Teacher>>();
             services.AddTransient<IBaseRepository<EntryRequest>, BaseRepository<EntryRequest>>();
 
             ServiceProvider = services.BuildServiceProvider();
@@ -50,9 +52,10 @@ namespace Users.Tests
             UniversityRepository = scopedServices.GetRequiredService<IBaseRepository<University>>();
             UserRepository = scopedServices.GetRequiredService<IBaseRepository<BaseUser>>();
             StudentsRepository = scopedServices.GetRequiredService<IBaseRepository<Student>>();
+            TeacherRepository = scopedServices.GetRequiredService<IBaseRepository<Teacher>>();
             EntryRequestRepository = scopedServices.GetRequiredService<IBaseRepository<EntryRequest>>();
 
-            Service = new StudentService(StudentsRepository, UserRepository, UniversityRepository, EntryRequestRepository);
+            Service = new StudentService(StudentsRepository, UserRepository, UniversityRepository, EntryRequestRepository, TeacherRepository);
 
             var context = UserRepository.GetContext();
             context.Database.EnsureDeleted();
@@ -63,20 +66,18 @@ namespace Users.Tests
                 OriginalId = Guid.NewGuid(),
                 Username = "Osminogka",
                 Email = "osminogka@test.com",
-                IsTeacher = false,
             };
             context.Add(user);
 
-            var student = new BaseUser()
+            var studentUser = new BaseUser()
             {
                 Id = 2,
                 OriginalId = Guid.NewGuid(),
                 Username = "Student",
                 Email = "student@test.com",
-                IsTeacher = false,
                 StudentId = 1
             };
-            context.Add(student);
+            context.Add(studentUser);
 
             BaseUser directorOpen = new BaseUser()
             {
@@ -84,9 +85,18 @@ namespace Users.Tests
                 OriginalId = Guid.NewGuid(),
                 Username = "Director",
                 Email = "directorOpen@test.com",
-                IsTeacher = true
+                TeacherId = 1
             };
             context.Add(directorOpen);
+
+            var directorTeacher = new Teacher
+            {
+                Id = 1,
+                BaseUserId = directorOpen.Id,
+                IsVerified = true,
+                Degree = "Master"
+            };
+            context.Add(directorTeacher);
 
             University universityOpen = new University
             {
@@ -108,11 +118,20 @@ namespace Users.Tests
             {
                 Id = 4,
                 OriginalId = Guid.NewGuid(),
-                Username = "Director",
+                Username = "DirectorClosed",
                 Email = "directorClosed@test.com",
-                IsTeacher = true
+                TeacherId = 2
             };
             context.Add(directorClosed);
+
+            var directorClosedTeacher = new Teacher
+            {
+                Id = 2,
+                BaseUserId = directorClosed.Id,
+                IsVerified = true,
+                Degree = "Master"
+            };
+            context.Add(directorClosedTeacher);
 
             University universityClosed = new University
             {
@@ -152,19 +171,26 @@ namespace Users.Tests
         public async Task SendRequestToBecomeStudentOfUniversityTest()
         {
             //Act
-            var result = await Service.SendRequestToBecomeStudentOfUniversity("Narhoz", StudentEmail);
-            var result2 = await Service.SendRequestToBecomeStudentOfUniversity("Narhoz", StudentEmail);
+            var result = await Service.SendRequestToBecomeStudentOfUniversity("DKU", StudentEmail);
+            var result2 = await Service.SendRequestToBecomeStudentOfUniversity("DKU", StudentEmail);
 
             //Assert
             var response = Assert.IsType<ResponseMessage>(result);
             var response2 = Assert.IsType<ResponseMessage>(result2);
 
-            var entryRequest = await EntryRequestRepository.SingleOrDefaultAsync(obj => obj.UniversityId == 1 &&
-                obj.BaseUserId == StudentId && obj.SentByUniversity == false);
-
             Assert.True(response.Success);
             Assert.False(response2.Success);
-            Assert.NotNull(response);
+        }
+
+        [Fact]
+        public async Task SendRequestToClosedUniversityFailsTest()
+        {
+            //Act
+            var result = await Service.SendRequestToBecomeStudentOfUniversity("Narhoz", StudentEmail);
+
+            //Assert
+            var response = Assert.IsType<ResponseMessage>(result);
+            Assert.False(response.Success);
         }
 
         [Fact]
