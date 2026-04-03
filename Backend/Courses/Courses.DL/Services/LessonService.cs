@@ -166,6 +166,7 @@ namespace Courses.DL.Services
             {
                 Title = lessonDto.Title,
                 Content = lessonDto.Content,
+                IsMarkdown = lessonDto.IsMarkdown,
                 VideoLink = lessonDto.VideoLink,
                 MaterialLink = lessonDto.MaterialLink,
                 OrderNumber = lessonDto.OrderNumber,
