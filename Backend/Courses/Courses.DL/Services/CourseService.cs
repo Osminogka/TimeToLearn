@@ -40,22 +40,22 @@ namespace Courses.DL.Services
                 .Take(courseNumbers)
                 .ToListAsync();
 
-            var courseDtos = new List<ReadCourseDto>();
-            foreach (var course in courses)
+            var teacherIds = courses.Select(c => c.TeacherId).Distinct().ToList();
+            var nameEntries = await Task.WhenAll(
+                teacherIds.Select(async id => (id, name: await _grpcClient.GetUserName(id))));
+            var teacherNames = nameEntries.ToDictionary(x => x.id, x => x.name ?? "Unknown");
+
+            var courseDtos = courses.Select(course => new ReadCourseDto
             {
-                var teacherName = await _grpcClient.GetUserName(course.TeacherId);
-                courseDtos.Add(new ReadCourseDto
-                {
-                    Id = course.Id,
-                    Title = course.Title,
-                    Description = course.Description,
-                    TeacherId = course.TeacherId,
-                    TeacherName = teacherName ?? "Unknown",
-                    CreatedAt = course.CreatedAt,
-                    UpdatedAt = course.UpdatedAt,
-                    LessonsCount = course.Lessons?.Count ?? 0
-                });
-            }
+                Id = course.Id,
+                Title = course.Title,
+                Description = course.Description,
+                TeacherId = course.TeacherId,
+                TeacherName = teacherNames[course.TeacherId],
+                CreatedAt = course.CreatedAt,
+                UpdatedAt = course.UpdatedAt,
+                LessonsCount = course.Lessons?.Count ?? 0
+            }).ToList();
 
             response.Success = true;
             response.Message = "You got some courses";

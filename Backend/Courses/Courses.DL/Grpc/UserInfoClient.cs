@@ -1,24 +1,18 @@
 using AutoMapper;
 using Courses.DAL.SideModels;
-using Grpc.Net.Client;
-using Microsoft.Extensions.Configuration;
 using UserService;
 
 namespace Courses.DL.Grpc
 {
     public class UserInfoClient : IUserInfoClient
     {
-        private readonly IConfiguration _configuration;
         private readonly IMapper _mapper;
-        private readonly GrpcChannel _channel;
         private readonly GrpcUsers.GrpcUsersClient _client;
 
-        public UserInfoClient(IConfiguration configuration, IMapper mapper)
+        public UserInfoClient(GrpcUsers.GrpcUsersClient client, IMapper mapper)
         {
-            _configuration = configuration;
             _mapper = mapper;
-            _channel = GrpcChannel.ForAddress(_configuration["GrpcUsersApi"]);
-            _client = new GrpcUsers.GrpcUsersClient(_channel);
+            _client = client;
         }
 
         public async Task<UserInfoForCourse?> GetUserInfoForCourse(string universityName, string userEmail)

@@ -7,6 +7,8 @@ using Courses.DAL.Models;
 using Courses.DL.Repositories;
 using Courses.DL.Grpc;
 using Courses.DL.Services;
+using Grpc.Net.Client;
+using UserService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +17,10 @@ builder.Logging.AddConsole();
 
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
+builder.Services.AddSingleton(_ =>
+    GrpcChannel.ForAddress(builder.Configuration["GrpcUsersApi"]!));
+builder.Services.AddSingleton(sp =>
+    new GrpcUsers.GrpcUsersClient(sp.GetRequiredService<GrpcChannel>()));
 builder.Services.AddScoped<IUserInfoClient, UserInfoClient>();
 
 builder.Services.AddTransient<IBaseRepository<Course>, BaseRepository<Course>>();
@@ -74,8 +80,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
-app.UseDefaultFiles();
 
 app.Run();
 
