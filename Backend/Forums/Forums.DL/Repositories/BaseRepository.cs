@@ -33,10 +33,15 @@ namespace Forums.DL.Repositories
         {
             if (entity == null) throw new ArgumentNullException("", "Input data is null");
 
-            var oldEntity = await _context.FindAsync<T>(entity.Id);
-            if (oldEntity == null)
-                throw new ArgumentNullException("", "Input data is null");
-            _context.Entry(oldEntity).CurrentValues.SetValues(entity);
+            var entry = _context.Entry(entity);
+            if (entry.State == EntityState.Detached)
+            {
+                var tracked = await _context.FindAsync<T>(entity.Id);
+                if (tracked == null)
+                    throw new ArgumentNullException("", "Input data is null");
+                _context.Entry(tracked).CurrentValues.SetValues(entity);
+            }
+
             return await _context.SaveChangesAsync();
         }
 

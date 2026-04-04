@@ -1,10 +1,9 @@
-﻿using Forums.DAL.Models;
+using Forums.DAL.Models;
 using Forums.DL.Repositories;
 using Forums.DAL.SideModels;
 using Forums.DAL.Dtos;
 using Forums.DL.Grpc;
 using Microsoft.EntityFrameworkCore;
-using AutoMapper;
 
 namespace Forums.DL.Services
 {
@@ -14,16 +13,14 @@ namespace Forums.DL.Services
         private readonly IBaseRepository<Like> _likeRepository;
         private readonly IBaseRepository<Dislike> _dislikeRepository;
         private readonly IUserInfoClient _grpcClient;
-        private readonly IMapper _mapper;
 
-        public TopicService(IBaseRepository<Topic> topicRepository, IBaseRepository<Like> likeRepository, 
-            IBaseRepository<Dislike> dislikeRepository, IUserInfoClient grpcClient, IMapper mapper)
+        public TopicService(IBaseRepository<Topic> topicRepository, IBaseRepository<Like> likeRepository,
+            IBaseRepository<Dislike> dislikeRepository, IUserInfoClient grpcClient)
         {
             _topicRepository = topicRepository;
             _likeRepository = likeRepository;
             _dislikeRepository = dislikeRepository;
             _grpcClient = grpcClient;
-            _mapper = mapper;
         }
 
         public async Task<ResponseArray<ReadTopicDto>> GetUniversityTopicsAsync(string universityName, string userEmail, int page)
@@ -39,15 +36,27 @@ namespace Forums.DL.Services
             }
 
             var reply = await _grpcClient.GetUserInfoForTopic(universityName, userEmail);
-            if (!reply.IsAllowed)
+            if (reply == null || !reply.IsAllowed)
                 return response;
 
             var topics = await _topicRepository.Where(obj => obj.UniversityId == reply.UniversityId)
                 .Skip(page * topicNumbers).Take(topicNumbers).ToListAsync();
 
+            var creatorIds = topics.Select(t => t.CreatorId).Distinct();
+            var nameEntries = await Task.WhenAll(
+                creatorIds.Select(async id => (id, name: await _grpcClient.GetUserName(id))));
+            var nameMap = nameEntries.ToDictionary(x => x.id, x => x.name);
+
             response.Success = true;
             response.Message = "You got some topics";
-            response.Values = _mapper.Map<List<ReadTopicDto>>(topics);
+            response.Values = topics.Select(t => new ReadTopicDto
+            {
+                TopicTitle = t.TopicTitle,
+                TopicContent = t.TopicContent,
+                CreatorName = nameMap.TryGetValue(t.CreatorId, out var name) ? name : string.Empty,
+                Likes = t.LikesOverall,
+                Dislikes = t.DislikesOverall
+            }).ToList();
 
             return response;
         }
@@ -70,7 +79,7 @@ namespace Forums.DL.Services
             }
 
             var reply = await _grpcClient.GetUserInfoForTopic(topicInfo.UniversityName, creatorEmail);
-            if (!reply.IsAllowed)
+            if (reply == null || !reply.IsAllowed)
                 return response;
 
             Topic topic = new Topic()
@@ -108,8 +117,10 @@ namespace Forums.DL.Services
             }
 
             var reply = await _grpcClient.GetUserInfoForTopic(universityName, creatorEmail);
-            if (!reply.IsAllowed)
+            if (reply == null || !reply.IsAllowed)
                 return response;
+
+            using var tx = await _topicRepository.GetContext().Database.BeginTransactionAsync();
 
             var isAlreadyLiked = await _likeRepository.SingleOrDefaultAsync(obj => obj.IsTopic == true && obj.PostId == topicId &&
                 obj.UserId == reply.UserId);
@@ -119,6 +130,7 @@ namespace Forums.DL.Services
                 if (topic.LikesOverall > 0)
                     topic.LikesOverall--;
                 await _topicRepository.UpdateAsync(topic);
+                await tx.CommitAsync();
                 response.Success = true;
                 response.Message = "You removed your like";
                 return response;
@@ -143,6 +155,7 @@ namespace Forums.DL.Services
             await _likeRepository.AddAsync(like);
             topic.LikesOverall++;
             await _topicRepository.UpdateAsync(topic);
+            await tx.CommitAsync();
 
             response.Success = true;
             response.Message = "You liked the topic";
@@ -169,8 +182,10 @@ namespace Forums.DL.Services
             }
 
             var reply = await _grpcClient.GetUserInfoForTopic(universityName, creatorEmail);
-            if (!reply.IsAllowed)
+            if (reply == null || !reply.IsAllowed)
                 return response;
+
+            using var tx = await _topicRepository.GetContext().Database.BeginTransactionAsync();
 
             var isAlreadyDisliked = await _dislikeRepository.SingleOrDefaultAsync(obj => obj.IsTopic == true && obj.PostId == topicId &&
                 obj.UserId == reply.UserId);
@@ -180,6 +195,7 @@ namespace Forums.DL.Services
                 if (topic.DislikesOverall > 0)
                     topic.DislikesOverall--;
                 await _topicRepository.UpdateAsync(topic);
+                await tx.CommitAsync();
                 response.Success = true;
                 response.Message = "You removed your dislike";
                 return response;
@@ -204,6 +220,7 @@ namespace Forums.DL.Services
             await _dislikeRepository.AddAsync(dislike);
             topic.DislikesOverall++;
             await _topicRepository.UpdateAsync(topic);
+            await tx.CommitAsync();
 
             response.Success = true;
             response.Message = "You disliked the topic";

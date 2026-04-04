@@ -3,9 +3,7 @@ using Forums.DAL.Models;
 using Forums.DL.Repositories;
 using Forums.DL.Services;
 using Microsoft.EntityFrameworkCore;
-using AutoMapper;
 using Microsoft.Extensions.DependencyInjection;
-using Forums.API.Infrastructure;
 using Moq;
 using Forums.DL.Grpc;
 using Forums.DAL.SideModels;
@@ -41,13 +39,6 @@ namespace Forums.Tests
             TopicRepository = scopedServices.GetRequiredService<IBaseRepository<Topic>>();
             LikeRepository = scopedServices.GetRequiredService<IBaseRepository<Like>>();
             DislikeRepository = scopedServices.GetRequiredService<IBaseRepository<Dislike>>();
-
-            var config = new MapperConfiguration(cfg =>
-            {
-                cfg.AddProfile<MappingProfile>();
-            });
-
-            var autoMapper = config.CreateMapper();
 
             var mockGrpcClient = new Mock<IUserInfoClient>();
 
@@ -88,7 +79,11 @@ namespace Forums.Tests
                         return "None";
                 });
 
-            Service = new TopicService(TopicRepository, LikeRepository, DislikeRepository, mockGrpcClient.Object, autoMapper);
+            mockGrpcClient
+                .Setup(client => client.GetUserName(It.IsAny<long>()))
+                .ReturnsAsync((long userId) => $"User{userId}");
+
+            Service = new TopicService(TopicRepository, LikeRepository, DislikeRepository, mockGrpcClient.Object);
 
             var context = TopicRepository.GetContext();
             context.Database.EnsureDeleted();

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Forums.DAL.Models;
 
 namespace Forums.DAL.Context
@@ -16,25 +16,17 @@ namespace Forums.DAL.Context
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<Like>()
-                .HasOne(e => e.Topic)
-                .WithMany(e => e.Likes)
-                .HasForeignKey(e => e.PostId);
+            // Issue 7: Both Like→Topic and Like→Comment used PostId as FK — last config wins and silently
+            // drops the first. Navigation properties are kept without explicit FK config; the IsTopic flag
+            // enforces which PostId refers to at the service layer.
 
             modelBuilder.Entity<Like>()
-                .HasOne(e => e.Comment)
-                .WithMany(e => e.Likes)
-                .HasForeignKey(e => e.PostId);
+                .HasIndex(e => new { e.UserId, e.PostId, e.IsTopic })
+                .IsUnique();
 
             modelBuilder.Entity<Dislike>()
-                .HasOne(e => e.Topic)
-                .WithMany(e => e.Dislikes)
-                .HasForeignKey(e => e.PostId);
-
-            modelBuilder.Entity<Dislike>()
-                .HasOne(e => e.Comment)
-                .WithMany(e => e.Dislikes)
-                .HasForeignKey(e => e.PostId);
+                .HasIndex(e => new { e.UserId, e.PostId, e.IsTopic })
+                .IsUnique();
         }
     }
 }

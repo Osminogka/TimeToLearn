@@ -1,4 +1,4 @@
-﻿using Forums.DAL.Dtos;
+using Forums.DAL.Dtos;
 using Forums.DAL.Models;
 using Forums.DAL.SideModels;
 using Forums.DL.Grpc;
@@ -16,7 +16,7 @@ namespace Forums.DL.Services
         private readonly IBaseRepository<Dislike> _dislikeRepository;
         private readonly IUserInfoClient _grpcClient;
 
-        public CommentService(IBaseRepository<Topic> topicRepository, IBaseRepository<Comment> commentRepository, IBaseRepository<Like> likeRepository, 
+        public CommentService(IBaseRepository<Topic> topicRepository, IBaseRepository<Comment> commentRepository, IBaseRepository<Like> likeRepository,
             IBaseRepository<Dislike> dislikeRepository, IUserInfoClient grpcClient)
         {
             _commentRepository = commentRepository;
@@ -52,7 +52,7 @@ namespace Forums.DL.Services
                 return response;
             }
             var reply = await _grpcClient.GetUserInfoForTopic(universityName, userEmail);
-            if (!reply.IsAllowed)
+            if (reply == null || !reply.IsAllowed)
             {
                 response.Message = "You aren't allowed to get comments for this record";
                 return response;
@@ -66,13 +66,18 @@ namespace Forums.DL.Services
                 .Skip(page * commentNumber)
                 .Take(commentNumber).ToListAsync();
 
-            foreach(Comment comment in comments)
+            var nameEntries = await Task.WhenAll(
+                comments.Select(c => c.CreatorId).Distinct()
+                        .Select(async id => (id, name: await _grpcClient.GetUserName(id))));
+            var nameMap = nameEntries.ToDictionary(x => x.id, x => x.name);
+
+            foreach (Comment comment in comments)
             {
                 ReadCommentDto tempReadCommentDto = new ReadCommentDto();
 
                 tempReadCommentDto.CommentContent = comment.CommentContent;
                 tempReadCommentDto.CreatedAt = comment.CreatedAt;
-                tempReadCommentDto.CreatorName = await _grpcClient.GetUserName(comment.CreatorId);
+                tempReadCommentDto.CreatorName = nameMap.TryGetValue(comment.CreatorId, out var name) ? name : string.Empty;
                 tempReadCommentDto.LikesOverall = comment.Likes.ToArray().Length;
                 tempReadCommentDto.DislikesOverall = comment.Dislikes.ToArray().Length;
                 response.Values.Add(tempReadCommentDto);
@@ -96,14 +101,20 @@ namespace Forums.DL.Services
             }
 
             var reply = await _grpcClient.GetUserInfoForTopic(createCommentDto.UniversityName, creatorEmail);
-            if (!reply.IsAllowed)
+            if (reply == null || !reply.IsAllowed)
                 return response;
 
             Record? doesRecordExist = createCommentDto.IsTopic ?
                 await _topicRepository.SingleOrDefaultAsync(obj => obj.Id == createCommentDto.PostId) :
                 await _commentRepository.SingleOrDefaultAsync(obj => obj.Id == createCommentDto.PostId);
 
-            if(doesRecordExist == null)
+            if (doesRecordExist == null)
+            {
+                response.Message = "Such record doesn't exist";
+                return response;
+            }
+
+            if (doesRecordExist.UniversityId != reply.UniversityId)
             {
                 response.Message = "Such record doesn't exist";
                 return response;
@@ -147,7 +158,7 @@ namespace Forums.DL.Services
             }
 
             var reply = await _grpcClient.GetUserInfoForTopic(universityName, userEmail);
-            if (!reply.IsAllowed)
+            if (reply == null || !reply.IsAllowed)
                 return response;
 
             var isAlreadyLiked = await _likeRepository.SingleOrDefaultAsync(obj => obj.IsTopic == false && obj.PostId == commentId &&
@@ -202,7 +213,7 @@ namespace Forums.DL.Services
             }
 
             var reply = await _grpcClient.GetUserInfoForTopic(universityName, userEmail);
-            if (!reply.IsAllowed)
+            if (reply == null || !reply.IsAllowed)
                 return response;
 
             var isAlreadyDisliked = await _dislikeRepository.SingleOrDefaultAsync(obj => obj.IsTopic == false && obj.PostId == commentId &&

@@ -8,8 +8,8 @@
 
         public string CreatorName { get; set; }
 
-        public int Likes { get; set; }
+        public long Likes { get; set; }
 
-        public int Dislikes { get; set; }
+        public long Dislikes { get; set; }
     }
 }
