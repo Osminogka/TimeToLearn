@@ -9,7 +9,6 @@ namespace Courses.DAL.Models
         public string Title { get; set; } = string.Empty;
 
         [Required]
-        [MaxLength(10000)]
         public string Content { get; set; } = string.Empty;
 
         [Required]

@@ -1,6 +1,5 @@
 using Courses.DAL.Dtos;
 using Courses.DL.Services;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Courses.API.Controllers
@@ -19,14 +18,13 @@ namespace Courses.API.Controllers
         }
 
         [HttpGet("{universityName}/{page}")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetUniversityCoursesAsync(string universityName, int page)
         {
             try
             {
                 var result = await _courseService.GetUniversityCoursesAsync(universityName, getUserEmail(), page);
                 if (!result.Success)
-                    return BadRequest(result.Message);
+                    return result.Message.Contains("doesn't exist") ? NotFound(result.Message) : Forbid();
                 return Ok(result);
             }
             catch (Exception ex)
@@ -37,14 +35,13 @@ namespace Courses.API.Controllers
         }
 
         [HttpGet("course/{courseId}")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetCourseAsync(long courseId)
         {
             try
             {
                 var result = await _courseService.GetCourseAsync(courseId, getUserEmail());
                 if (!result.Success)
-                    return BadRequest(result.Message);
+                    return result.Message.Contains("doesn't exist") ? NotFound(result.Message) : Forbid();
                 return Ok(result);
             }
             catch (Exception ex)

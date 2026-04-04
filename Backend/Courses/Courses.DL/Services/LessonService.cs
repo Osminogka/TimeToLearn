@@ -53,10 +53,10 @@ namespace Courses.DL.Services
             var lessonDtos = lessons.Select(lesson => new ReadLessonDto
             {
                 Id = lesson.Id,
+                CourseId = lesson.CourseId,
                 Title = lesson.Title,
                 Content = lesson.Content,
                 IsMarkdown = lesson.IsMarkdown,
-                RenderedContent = lesson.IsMarkdown ? _markdownService.ConvertToHtml(lesson.Content) : null,
                 VideoLink = lesson.VideoLink,
                 MaterialLink = lesson.MaterialLink,
                 OrderNumber = lesson.OrderNumber,
@@ -103,6 +103,7 @@ namespace Courses.DL.Services
             response.Value = new ReadLessonDto
             {
                 Id = lesson.Id,
+                CourseId = lesson.CourseId,
                 Title = lesson.Title,
                 Content = lesson.Content,
                 IsMarkdown = lesson.IsMarkdown,
@@ -278,6 +279,68 @@ namespace Courses.DL.Services
             await _lessonRepository.DeleteAsync(lesson);
             response.Success = true;
             response.Message = "Lesson deleted successfully";
+
+            return response;
+        }
+
+        public async Task<ResponseMessage> ReorderLessonsAsync(ReorderLessonsDto reorderDto, string teacherEmail)
+        {
+            ResponseMessage response = new ResponseMessage();
+            response.Message = "You don't have such rights";
+
+            if (reorderDto.Items == null || reorderDto.Items.Count == 0)
+            {
+                response.Message = "No items provided";
+                return response;
+            }
+
+            var course = await _courseRepository.SingleOrDefaultAsync(obj => obj.Id == reorderDto.CourseId);
+            if (course == null)
+            {
+                response.Message = "Such course doesn't exist";
+                return response;
+            }
+
+            var universityName = await _grpcClient.GetUniversityName(course.UniversityId);
+            if (string.IsNullOrEmpty(universityName))
+            {
+                response.Message = "University not found";
+                return response;
+            }
+
+            var reply = await _grpcClient.GetUserInfoForCourse(universityName, teacherEmail);
+            if (reply == null || !reply.IsAllowed || !reply.IsTeacher)
+            {
+                response.Message = "Only teachers can reorder lessons";
+                return response;
+            }
+
+            if (course.TeacherId != reply.UserId)
+            {
+                response.Message = "You can only reorder lessons in your own courses";
+                return response;
+            }
+
+            var lessonIds = reorderDto.Items.Select(i => i.LessonId).ToList();
+            var lessons = await _lessonRepository.Where(obj => obj.CourseId == reorderDto.CourseId && lessonIds.Contains(obj.Id))
+                .ToListAsync();
+
+            if (lessons.Count != reorderDto.Items.Count)
+            {
+                response.Message = "One or more lessons do not belong to this course";
+                return response;
+            }
+
+            var orderMap = reorderDto.Items.ToDictionary(i => i.LessonId, i => i.OrderNumber);
+            foreach (var lesson in lessons)
+            {
+                lesson.OrderNumber = orderMap[lesson.Id];
+                lesson.UpdatedAt = DateTime.UtcNow;
+                await _lessonRepository.UpdateAsync(lesson);
+            }
+
+            response.Success = true;
+            response.Message = "Lessons reordered successfully";
 
             return response;
         }

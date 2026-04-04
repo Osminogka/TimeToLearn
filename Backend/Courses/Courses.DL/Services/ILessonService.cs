@@ -10,5 +10,6 @@ namespace Courses.DL.Services
         Task<ResponseMessage> CreateLessonAsync(CreateLessonDto lessonDto, string teacherEmail);
         Task<ResponseMessage> UpdateLessonAsync(UpdateLessonDto lessonDto, string teacherEmail);
         Task<ResponseMessage> DeleteLessonAsync(long lessonId, string teacherEmail);
+        Task<ResponseMessage> ReorderLessonsAsync(ReorderLessonsDto reorderDto, string teacherEmail);
     }
 }

@@ -19,14 +19,13 @@ namespace Courses.API.Controllers
         }
 
         [HttpGet("course/{courseId}")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetCourseLessonsAsync(long courseId)
         {
             try
             {
                 var result = await _lessonService.GetCourseLessonsAsync(courseId, getUserEmail());
                 if (!result.Success)
-                    return BadRequest(result.Message);
+                    return result.Message.Contains("doesn't exist") ? NotFound(result.Message) : Forbid();
                 return Ok(result);
             }
             catch (Exception ex)
@@ -37,14 +36,13 @@ namespace Courses.API.Controllers
         }
 
         [HttpGet("lesson/{lessonId}")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetLessonAsync(long lessonId)
         {
             try
             {
                 var result = await _lessonService.GetLessonAsync(lessonId, getUserEmail());
                 if (!result.Success)
-                    return BadRequest(result.Message);
+                    return result.Message.Contains("doesn't exist") ? NotFound(result.Message) : Forbid();
                 return Ok(result);
             }
             catch (Exception ex)
@@ -94,6 +92,23 @@ namespace Courses.API.Controllers
             try
             {
                 var result = await _lessonService.DeleteLessonAsync(lessonId, getUserEmail());
+                if (!result.Success)
+                    return BadRequest(result.Message);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return HandleException(ex);
+            }
+        }
+
+        [HttpPut("reorder")]
+        public async Task<IActionResult> ReorderLessonsAsync(ReorderLessonsDto reorderDto)
+        {
+            try
+            {
+                var result = await _lessonService.ReorderLessonsAsync(reorderDto, getUserEmail());
                 if (!result.Success)
                     return BadRequest(result.Message);
                 return Ok(result);
