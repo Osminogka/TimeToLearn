@@ -5,7 +5,6 @@ using Core.DAL.Models;
 using Core.DL.Repositories;
 using Core.DL.Services;
 using Microsoft.EntityFrameworkCore;
-using Moq;
 using Core.DAL.Dtos;
 using Core.DAL.SideModels;
 using Core.API.Infrastructure;
@@ -16,8 +15,8 @@ public class UniversityServiceTests
 {
     private IBaseRepository<University> UniversityRepository { get; set; }
     private IBaseRepository<BaseUser> UserRepository { get; set; }
-    private IBaseRepository<Student> StudentsRepository { get;  set; }
-    private IBaseRepository<Teacher> TeachersRepository { get; set; }
+    private IBaseRepository<StudentEnrollment> StudentEnrollmentRepository { get; set; }
+    private IBaseRepository<TeacherEnrollment> TeacherEnrollmentRepository { get; set; }
 
     private IUniversityService Service;
 
@@ -47,7 +46,6 @@ public class UniversityServiceTests
         OriginalId = Guid.NewGuid(),
         Username = "Student",
         Email = "student@test.com",
-        StudentId = 1
     };
 
     public UniversityServiceTests()
@@ -58,8 +56,8 @@ public class UniversityServiceTests
 
         services.AddTransient<IBaseRepository<University>, BaseRepository<University>>();
         services.AddTransient<IBaseRepository<BaseUser>, BaseRepository<BaseUser>>();
-        services.AddTransient<IBaseRepository<Teacher>, BaseRepository<Teacher>>();
-        services.AddTransient<IBaseRepository<Student>, BaseRepository<Student>>();
+        services.AddTransient<IBaseRepository<StudentEnrollment>, BaseRepository<StudentEnrollment>>();
+        services.AddTransient<IBaseRepository<TeacherEnrollment>, BaseRepository<TeacherEnrollment>>();
 
         ServiceProvider = services.BuildServiceProvider();
 
@@ -68,8 +66,8 @@ public class UniversityServiceTests
 
         UniversityRepository = scopedServices.GetRequiredService<IBaseRepository<University>>();
         UserRepository = scopedServices.GetRequiredService<IBaseRepository<BaseUser>>();
-        StudentsRepository = scopedServices.GetRequiredService<IBaseRepository<Student>>();
-        TeachersRepository = scopedServices.GetRequiredService<IBaseRepository<Teacher>>();
+        StudentEnrollmentRepository = scopedServices.GetRequiredService<IBaseRepository<StudentEnrollment>>();
+        TeacherEnrollmentRepository = scopedServices.GetRequiredService<IBaseRepository<TeacherEnrollment>>();
 
         var config = new MapperConfiguration(cfg =>
         {
@@ -78,7 +76,7 @@ public class UniversityServiceTests
 
         var autoMapper = config.CreateMapper();
 
-        Service = new UniversityService(autoMapper, UniversityRepository, UserRepository);
+        Service = new UniversityService(autoMapper, UniversityRepository, UserRepository, StudentEnrollmentRepository, TeacherEnrollmentRepository);
 
         var context = UserRepository.GetContext();
         context.Database.EnsureDeleted();
@@ -91,42 +89,22 @@ public class UniversityServiceTests
         {
             Id = 1,
             Name = "DKU",
-            Address = new Address
-            {
-                City = "Almaty",
-                Country = "Kaz",
-                Street = "Pushkina"
-            },
+            Address = new Address { City = "Almaty", Country = "Kaz", Street = "Pushkina" },
             Description = "Test",
             IsOpened = true,
             DirectorId = Director.Id,
-            Members = new List<BaseUser> { Director, TeacherUser, StudentUser }
+            StudentEnrollments = new List<StudentEnrollment>
+            {
+                new StudentEnrollment { Id = 1, BaseUserId = StudentUser.Id, UniversityId = 1 }
+            },
+            TeacherEnrollments = new List<TeacherEnrollment>
+            {
+                new TeacherEnrollment { Id = 1, BaseUserId = Director.Id, UniversityId = 1 },
+                new TeacherEnrollment { Id = 2, BaseUserId = TeacherUser.Id, UniversityId = 1 }
+            }
         };
 
         context.Add(universityDto);
-
-        Student student = new Student
-        {
-            Id = 1,
-            BaseUserId = StudentUser.Id,
-        };
-        context.Add(student);
-
-        Teacher teacher = new Teacher
-        {
-            Id = 1,
-            Degree = "Master",
-            BaseUserId = Director.Id,
-        };
-        context.Add(teacher);
-
-        Teacher teacher2 = new Teacher
-        {
-            Id = 2,
-            Degree = "Master",
-            BaseUserId = TeacherUser.Id,
-        };
-        context.Add(teacher2);
 
         context.SaveChanges();
     }
@@ -134,38 +112,45 @@ public class UniversityServiceTests
     [Fact]
     public async Task CreateUniversityTest()
     {
-        //Arrange
         CreateUniversityDto universityDto = new CreateUniversityDto
         {
             Name = "Narhoz",
-            Address = new Address
-            {
-                City = "Almaty",
-                Country = "Kaz",
-                Street = "Pushkina"
-            },
+            Address = new Address { City = "Almaty", Country = "Kaz", Street = "Pushkina" },
             Description = "Test",
             IsOpened = true,
         };
 
-        // Act — use StudentUser who is not yet a director
+        // StudentUser is not yet a director — can create a second university
         var result = await Service.CreateAsync(universityDto, StudentUser.Email);
 
-        //Assert
-        var response = Assert.IsType< ResponseWithValue<ReadUniversityDto>>(result);
+        var response = Assert.IsType<ResponseWithValue<ReadUniversityDto>>(result);
+        Assert.True(response.Success);
+    }
 
+    [Fact]
+    public async Task CreateUniversity_DirectorCanCreateMultipleTest()
+    {
+        // Director already directs DKU — should be allowed to create another university now
+        CreateUniversityDto universityDto = new CreateUniversityDto
+        {
+            Name = "Narhoz",
+            Address = new Address { City = "Almaty", Country = "Kaz", Street = "Pushkina" },
+            Description = "Test",
+            IsOpened = true,
+        };
+
+        var result = await Service.CreateAsync(universityDto, Director.Email);
+
+        var response = Assert.IsType<ResponseWithValue<ReadUniversityDto>>(result);
         Assert.True(response.Success);
     }
 
     [Fact]
     public async Task GetAllTest()
     {
-        //Act
-        var result2 = await Service.GetAllAsync();
+        var result = await Service.GetAllAsync();
 
-        //Assert
-        var response = Assert.IsType<ResponseGetEnum<string>>(result2);
-
+        var response = Assert.IsType<ResponseGetEnum<string>>(result);
         Assert.True(response.Success);
         Assert.Single(response.Enum);
     }
@@ -173,10 +158,8 @@ public class UniversityServiceTests
     [Fact]
     public async Task GetUniversityTest()
     {
-        //Act
         var result = await Service.GetAsync("DKU");
 
-        //Assert
         var response = Assert.IsType<ResponseWithValue<ReadUniversityDto>>(result);
         Assert.True(response.Success);
         Assert.Equal("DKU", response.Value.Name);
@@ -185,30 +168,24 @@ public class UniversityServiceTests
     [Fact]
     public async Task GetUniversityTeachers()
     {
-        //Act
         var result = await Service.GetTeachersAsync("DKU", Director.Email);
 
-        //Assert
         var response = Assert.IsType<ResponseGetEnum<string>>(result);
 
         Assert.True(response.Success);
-        // InMemory provider does not support filtered Include, so all members are returned.
-        // On SQL Server, only members with TeacherId != null are returned (Director + TeacherUser = 2).
-        Assert.True(response.Enum.Count() >= 2);
+        Assert.Equal(2, response.Enum.Count());
+        Assert.Contains("Teacher", response.Enum);
     }
 
     [Fact]
     public async Task GetUniversityStudents()
     {
-        //Act
         var result = await Service.GetStudentsAsync("DKU", Director.Email);
 
-        //Assert
         var response = Assert.IsType<ResponseGetEnum<string>>(result);
 
         Assert.True(response.Success);
-        // InMemory provider does not support filtered Include, so all members are returned.
-        // On SQL Server, only members with TeacherId == null are returned (StudentUser = 1).
-        Assert.True(response.Enum.Count() >= 1);
+        Assert.Single(response.Enum);
+        Assert.Contains("Student", response.Enum);
     }
 }

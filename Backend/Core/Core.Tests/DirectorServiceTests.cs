@@ -13,6 +13,8 @@ namespace Users.Tests
         private IBaseRepository<University> UniversityRepository { get; set; }
         private IBaseRepository<BaseUser> UserRepository { get; set; }
         private IBaseRepository<EntryRequest> EntryRequestRepository { get; set; }
+        private IBaseRepository<StudentEnrollment> StudentEnrollmentRepository { get; set; }
+        private IBaseRepository<TeacherEnrollment> TeacherEnrollmentRepository { get; set; }
 
         private DirectorService Service { get; set; }
 
@@ -32,6 +34,8 @@ namespace Users.Tests
             services.AddTransient<IBaseRepository<BaseUser>, BaseRepository<BaseUser>>();
             services.AddTransient<IBaseRepository<Teacher>, BaseRepository<Teacher>>();
             services.AddTransient<IBaseRepository<EntryRequest>, BaseRepository<EntryRequest>>();
+            services.AddTransient<IBaseRepository<StudentEnrollment>, BaseRepository<StudentEnrollment>>();
+            services.AddTransient<IBaseRepository<TeacherEnrollment>, BaseRepository<TeacherEnrollment>>();
 
             var serviceProvider = services.BuildServiceProvider();
 
@@ -41,29 +45,31 @@ namespace Users.Tests
             UniversityRepository = scopedServices.GetRequiredService<IBaseRepository<University>>();
             UserRepository = scopedServices.GetRequiredService<IBaseRepository<BaseUser>>();
             EntryRequestRepository = scopedServices.GetRequiredService<IBaseRepository<EntryRequest>>();
+            StudentEnrollmentRepository = scopedServices.GetRequiredService<IBaseRepository<StudentEnrollment>>();
+            TeacherEnrollmentRepository = scopedServices.GetRequiredService<IBaseRepository<TeacherEnrollment>>();
 
-            Service = new DirectorService(UniversityRepository, EntryRequestRepository, UserRepository);
+            Service = new DirectorService(UniversityRepository, EntryRequestRepository, UserRepository, StudentEnrollmentRepository, TeacherEnrollmentRepository);
 
             var context = UserRepository.GetContext();
             context.Database.EnsureDeleted();
 
+            // Implicit student (no TeacherId)
             var user = new BaseUser()
             {
                 Id = 1,
                 OriginalId = Guid.NewGuid(),
                 Username = "Osminogka",
                 Email = "osminogka@test.com",
-                StudentId = 1
             };
             context.Add(user);
 
+            // Implicit student
             var student = new BaseUser()
             {
                 Id = 2,
                 OriginalId = Guid.NewGuid(),
                 Username = "Student",
                 Email = "student@test.com",
-                StudentId = 2
             };
             context.Add(student);
 
@@ -75,7 +81,6 @@ namespace Users.Tests
                 Email = "teacher@test.com",
                 TeacherId = 1
             };
-
             var teacherStruct = new Teacher()
             {
                 Id = 1,
@@ -109,18 +114,14 @@ namespace Users.Tests
             {
                 Id = 1,
                 Name = "DKU",
-                Address = new Address
-                {
-                    City = "Almaty",
-                    Country = "Kaz",
-                    Street = "Pushkina"
-                },
+                Address = new Address { City = "Almaty", Country = "Kaz", Street = "Pushkina" },
                 Description = "Test",
                 IsOpened = true,
                 DirectorId = director.Id
             };
             context.Add(university);
 
+            // Entry request from user (implicit student) to join DKU
             var entryRequest = new EntryRequest
             {
                 BaseUserId = 1,
@@ -133,99 +134,72 @@ namespace Users.Tests
         }
 
         [Fact]
-        public async Task AcceptEntryRequestTest()
+        public async Task AcceptEntryRequest_CreatesStudentEnrollmentTest()
         {
-            //Arrange
             var model = new EntryRequestModel()
             {
                 Username = Username,
                 University = UniversityName
             };
 
-            //Act
             var result = await Service.AcceptEntryRequestAsync(model, DirectorEmail);
 
-            //Assert
             var response = Assert.IsType<ResponseMessage>(result);
             Assert.True(response.Success);
 
-            var university = await UniversityRepository.Where(obj => obj.Name == UniversityName)
-                .Include(obj => obj.Members)
-                .FirstOrDefaultAsync();
-            Assert.Contains(university!.Members, m => m.Username == Username);
+            // User has no TeacherId, so StudentEnrollment should be created
+            var enrollment = await StudentEnrollmentRepository.SingleOrDefaultAsync(
+                e => e.BaseUserId == 1 && e.UniversityId == 1);
+            Assert.NotNull(enrollment);
         }
 
         [Fact]
         public async Task RejectEntryRequestTest()
         {
-            //Arrange
             var model = new EntryRequestModel()
             {
                 Username = Username,
                 University = UniversityName
             };
 
-            //Act
             var result = await Service.RejectEntryRequestAsync(model, DirectorEmail);
 
-            //Assert
             var response = Assert.IsType<ResponseMessage>(result);
             Assert.True(response.Success);
 
-            var university = await UniversityRepository.Where(obj => obj.Name == UniversityName)
-                .Include(obj => obj.Members)
-                .FirstOrDefaultAsync();
-            Assert.DoesNotContain(university!.Members, m => m.Username == Username);
+            var enrollment = await StudentEnrollmentRepository.SingleOrDefaultAsync(
+                e => e.BaseUserId == 1 && e.UniversityId == 1);
+            Assert.Null(enrollment);
         }
 
         [Fact]
         public async Task UpdateUniversityInfoTest()
         {
-            //Arrange
             UpdateUniversityInfoModel model = new UpdateUniversityInfoModel()
             {
                 Name = "DKU",
                 Description = "New description",
-                Address = new Address
-                {
-                    Country = "USA",
-                    City = "New York",
-                    Street = "Daun street"
-                }
+                Address = new Address { Country = "USA", City = "New York", Street = "Daun street" }
             };
 
-            //Act
             var result = await Service.UpdateUniversityInfoAsync(model, DirectorEmail);
-
             var university = await UniversityRepository.SingleOrDefaultAsync(obj => obj.Name == UniversityName);
 
-            //Assert
             var response = Assert.IsType<ResponseMessage>(result);
-
             Assert.True(response.Success);
             Assert.Equal("USA", university!.Address.Country);
 
-            //Arrange
             UpdateUniversityInfoModel model2 = new UpdateUniversityInfoModel()
             {
                 Name = "DKU",
                 Description = "New description",
-                Address = new Address
-                {
-                    Country = "USA",
-                    City = null,
-                    Street = null
-                }
+                Address = new Address { Country = "USA", City = null, Street = null }
             };
 
-            //Act
             result = await Service.UpdateUniversityInfoAsync(model2, DirectorEmail);
-
             university = await UniversityRepository.SingleOrDefaultAsync(obj => obj.Name == UniversityName);
 
-            //Assert
             var response2 = Assert.IsType<ResponseMessage>(result);
-
             Assert.True(response2.Success);
             Assert.Null(university!.Address.City);
         }
@@ -233,15 +207,12 @@ namespace Users.Tests
         [Fact]
         public async Task InviteStudentToUniversityTest()
         {
-            //Act
             var result = await Service.InviteStudentToUniversityAsync(UniversityName, StudentName, DirectorEmail);
 
             var invite = await EntryRequestRepository.SingleOrDefaultAsync(obj =>
                 obj.BaseUser.Username == StudentName && obj.SentByUniversity == true);
 
-            //Assert
             var response = Assert.IsType<ResponseMessage>(result);
-
             Assert.NotNull(invite);
             Assert.True(response.Success);
         }
@@ -249,15 +220,12 @@ namespace Users.Tests
         [Fact]
         public async Task InviteTeacherToUniversityTest()
         {
-            //Act
             var result = await Service.InviteTeacherToUniversityAsync(UniversityName, TeacherName, DirectorEmail);
 
             var invite = await EntryRequestRepository.SingleOrDefaultAsync(obj =>
                 obj.BaseUser.Username == TeacherName && obj.SentByUniversity == true);
 
-            //Assert
             var response = Assert.IsType<ResponseMessage>(result);
-
             Assert.NotNull(invite);
             Assert.True(response.Success);
         }

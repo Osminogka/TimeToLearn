@@ -12,7 +12,8 @@ namespace Users.Tests
     {
         private IBaseRepository<University> UniversityRepository { get; set; }
         private IBaseRepository<BaseUser> UserRepository { get; set; }
-        private IBaseRepository<Student> StudentsRepository { get; set; }
+        private IBaseRepository<StudentEnrollment> StudentEnrollmentRepository { get; set; }
+        private IBaseRepository<TeacherEnrollment> TeacherEnrollmentRepository { get; set; }
         private IBaseRepository<Teacher> TeacherRepository { get; set; }
         private IBaseRepository<EntryRequest> EntryRequestRepository { get; set; }
 
@@ -22,15 +23,11 @@ namespace Users.Tests
 
         private string UserEmail = "osminogka@test.com";
         private string StudentEmail = "student@test.com";
-        private string StudentUsername = "Student";
-        private string DirectorOpenEmail = "directorOpen@test.com";
-        private string DirectorClosedEmail = "directorClosed@test.com";
+        private string TeacherEmail = "directorOpen@test.com";
         private long UserId = 1;
         private long StudentId = 2;
-        private long DirectorOpenId = 3;
-        private long DirectorClosedId = 4;
+        private long TeacherId = 3;
         private long UniversityOpenId = 1;
-        private long UninversityCloesId = 2;
 
         public StudentServiceTests()
         {
@@ -40,7 +37,8 @@ namespace Users.Tests
 
             services.AddTransient<IBaseRepository<University>, BaseRepository<University>>();
             services.AddTransient<IBaseRepository<BaseUser>, BaseRepository<BaseUser>>();
-            services.AddTransient<IBaseRepository<Student>, BaseRepository<Student>>();
+            services.AddTransient<IBaseRepository<StudentEnrollment>, BaseRepository<StudentEnrollment>>();
+            services.AddTransient<IBaseRepository<TeacherEnrollment>, BaseRepository<TeacherEnrollment>>();
             services.AddTransient<IBaseRepository<Teacher>, BaseRepository<Teacher>>();
             services.AddTransient<IBaseRepository<EntryRequest>, BaseRepository<EntryRequest>>();
 
@@ -51,15 +49,17 @@ namespace Users.Tests
 
             UniversityRepository = scopedServices.GetRequiredService<IBaseRepository<University>>();
             UserRepository = scopedServices.GetRequiredService<IBaseRepository<BaseUser>>();
-            StudentsRepository = scopedServices.GetRequiredService<IBaseRepository<Student>>();
+            StudentEnrollmentRepository = scopedServices.GetRequiredService<IBaseRepository<StudentEnrollment>>();
+            TeacherEnrollmentRepository = scopedServices.GetRequiredService<IBaseRepository<TeacherEnrollment>>();
             TeacherRepository = scopedServices.GetRequiredService<IBaseRepository<Teacher>>();
             EntryRequestRepository = scopedServices.GetRequiredService<IBaseRepository<EntryRequest>>();
 
-            Service = new StudentService(StudentsRepository, UserRepository, UniversityRepository, EntryRequestRepository, TeacherRepository);
+            Service = new StudentService(StudentEnrollmentRepository, TeacherEnrollmentRepository, UserRepository, UniversityRepository, EntryRequestRepository, TeacherRepository);
 
             var context = UserRepository.GetContext();
             context.Database.EnsureDeleted();
 
+            // Simple user with no role (implicit student)
             var user = new BaseUser()
             {
                 Id = 1,
@@ -69,17 +69,18 @@ namespace Users.Tests
             };
             context.Add(user);
 
+            // Another implicit student
             var studentUser = new BaseUser()
             {
                 Id = 2,
                 OriginalId = Guid.NewGuid(),
                 Username = "Student",
                 Email = "student@test.com",
-                StudentId = 1
             };
             context.Add(studentUser);
 
-            BaseUser directorOpen = new BaseUser()
+            // Teacher user (to test switching back to student)
+            var teacherUser = new BaseUser()
             {
                 Id = 3,
                 OriginalId = Guid.NewGuid(),
@@ -87,34 +88,18 @@ namespace Users.Tests
                 Email = "directorOpen@test.com",
                 TeacherId = 1
             };
-            context.Add(directorOpen);
+            context.Add(teacherUser);
 
-            var directorTeacher = new Teacher
+            var teacherStruct = new Teacher
             {
                 Id = 1,
-                BaseUserId = directorOpen.Id,
+                BaseUserId = teacherUser.Id,
                 IsVerified = true,
                 Degree = "Master"
             };
-            context.Add(directorTeacher);
+            context.Add(teacherStruct);
 
-            University universityOpen = new University
-            {
-                Id = 1,
-                Name = "DKU",
-                Address = new Address
-                {
-                    City = "Almaty",
-                    Country = "Kaz",
-                    Street = "Pushkina"
-                },
-                Description = "Test",
-                IsOpened = true,
-                DirectorId = directorOpen.Id
-            };
-            context.Add(universityOpen);
-
-            BaseUser directorClosed = new BaseUser()
+            var directorClosed = new BaseUser()
             {
                 Id = 4,
                 OriginalId = Guid.NewGuid(),
@@ -133,16 +118,22 @@ namespace Users.Tests
             };
             context.Add(directorClosedTeacher);
 
+            University universityOpen = new University
+            {
+                Id = 1,
+                Name = "DKU",
+                Address = new Address { City = "Almaty", Country = "Kaz", Street = "Pushkina" },
+                Description = "Test",
+                IsOpened = true,
+                DirectorId = teacherUser.Id
+            };
+            context.Add(universityOpen);
+
             University universityClosed = new University
             {
                 Id = 2,
                 Name = "Narhoz",
-                Address = new Address
-                {
-                    City = "Almaty",
-                    Country = "Kaz",
-                    Street = "Pushkina"
-                },
+                Address = new Address { City = "Almaty", Country = "Kaz", Street = "Pushkina" },
                 Description = "Test",
                 IsOpened = false,
                 DirectorId = directorClosed.Id
@@ -153,28 +144,38 @@ namespace Users.Tests
         }
 
         [Fact]
-        public async Task BecomeAStudentTest()
+        public async Task BecomeAStudent_WhenTeacher_SwitchesRoleTest()
         {
-            //Act
-            var result = await Service.BecomeAStudentAsync(UserEmail);
+            // Act: teacher switches back to student
+            var result = await Service.BecomeAStudentAsync(TeacherEmail);
 
-            //Assert
+            // Assert
             var response = Assert.IsType<ResponseMessage>(result);
+            Assert.True(response.Success);
 
-            var student = await StudentsRepository.SingleOrDefaultAsync(obj => obj.BaseUserId == UserId);
+            var user = await UserRepository.SingleOrDefaultAsync(obj => obj.Email == TeacherEmail);
+            Assert.Null(user!.TeacherId);
 
-            Assert.True(response.Success);;
-            Assert.NotNull(student);
+            var teacher = await TeacherRepository.SingleOrDefaultAsync(obj => obj.BaseUserId == TeacherId);
+            Assert.Null(teacher);
+        }
+
+        [Fact]
+        public async Task BecomeAStudent_WhenAlreadyStudent_FailsTest()
+        {
+            // Act: already a student (no TeacherId), should fail
+            var result = await Service.BecomeAStudentAsync(StudentEmail);
+
+            var response = Assert.IsType<ResponseMessage>(result);
+            Assert.False(response.Success);
         }
 
         [Fact]
         public async Task SendRequestToBecomeStudentOfUniversityTest()
         {
-            //Act
             var result = await Service.SendRequestToBecomeStudentOfUniversity("DKU", StudentEmail);
             var result2 = await Service.SendRequestToBecomeStudentOfUniversity("DKU", StudentEmail);
 
-            //Assert
             var response = Assert.IsType<ResponseMessage>(result);
             var response2 = Assert.IsType<ResponseMessage>(result2);
 
@@ -185,10 +186,8 @@ namespace Users.Tests
         [Fact]
         public async Task SendRequestToClosedUniversityFailsTest()
         {
-            //Act
             var result = await Service.SendRequestToBecomeStudentOfUniversity("Narhoz", StudentEmail);
 
-            //Assert
             var response = Assert.IsType<ResponseMessage>(result);
             Assert.False(response.Success);
         }
@@ -196,12 +195,14 @@ namespace Users.Tests
         [Fact]
         public async Task EntryUniversityTest()
         {
-            //Act
             var result = await Service.EntryUniversityAsync("DKU", StudentEmail);
 
-            //Assert
             var response = Assert.IsType<ResponseMessage>(result);
             Assert.True(response.Success);
+
+            var enrollment = await StudentEnrollmentRepository.SingleOrDefaultAsync(
+                e => e.BaseUserId == StudentId && e.UniversityId == UniversityOpenId);
+            Assert.NotNull(enrollment);
         }
     }
 }

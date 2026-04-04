@@ -1,4 +1,4 @@
-﻿using Grpc.Core;
+using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using Core.DAL.Models;
 using Core.DL.Repositories;
@@ -23,16 +23,23 @@ namespace Core.API.Grpc
             response.IsAllowed = false;
 
             BaseUser? user = await _baseUserRepository.Where(obj => obj.Email == request.Useremail)
-                .Include(obj => obj.Universities)
                 .FirstOrDefaultAsync();
             if (user == null)
                 return response;
 
             University? university = await _universityRepository.Where(obj => obj.Name == request.UniversityName)
-                .Include(obj => obj.Members)
+                .Include(obj => obj.StudentEnrollments)
+                .Include(obj => obj.TeacherEnrollments)
                 .FirstOrDefaultAsync();
-            
-            if (university == null || !university.Members.Any(member => member.Id == user.Id))
+
+            if (university == null)
+                return response;
+
+            bool isDirector = university.DirectorId == user.Id;
+            bool hasStudentEnrollment = university.StudentEnrollments.Any(e => e.BaseUserId == user.Id);
+            bool hasTeacherEnrollment = university.TeacherEnrollments.Any(e => e.BaseUserId == user.Id);
+
+            if (!isDirector && !hasStudentEnrollment && !hasTeacherEnrollment)
                 return response;
 
             response.UserId = user.Id;

@@ -62,16 +62,18 @@ namespace Users.Tests
             {
                 Id = 1,
                 Name = "DKU",
-                Address = new Address
-                {
-                    City = "Almaty",
-                    Country = "Kaz",
-                    Street = "Pushkina"
-                },
+                Address = new Address { City = "Almaty", Country = "Kaz", Street = "Pushkina" },
                 Description = "Test",
                 IsOpened = true,
                 DirectorId = directorOpen.Id,
-                Members = new List<BaseUser> { simpleUser, directorOpen }
+                StudentEnrollments = new List<StudentEnrollment>
+                {
+                    new StudentEnrollment { Id = 1, BaseUserId = simpleUser.Id, UniversityId = 1 }
+                },
+                TeacherEnrollments = new List<TeacherEnrollment>
+                {
+                    new TeacherEnrollment { Id = 1, BaseUserId = directorOpen.Id, UniversityId = 1 }
+                }
             };
             context.Add(universityOpen);
 
@@ -81,7 +83,6 @@ namespace Users.Tests
         [Fact]
         public async Task GetInfoForTopic()
         {
-            //Arrange
             GetInfoRequest getInfo = new GetInfoRequest()
             {
                 UniversityName = "DKU",
@@ -89,47 +90,50 @@ namespace Users.Tests
             };
 
             var mockServerCallContext = new Mock<ServerCallContext>(MockBehavior.Strict);
-            //Act
             var reply = await Service.GetInfoForTopic(getInfo, mockServerCallContext.Object);
 
-            //Assert
             Assert.Equal(1, reply.UniversityId);
             Assert.Equal(1, reply.UserId);
             Assert.True(reply.IsAllowed);
         }
 
         [Fact]
-        public async Task GetUniversityName()
+        public async Task GetInfoForTopic_Director_IsAllowed()
         {
-            //Arrange
-            UserId id = new UserId()
+            GetInfoRequest getInfo = new GetInfoRequest()
             {
-                UserId_ = 1
+                UniversityName = "DKU",
+                Useremail = "directorOpen@test.com"
             };
 
             var mockServerCallContext = new Mock<ServerCallContext>(MockBehavior.Strict);
-            //Act
-            var reply = await Service.GetUserName(id, mockServerCallContext.Object);
+            var reply = await Service.GetInfoForTopic(getInfo, mockServerCallContext.Object);
 
-            //Assert
-            Assert.Equal("Osminogka", reply.Username);
+            Assert.Equal(1, reply.UniversityId);
+            Assert.Equal(2, reply.UserId);
+            Assert.True(reply.IsAllowed);
         }
 
         [Fact]
-        public async Task GetInfoFoGetUserNamerTopic()
+        public async Task GetUniversityName()
         {
-            //Arrange
-            UniversityId id = new UniversityId()
-            {
-                UniversityId_ = 1
-            };
+            UniversityId id = new UniversityId() { UniversityId_ = 1 };
 
             var mockServerCallContext = new Mock<ServerCallContext>(MockBehavior.Strict);
-            //Act
             var reply = await Service.GetUniversityName(id, mockServerCallContext.Object);
 
-            //Assert
             Assert.Equal("DKU", reply.UniversityName_);
+        }
+
+        [Fact]
+        public async Task GetUserName()
+        {
+            UserId id = new UserId() { UserId_ = 1 };
+
+            var mockServerCallContext = new Mock<ServerCallContext>(MockBehavior.Strict);
+            var reply = await Service.GetUserName(id, mockServerCallContext.Object);
+
+            Assert.Equal("Osminogka", reply.Username);
         }
     }
 }

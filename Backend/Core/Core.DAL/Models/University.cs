@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Core.DAL.Models
 {
@@ -23,7 +23,9 @@ namespace Core.DAL.Models
 
         public BaseUser Director { get; set; }
 
-        public ICollection<BaseUser> Members { get; set; }
+        public ICollection<StudentEnrollment> StudentEnrollments { get; set; }
+
+        public ICollection<TeacherEnrollment> TeacherEnrollments { get; set; }
 
         public ICollection<EntryRequest> EntryRequests { get; set; }
     }

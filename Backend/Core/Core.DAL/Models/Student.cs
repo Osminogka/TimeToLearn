@@ -1,9 +1,1 @@
-﻿namespace Core.DAL.Models
-{
-    public class Student : BaseEntity
-    {
-        public long BaseUserId { get; set; }
-
-        public BaseUser BaseUser { get; set; }
-    }
-}
+// Removed: replaced by StudentEnrollment

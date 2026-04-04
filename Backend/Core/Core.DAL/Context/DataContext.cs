@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Core.DAL.Models;
 
 namespace Core.DAL.Context
@@ -9,9 +9,10 @@ namespace Core.DAL.Context
 
         public DbSet<BaseUser> BaseUsers => Set<BaseUser>();
         public DbSet<EntryRequest> EntryRequests => Set<EntryRequest>();
-        public DbSet<Student> Students => Set<Student>();
         public DbSet<Teacher> Teachers => Set<Teacher>();
         public DbSet<University> Universities => Set<University>();
+        public DbSet<StudentEnrollment> StudentEnrollments => Set<StudentEnrollment>();
+        public DbSet<TeacherEnrollment> TeacherEnrollments => Set<TeacherEnrollment>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -21,11 +22,6 @@ namespace Core.DAL.Context
                 .HasOne(e => e.Teacher)
                 .WithOne(e => e.BaseUser)
                 .HasForeignKey<Teacher>(e => e.BaseUserId);
-
-            modelBuilder.Entity<BaseUser>()
-                .HasOne(e => e.Student)
-                .WithOne(e => e.BaseUser)
-                .HasForeignKey<Student>(e => e.BaseUserId);
 
             modelBuilder.Entity<BaseUser>()
                 .HasMany(e => e.EntryRequests)
@@ -50,18 +46,45 @@ namespace Core.DAL.Context
 
             modelBuilder.Entity<University>()
                 .HasOne(e => e.Director)
-                .WithOne(e => e.UniversityDirector)
-                .HasForeignKey<University>(e => e.DirectorId);
-
-            modelBuilder.Entity<University>()
-                .HasMany(e => e.Members)
-                .WithMany(e => e.Universities);
+                .WithMany(e => e.DirectingUniversities)
+                .HasForeignKey(e => e.DirectorId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<University>()
                 .HasMany(e => e.EntryRequests)
                 .WithOne(e => e.University)
                 .HasForeignKey(e => e.UniversityId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<StudentEnrollment>()
+                .HasOne(e => e.BaseUser)
+                .WithMany(e => e.StudentEnrollments)
+                .HasForeignKey(e => e.BaseUserId);
+
+            modelBuilder.Entity<StudentEnrollment>()
+                .HasOne(e => e.University)
+                .WithMany(e => e.StudentEnrollments)
+                .HasForeignKey(e => e.UniversityId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<StudentEnrollment>()
+                .HasIndex(e => new { e.BaseUserId, e.UniversityId })
+                .IsUnique();
+
+            modelBuilder.Entity<TeacherEnrollment>()
+                .HasOne(e => e.BaseUser)
+                .WithMany(e => e.TeacherEnrollments)
+                .HasForeignKey(e => e.BaseUserId);
+
+            modelBuilder.Entity<TeacherEnrollment>()
+                .HasOne(e => e.University)
+                .WithMany(e => e.TeacherEnrollments)
+                .HasForeignKey(e => e.UniversityId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<TeacherEnrollment>()
+                .HasIndex(e => new { e.BaseUserId, e.UniversityId })
+                .IsUnique();
         }
     }
 }

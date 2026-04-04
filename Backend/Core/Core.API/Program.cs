@@ -25,9 +25,10 @@ builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 //Repositories
 builder.Services.AddTransient<IBaseRepository<University>, BaseRepository<University>>();
 builder.Services.AddTransient<IBaseRepository<BaseUser>, BaseRepository<BaseUser>>();
-builder.Services.AddTransient<IBaseRepository<Student>, BaseRepository<Student>>();
 builder.Services.AddTransient<IBaseRepository<Teacher>, BaseRepository<Teacher>>();
 builder.Services.AddTransient<IBaseRepository<EntryRequest>, BaseRepository<EntryRequest>>();
+builder.Services.AddTransient<IBaseRepository<StudentEnrollment>, BaseRepository<StudentEnrollment>>();
+builder.Services.AddTransient<IBaseRepository<TeacherEnrollment>, BaseRepository<TeacherEnrollment>>();
 
 //Services
 builder.Services.AddTransient<IBaseUserService, BaseUserService>();

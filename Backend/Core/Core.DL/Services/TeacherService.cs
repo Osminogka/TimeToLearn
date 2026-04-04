@@ -1,10 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using Core.DAL.Models;
 using Core.DAL.SideModels;
 using Core.DL.Repositories;
@@ -17,15 +11,23 @@ namespace Core.DL.Services
         private readonly IBaseRepository<BaseUser> _baseUserRepository;
         private readonly IBaseRepository<University> _universityRepository;
         private readonly IBaseRepository<EntryRequest> _entryRequestRepository;
-        private readonly IBaseRepository<Student> _studentRepository;
+        private readonly IBaseRepository<StudentEnrollment> _studentEnrollmentRepository;
+        private readonly IBaseRepository<TeacherEnrollment> _teacherEnrollmentRepository;
 
-        public TeacherService(IBaseRepository<Teacher> teacherRepository, IBaseRepository<BaseUser> baseUserRepository, IBaseRepository<University> universityRepository, IBaseRepository<EntryRequest> entryRequestRepository, IBaseRepository<Student> studentRepository)
+        public TeacherService(
+            IBaseRepository<Teacher> teacherRepository,
+            IBaseRepository<BaseUser> baseUserRepository,
+            IBaseRepository<University> universityRepository,
+            IBaseRepository<EntryRequest> entryRequestRepository,
+            IBaseRepository<StudentEnrollment> studentEnrollmentRepository,
+            IBaseRepository<TeacherEnrollment> teacherEnrollmentRepository)
         {
             _teacherRepository = teacherRepository;
             _baseUserRepository = baseUserRepository;
             _universityRepository = universityRepository;
             _entryRequestRepository = entryRequestRepository;
-            _studentRepository = studentRepository;
+            _studentEnrollmentRepository = studentEnrollmentRepository;
+            _teacherEnrollmentRepository = teacherEnrollmentRepository;
         }
 
         public async Task<ResponseMessage> BecomeTeacherAsync(string email)
@@ -33,7 +35,6 @@ namespace Core.DL.Services
             ResponseMessage response = new ResponseMessage();
 
             var user = await _baseUserRepository.Where(obj => obj.Email == email && obj.TeacherId == null)
-                .Include(obj => obj.Universities)
                 .FirstOrDefaultAsync();
             if (user == null)
             {
@@ -48,20 +49,13 @@ namespace Core.DL.Services
 
             try
             {
-                if (user.StudentId != null)
-                {
-                    var oldStudent = await _studentRepository.SingleOrDefaultAsync(obj => obj.BaseUserId == user.Id);
-                    if (oldStudent != null)
-                        await _studentRepository.DeleteAsync(oldStudent);
-
-                    user.StudentId = null;
-                }
+                var studentEnrollments = await _studentEnrollmentRepository.Where(obj => obj.BaseUserId == user.Id).ToListAsync();
+                if (studentEnrollments.Count > 0)
+                    await _studentEnrollmentRepository.DeleteRangeAsync(studentEnrollments);
 
                 var entryRequests = await _entryRequestRepository.Where(obj => obj.BaseUserId == user.Id).ToListAsync();
                 if (entryRequests.Count > 0)
                     await _entryRequestRepository.DeleteRangeAsync(entryRequests);
-
-                user.Universities?.Clear();
 
                 Teacher teacher = new Teacher
                 {
@@ -123,13 +117,12 @@ namespace Core.DL.Services
 
             return response;
         }
-        
+
         public async Task<ResponseMessage> SendRequestToBecomeTeacherOfUniversity(string universityName, string teacherEmail)
         {
             ResponseMessage response = new ResponseMessage();
 
             var university = await _universityRepository.Where(obj => obj.Name == universityName && obj.IsOpened == true)
-                .Include(obj => obj.Members)
                 .FirstOrDefaultAsync();
             if (university == null)
             {
@@ -139,7 +132,6 @@ namespace Core.DL.Services
 
             var teacher = await _baseUserRepository.Where(obj => obj.Email == teacherEmail && obj.TeacherId != null && obj.Teacher.IsVerified == true)
                 .Include(obj => obj.Teacher)
-                .Include(obj => obj.Universities)
                 .FirstOrDefaultAsync();
             if (teacher == null)
             {
@@ -147,24 +139,16 @@ namespace Core.DL.Services
                 return response;
             }
 
-            if (teacher.Universities.Any(u => u.Id == university.Id))
+            var alreadyEnrolled = await _teacherEnrollmentRepository.SingleOrDefaultAsync(
+                e => e.BaseUserId == teacher.Id && e.UniversityId == university.Id);
+            if (alreadyEnrolled != null)
             {
                 response.Message = "You already belong to this university";
                 return response;
             }
-            
-            if (university.Members.Any(obj => obj.Id == teacher.Id))
-            {
-                response.Message = "You are already a teacher of this university";
-                return response;
-            }
 
             var doesEntryRequestExist = await _entryRequestRepository.SingleOrDefaultAsync(
-                er =>
-                    er.BaseUserId == teacher.Id &&
-                    er.UniversityId == university.Id &&
-                    er.SentByUniversity == false);
-
+                er => er.BaseUserId == teacher.Id && er.UniversityId == university.Id && er.SentByUniversity == false);
             if (doesEntryRequestExist != null)
             {
                 response.Message = "You already sent entry request to this university";

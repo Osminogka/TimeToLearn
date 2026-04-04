@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Core.DAL.Dtos;
 using Core.DAL.Models;
@@ -12,12 +12,21 @@ namespace Core.DL.Services
         private readonly IMapper _mapper;
         private readonly IBaseRepository<University> _universityRepository;
         private readonly IBaseRepository<BaseUser> _userRepository;
+        private readonly IBaseRepository<StudentEnrollment> _studentEnrollmentRepository;
+        private readonly IBaseRepository<TeacherEnrollment> _teacherEnrollmentRepository;
 
-        public UniversityService(IMapper mapper, IBaseRepository<University> universityRepository, IBaseRepository<BaseUser> userRepository)
+        public UniversityService(
+            IMapper mapper,
+            IBaseRepository<University> universityRepository,
+            IBaseRepository<BaseUser> userRepository,
+            IBaseRepository<StudentEnrollment> studentEnrollmentRepository,
+            IBaseRepository<TeacherEnrollment> teacherEnrollmentRepository)
         {
             _mapper = mapper;
             _universityRepository = universityRepository;
             _userRepository = userRepository;
+            _studentEnrollmentRepository = studentEnrollmentRepository;
+            _teacherEnrollmentRepository = teacherEnrollmentRepository;
         }
 
         public async Task<ResponseGetEnum<string>> GetAllAsync()
@@ -48,22 +57,14 @@ namespace Core.DL.Services
             }
 
             var director = await _userRepository.SingleOrDefaultAsync(obj => obj.Email == email);
-            if(director == null)
+            if (director == null)
             {
                 response.Message = "Such user doesn't exist";
                 return response;
             }
 
-            var isAlreadyDirector = await _universityRepository.SingleOrDefaultAsync(obj => obj.DirectorId == director.Id);
-            if (isAlreadyDirector != null)
-            {
-                response.Message = "You are already a director of another university";
-                return response;
-            }
-
             var university = _mapper.Map<University>(model);
             university.DirectorId = director.Id;
-            university.Members = new List<BaseUser> { director };
             await _universityRepository.AddAsync(university);
 
             response.Value = _mapper.Map<ReadUniversityDto>(university);
@@ -77,7 +78,7 @@ namespace Core.DL.Services
             ResponseWithValue<ReadUniversityDto> response = new ResponseWithValue<ReadUniversityDto>();
 
             var university = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == name);
-            if(university == null)
+            if (university == null)
             {
                 response.Message = "Such university doesn't exist";
                 return response;
@@ -94,32 +95,28 @@ namespace Core.DL.Services
             ResponseGetEnum<string> response = new ResponseGetEnum<string>();
 
             var user = await _userRepository.Where(obj => obj.Email == userEmail)
-                .Include(obj => obj.Universities)
                 .FirstOrDefaultAsync();
-
             if (user == null)
             {
                 response.Message = "Such user doesn't exist";
                 return response;
             }
 
-            if (!user.Universities.Any(u => u.Name == universityName))
+            var isDirector = await _universityRepository.Where(u => u.Name == universityName && u.DirectorId == user.Id).AnyAsync();
+            var hasStudentEnrollment = await _studentEnrollmentRepository.Where(e => e.BaseUserId == user.Id && e.University.Name == universityName).AnyAsync();
+            var hasTeacherEnrollment = await _teacherEnrollmentRepository.Where(e => e.BaseUserId == user.Id && e.University.Name == universityName).AnyAsync();
+
+            if (!isDirector && !hasStudentEnrollment && !hasTeacherEnrollment)
             {
                 response.Message = "You are not a member of this university";
                 return response;
             }
 
-            var university = await _universityRepository.Where(obj => obj.Name == universityName)
-                    .Include(obj => obj.Members.Where(obj => obj.TeacherId == null))
-                    .FirstOrDefaultAsync();
+            var enrollments = await _studentEnrollmentRepository.Where(e => e.University.Name == universityName)
+                .Include(e => e.BaseUser)
+                .ToListAsync();
 
-            if (university == null)
-            {
-                response.Message = "Such university doesn't exist or you are not a member";
-                return response;
-            }
-
-            response.Enum = university.Members.Select(obj => obj.Username);
+            response.Enum = enrollments.Select(e => e.BaseUser.Username);
             response.Success = true;
             response.Message = "Got student list";
             return response;
@@ -130,32 +127,28 @@ namespace Core.DL.Services
             ResponseGetEnum<string> response = new ResponseGetEnum<string>();
 
             var user = await _userRepository.Where(obj => obj.Email == userEmail)
-                .Include(obj => obj.Universities)
                 .FirstOrDefaultAsync();
-
-            if(user == null)
+            if (user == null)
             {
                 response.Message = "Such user doesn't exist";
                 return response;
             }
 
-            if (!user.Universities.Any(u => u.Name == universityName))
+            var isDirector = await _universityRepository.Where(u => u.Name == universityName && u.DirectorId == user.Id).AnyAsync();
+            var hasStudentEnrollment = await _studentEnrollmentRepository.Where(e => e.BaseUserId == user.Id && e.University.Name == universityName).AnyAsync();
+            var hasTeacherEnrollment = await _teacherEnrollmentRepository.Where(e => e.BaseUserId == user.Id && e.University.Name == universityName).AnyAsync();
+
+            if (!isDirector && !hasStudentEnrollment && !hasTeacherEnrollment)
             {
                 response.Message = "You are not a member of this university";
                 return response;
             }
 
-            var university = await _universityRepository.Where(obj => obj.Name == universityName)
-                    .Include(obj => obj.Members.Where(obj => obj.TeacherId != null))
-                    .FirstOrDefaultAsync();
-            
-            if(university == null)
-            {
-                response.Message = "Such university doesn't exist or you are not a member";
-                return response;
-            }
+            var enrollments = await _teacherEnrollmentRepository.Where(e => e.University.Name == universityName)
+                .Include(e => e.BaseUser)
+                .ToListAsync();
 
-            response.Enum = university.Members.Select(obj => obj.Username);
+            response.Enum = enrollments.Select(e => e.BaseUser.Username);
             response.Success = true;
             response.Message = "Got teacher list";
             return response;

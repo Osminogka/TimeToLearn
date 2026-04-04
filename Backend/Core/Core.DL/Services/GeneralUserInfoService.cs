@@ -1,8 +1,3 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Core.DAL.Models;
 using Core.DAL.SideModels;
 using Core.DL.Repositories;
@@ -28,8 +23,8 @@ namespace Core.DL.Services
             if (baseUser == null)
                 return response;
 
-            response.Value.isStudent = baseUser.StudentId != null;
             response.Value.isTeacher = baseUser.TeacherId != null;
+            response.Value.isStudent = baseUser.TeacherId == null;
 
             response.Success = true;
             response.Message = "You got user role info";

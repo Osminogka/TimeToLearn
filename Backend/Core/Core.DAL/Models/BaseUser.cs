@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Core.DAL.Models
 {
@@ -28,15 +28,13 @@ namespace Core.DAL.Models
 
         public long? TeacherId { get; set; }
 
-        public long? StudentId { get; set; }
-
-        public ICollection<University> Universities { get; set; }
-
-        public University? UniversityDirector { get; set; }
+        public ICollection<University> DirectingUniversities { get; set; }
 
         public Teacher? Teacher { get; set; }
 
-        public Student? Student { get; set; }
+        public ICollection<StudentEnrollment> StudentEnrollments { get; set; }
+
+        public ICollection<TeacherEnrollment> TeacherEnrollments { get; set; }
 
         public ICollection<EntryRequest> EntryRequests { get; set; }
     }
