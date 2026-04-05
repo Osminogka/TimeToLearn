@@ -1,5 +1,6 @@
 using Courses.DAL.Dtos;
 using Courses.DL.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Courses.API.Controllers

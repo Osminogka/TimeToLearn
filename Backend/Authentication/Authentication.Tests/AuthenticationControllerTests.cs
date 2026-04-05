@@ -1,4 +1,4 @@
-﻿using Authentication.API.AsyncDataService;
+using Authentication.API.AsyncDataService;
 using Authentication.API.Controllers;
 using Authentication.API.Infrastructure;
 using Authentication.DAL.Dtos;
@@ -8,10 +8,11 @@ using Authentication.DL.Services;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 using Moq;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using Xunit;
 
 namespace Authentication.Tests
@@ -85,7 +86,8 @@ namespace Authentication.Tests
             Repository.Setup(x => x.GetUserRolesAsync(It.IsAny<AppUser>()))
                 .ReturnsAsync(roles);
 
-            var authService = new AuthService(Repository.Object, GetTestConfiguration());
+            var rsaKeyService = CreateTestRsaKeyService();
+            var authService = new AuthService(Repository.Object, rsaKeyService);
             var logger = new Mock<ILogger<AuthenticationController>>();
 
             var config = new MapperConfiguration(cfg =>
@@ -95,11 +97,10 @@ namespace Authentication.Tests
 
             var autoMapper = config.CreateMapper();
 
-
             var messageBus = new Mock<IMessageBusClient>();
             messageBus.Setup(x => x.PublishNewUser(It.IsAny<BaseUserPublishDto>()));
 
-            Controller = new AuthenticationController(authService, Repository.Object, messageBus.Object ,autoMapper ,logger.Object);
+            Controller = new AuthenticationController(authService, Repository.Object, messageBus.Object, autoMapper, logger.Object);
         }
 
         [Fact]
@@ -143,18 +144,22 @@ namespace Authentication.Tests
             Assert.Equal(true, response.Success);
         }
 
-        private IConfiguration GetTestConfiguration()
+        private static IRsaKeyService CreateTestRsaKeyService()
         {
-            var inMemorySettings = new Dictionary<string, string> {
-            {"Jwt:Key", "EUt719k5GENP1pWWhrmyDldHPaKXyIa9yImWhPuqHBUlgZ10Fk"},
-            // Add more settings as needed
-        };
+            var rsa = RSA.Create(2048);
+            var privateKey = new RsaSecurityKey(rsa) { KeyId = "test-key" };
 
-            IConfiguration configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(inMemorySettings)
-                .Build();
+            var rsaPublic = RSA.Create();
+            rsaPublic.ImportRSAPublicKey(rsa.ExportRSAPublicKey(), out _);
+            var publicKey = new RsaSecurityKey(rsaPublic) { KeyId = "test-key" };
 
-            return configuration;
+            var mock = new Mock<IRsaKeyService>();
+            mock.Setup(x => x.PrivateKey).Returns(privateKey);
+            mock.Setup(x => x.PublicKey).Returns(publicKey);
+            mock.Setup(x => x.Kid).Returns("test-key");
+            mock.Setup(x => x.Issuer).Returns("http://localhost:5000");
+
+            return mock.Object;
         }
     }
 }

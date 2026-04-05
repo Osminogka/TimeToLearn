@@ -3,6 +3,7 @@ using Core.DAL.Context;
 using Core.DAL.Models;
 using Core.DL.Repositories;
 using Core.DL.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace Users.Tests
 {
