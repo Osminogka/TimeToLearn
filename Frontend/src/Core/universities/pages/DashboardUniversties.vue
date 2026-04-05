@@ -1,5 +1,35 @@
 <script setup>
 import authUtils from '@/Shared/services/utils';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+
+const quickActions = [
+    {
+        title: 'Browse all universities',
+        copy: 'Discover open and private campuses and review where you want to study.',
+        routeName: 'UniversitiesAll',
+        button: 'Open catalog',
+    },
+    {
+        title: 'Your university spaces',
+        copy: 'See all universities where you are already a member and keep context in one place.',
+        routeName: 'UniversitiesMine',
+        button: 'View my universities',
+    },
+    {
+        title: 'Create a university',
+        copy: 'Set up a new learning community with a clear description and visibility settings.',
+        routeName: 'UniversitiesCreate',
+        button: 'Create now',
+    },
+    {
+        title: 'Manage account and role',
+        copy: 'Update profile details, switch between student and teacher roles, and verify your degree.',
+        routeName: 'AccountManagement',
+        button: 'Open account',
+    },
+];
 
 function logout(){
     authUtils.clearToken();
@@ -22,22 +52,13 @@ function logout(){
         </section>
 
         <section class="dashboard-grid">
-            <article class="dashboard-card surface-card hover-lift">
-                <p class="section-kicker">Quick actions</p>
-                <h2 class="dashboard-card__title">Stay in motion.</h2>
-                <p class="section-copy">Return to the work you were already doing instead of hunting through menus.</p>
-            </article>
-
-            <article class="dashboard-card surface-card hover-lift">
-                <p class="section-kicker">Community</p>
-                <h2 class="dashboard-card__title">Connect with your peers.</h2>
-                <p class="section-copy">Forum activity and university updates live in one place with the same visual language.</p>
-            </article>
-
-            <article class="dashboard-card surface-card hover-lift">
-                <p class="section-kicker">Progress</p>
-                <h2 class="dashboard-card__title">Clarity over clutter.</h2>
-                <p class="section-copy">Track your learning at a glance without the heavy, dashboard-like noise common in school apps.</p>
+            <article v-for="action in quickActions" :key="action.title" class="dashboard-card surface-card hover-lift">
+                <p class="section-kicker">Quick action</p>
+                <h2 class="dashboard-card__title">{{ action.title }}</h2>
+                <p class="section-copy">{{ action.copy }}</p>
+                <button class="secondary-button dashboard-action" @click="router.push({ name: action.routeName })">
+                    {{ action.button }}
+                </button>
             </article>
         </section>
     </main>
@@ -67,12 +88,15 @@ function logout(){
 
 .dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
 }
 
 .dashboard-card {
     padding: 1.3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
 }
 
 .dashboard-card__title {
@@ -80,6 +104,11 @@ function logout(){
     color: var(--ttl-text-primary);
     font-size: 1.15rem;
     letter-spacing: -0.02em;
+}
+
+.dashboard-action {
+    margin-top: auto;
+    width: 100%;
 }
 
 @media (max-width: 900px) {

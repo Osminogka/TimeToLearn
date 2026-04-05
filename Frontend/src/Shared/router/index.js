@@ -41,6 +41,42 @@ const routes = [
             title: "Define Role",
             requiresAuth: false
         }
+    },
+    {
+        path: '/universities',
+        name: 'UniversitiesAll',
+        component: () => import('@/Core/universities/pages/UniversitiesCatalogPage.vue'),
+        meta: {
+            title: 'All Universities',
+            requiresAuth: true
+        }
+    },
+    {
+        path: '/universities/my',
+        name: 'UniversitiesMine',
+        component: () => import('@/Core/universities/pages/MyUniversitiesPage.vue'),
+        meta: {
+            title: 'My Universities',
+            requiresAuth: true
+        }
+    },
+    {
+        path: '/universities/create',
+        name: 'UniversitiesCreate',
+        component: () => import('@/Core/universities/pages/CreateUniversityPage.vue'),
+        meta: {
+            title: 'Create University',
+            requiresAuth: true
+        }
+    },
+    {
+        path: '/account',
+        name: 'AccountManagement',
+        component: () => import('@/Users/pages/AccountManagementPage.vue'),
+        meta: {
+            title: 'Account Management',
+            requiresAuth: true
+        }
     }
 ];
 
