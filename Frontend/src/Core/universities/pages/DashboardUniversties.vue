@@ -13,4 +13,7 @@ function logout(){
 </template>
 
 <style scoped>
+.default-text {
+    margin-bottom: 1rem;
+}
 </style>

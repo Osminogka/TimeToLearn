@@ -17,11 +17,19 @@ const routes = [
                 path: 'login',
                 name: 'Login',
                 component: () => import("@/Authentication/pages/LoginPage.vue"),
+                meta: {
+                    guestOnly: true,
+                    title: 'Login'
+                }
             },
             {
                 path: 'register',
                 name: 'Register',
                 component: () => import("@/Authentication/pages/RegisterPage.vue"),
+                meta: {
+                    guestOnly: true,
+                    title: 'Register'
+                }
             }
         ]
     },
@@ -46,7 +54,7 @@ router.beforeEach((to, from, next) => {
     const isAuth = isAuthenticated();
 
     if (to.meta.guestOnly && isAuth) {
-        return next({ name: 'Dashboard' });
+        return next({ name: 'Main' });
     }
 
     if (to.meta.requiresAuth && !isAuth) {

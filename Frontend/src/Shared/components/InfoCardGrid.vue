@@ -37,8 +37,8 @@ const cards = [
 }
 
 .info-card {
-    background-color: #1C1C1C;
-    border: 1px solid #B344C6;
+    background-color: var(--ttl-bg-surface);
+    border: 1px solid var(--ttl-accent-bright);
     padding: 1.5rem;
     border-radius: 12px;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -49,15 +49,13 @@ const cards = [
 }
 
 .default-text {
-    color: #B344C6;
-    font-family: 'Roboto', sans-serif;
     margin-bottom: 0.5rem;
     font-size: 1.4rem;
 }
 
 .description {
-    color: #cccccc;
-    font-family: 'Roboto', sans-serif;
+    color: var(--ttl-text-primary);
+    font-family: var(--ttl-font-body);
     line-height: 1.5;
     margin: 0;
 }

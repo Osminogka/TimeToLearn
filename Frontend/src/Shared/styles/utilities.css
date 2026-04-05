@@ -1,0 +1,20 @@
+.default-text {
+    color: var(--ttl-accent);
+    font-family: var(--ttl-font-body);
+    margin: 0;
+}
+
+.gradient-title {
+    margin: 0;
+    font-size: 3rem;
+    font-weight: bold;
+    background: linear-gradient(90deg, #6a0572, #8e44ad, #b344c6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-transform: uppercase;
+    font-family: var(--ttl-font-display);
+}
+
+.gradient-title:hover {
+    cursor: pointer;
+}

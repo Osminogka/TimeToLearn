@@ -1,0 +1,15 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--ttl-bg-page);
+    color: var(--ttl-text-primary);
+    font-family: var(--ttl-font-body);
+}
+
+#app {
+    min-height: 100vh;
+}

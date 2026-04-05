@@ -35,20 +35,22 @@ export const isAuthenticated = () => {
 export function getCurrentUser() {
     const token = localStorage.getItem(TOKEN_KEY);
     if (!token) {
+        user.value.name = '';
+        user.value.email = '';
         return null;
     }
 
     // Split the JWT string into three parts: header, payload, signature
     const parts = token.split('.');
     if (parts.length !== 3) {
+        user.value.name = '';
+        user.value.email = '';
         return null;
     }
 
     // Decode the payload
     const decoded = atob(parts[1]);
     const payload = JSON.parse(decoded);
-
-    console.log(payload);
 
     user.value.name = payload.unique_name;
     user.value.email = payload.email;
@@ -60,6 +62,8 @@ export function getCurrentUser() {
  */
 export const clearToken = () => {
     localStorage.removeItem(TOKEN_KEY);
+    user.value.name = '';
+    user.value.email = '';
 };
 
 export default {

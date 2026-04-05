@@ -15,13 +15,13 @@
 }
 
 .input-field {
-    background-color: #1C1C1C;
+    background-color: var(--ttl-bg-surface);
     padding: 0.5rem;
     border-radius: 0.5rem;
-    border-color: #B344C6;
+    border-color: var(--ttl-accent-bright);
     border-width: 1px;
     border-style: solid;
-    color: #B344C6
+    color: var(--ttl-accent-bright);
 }
 
 .input-field:focus {
@@ -33,13 +33,13 @@
     margin: 0.5rem;
     border: none;
     border-radius: 5px;
-    background-color: #810685;
-    font-family: 'Roboto', sans-serif;
+    background-color: var(--ttl-accent);
+    font-family: var(--ttl-font-body);
     color: black;
     font-weight: 600;
     cursor: pointer;
 }
 
 .submit-button:hover {
-    background-color: #6f0672;
+    background-color: var(--ttl-accent-dark);
 }

@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import authApi from '../services/api';
+import authApi from '../services/authApi';
 
 const email = ref('');
 const password = ref('');
@@ -53,6 +53,4 @@ function verifyLogin() {
 </template>
 
 <style scoped>
-@import '../assets/css/text-classes.css';
-@import '../assets/css/login-register.css';
 </style>

@@ -1,8 +1,7 @@
 <script setup>
 import { reactive, ref } from 'vue';
+import { user } from '@/Shared/services/utils';
 
-// Assuming props/emits for context
-const user = reactive({ name: 'Sanzhar' });
 const firstName = ref('');
 const lastName = ref('');
 const phone = ref('');
@@ -72,9 +71,9 @@ const submit = () => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background-color: #0f0f12; /* Rich dark background */
+  background-color: var(--ttl-bg-page);
   padding: 20px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--ttl-font-body);
 }
 
 .form-container {
@@ -87,13 +86,9 @@ const submit = () => {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
-/* 2. Typography */
 .gradient-title {
   font-size: 1.8rem;
   font-weight: 800;
-  background: linear-gradient(90deg, #b344c6, #ff89ff);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   margin-bottom: 0.5rem;
   text-align: center;
 }
@@ -115,7 +110,6 @@ const submit = () => {
   margin-bottom: 0.6rem;
 }
 
-/* 3. Grid Alignment System */
 .form-grid {
   display: flex;
   flex-direction: column;
@@ -134,7 +128,6 @@ const submit = () => {
   gap: 1rem;
 }
 
-/* 4. Unified Input Styling */
 .input-field {
   width: 100%;
   padding: 0.8rem 1rem;
@@ -145,7 +138,6 @@ const submit = () => {
   font-size: 1rem;
   transition: all 0.2s ease;
   outline: none;
-  box-sizing: border-box; /* Crucial for alignment */
 }
 
 .input-field:focus {
@@ -158,7 +150,6 @@ const submit = () => {
   width: 100%;
 }
 
-/* 5. Button */
 .submit-button {
   width: 100%;
   padding: 1rem;
@@ -178,10 +169,9 @@ const submit = () => {
   transform: translateY(-2px);
 }
 
-/* 6. Adaptive/Mobile Responsiveness */
 @media (max-width: 480px) {
   .input-row {
-    grid-template-columns: 1fr; /* Stacked on mobile */
+    grid-template-columns: 1fr;
   }
   
   .form-container {

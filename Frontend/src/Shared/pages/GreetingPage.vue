@@ -47,7 +47,7 @@ const isAuthFormVisible = computed(() => {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background-color: #0f0f0f;
+    background-color: var(--ttl-bg-page);
 }
 
 header {
@@ -56,18 +56,12 @@ header {
     flex-direction: column;
     gap: 1rem;
     align-items: center;
-    background-color: #1C1C1C;
-    border-bottom: 1px solid #333;
+    background-color: var(--ttl-bg-surface);
+    border-bottom: 1px solid var(--ttl-border-subtle);
 }
 
 .gradient-title {
     font-size: 1.8rem;
-    font-weight: bold;
-    background: linear-gradient(90deg, #6A0572, #8E44AD, #B344C6);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-transform: uppercase;
-    font-family: fantasy;
     cursor: pointer;
 }
 
@@ -80,7 +74,7 @@ header {
     padding: 0.6rem 1.2rem;
     text-decoration: none;
     border-radius: 5px;
-    background-color: #810685;
+    background-color: var(--ttl-accent);
     color: white;
     font-weight: 600;
 }
@@ -111,8 +105,4 @@ main {
     .gradient-title { font-size: 2.5rem; }
     main { padding: 3rem 2rem; }
 }
-
-.slide-fade-enter-active, .slide-fade-leave-active { transition: all 0.3s ease; }
-.slide-fade-enter-from { transform: translateY(10px); opacity: 0; }
-.slide-fade-leave-to { transform: translateY(-10px); opacity: 0; }
 </style>

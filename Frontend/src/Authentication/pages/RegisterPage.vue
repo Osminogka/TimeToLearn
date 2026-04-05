@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import authApi from '../services/api';
+import authApi from '../services/authApi';
 
 const username = ref('');
 const email = ref('');
@@ -15,7 +15,7 @@ async function handleRegister(){
     try {
         let result = await authApi.register(username.value, email.value, password.value);
         if(result.success)
-            router.push({ name: 'Dashboard'})
+            router.push({ name: 'Main' })
         else
             errorMessage.value = result.message;
       } catch (error) {
@@ -24,13 +24,15 @@ async function handleRegister(){
 }
 
 function verifyRegister(){
+    errorMessage.value = '';
+
     if(email.value === '' || password.value === '' || username.value === '') {
         errorMessage.value = 'Please fill in all fields';
     }
-    if(password.value.length < 8) {
+    else if(password.value.length < 8) {
         errorMessage.value = 'Password must be at least 8 characters';
     }
-    if(!email.value.includes('@') || !email.value.includes('.')) {
+    else if(!email.value.includes('@') || !email.value.includes('.')) {
         errorMessage.value = 'Invalid email address';
     }
     if(errorMessage.value === '') {
@@ -46,13 +48,11 @@ function verifyRegister(){
             <input class="input-field" v-model="username" type="text" placeholder="Username" required />
             <input class="input-field" v-model="email" type="email" placeholder="Email" required />
             <input class="input-field" v-model="password" type="password" placeholder="Password" required />
-            <button class="submit-button" type="submit">Login</button>
+            <button class="submit-button" type="submit">Register</button>
         </form>
         <p class="default-text">{{ errorMessage }}</p>
     </div>
 </template>
 
 <style scoped>
-@import '../assets/css/text-classes.css';
-@import '../assets/css/login-register.css';
 </style>

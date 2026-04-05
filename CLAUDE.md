@@ -83,9 +83,15 @@ Each service has its own MSSQL instance (database-per-service pattern):
 
 ```
 Frontend/src/
-├── Authentication/   login, register pages and API calls
-├── Core/             universities, roles
-├── Courses/          placeholder (not yet implemented)
-├── Forum/            placeholder (not yet implemented)
-└── Shared/           router, shared components, utilities
+├── Authentication/   login/register pages and auth API calls
+├── Core/             universities and roles domain logic/UI
+├── Courses/          courses domain (in progress)
+├── Forums/           forums domain (in progress)
+├── Users/            users domain (in progress)
+└── Shared/           router, shared components, JWT utils, native fetch API client, global style system
 ```
+
+Frontend conventions:
+- Shared CSS belongs to `Frontend/src/Shared/styles/` and is imported once in `main.js`.
+- Domain API files use the shared native fetch client in `Frontend/src/Shared/api/httpClient.js`.
+- Vite dev proxy remains `/api -> http://acme.com`.

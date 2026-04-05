@@ -1,0 +1,11 @@
+:root {
+    --ttl-bg-page: #0f0f0f;
+    --ttl-bg-surface: #1c1c1c;
+    --ttl-border-subtle: #333333;
+    --ttl-accent: #810685;
+    --ttl-accent-bright: #b344c6;
+    --ttl-accent-dark: #6f0672;
+    --ttl-text-primary: #cccccc;
+    --ttl-font-body: 'Roboto', sans-serif;
+    --ttl-font-display: fantasy;
+}
