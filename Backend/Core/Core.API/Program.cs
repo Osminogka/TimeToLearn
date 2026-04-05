@@ -47,7 +47,7 @@ var connectionString = builder.Configuration.GetConnectionString("DataConnection
                     ?? throw new InvalidOperationException("Connection string 'DataConnectionString' not found.");
 
 builder.Services.AddDbContext<DataContext>(options => options.UseSqlServer(connectionString
-    , b => b.MigrationsAssembly("Users.API")));
+    , b => b.MigrationsAssembly("Core.API")));
 
 //Authentication
 builder.Services.AddAuthentication(options =>
