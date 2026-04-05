@@ -6,6 +6,8 @@ namespace Authentication.API.Infrastructure
 {
     public class RsaKeyService : IRsaKeyService
     {
+        private readonly RSA _rsaPublic;
+
         public RsaSecurityKey PrivateKey { get; }
         public RsaSecurityKey PublicKey { get; }
         public string Kid { get; } = "ttl-rsa-key-1";
@@ -34,14 +36,14 @@ namespace Authentication.API.Infrastructure
 
             PrivateKey = new RsaSecurityKey(rsaPrivate) { KeyId = Kid };
 
-            var rsaPublic = RSA.Create();
-            rsaPublic.ImportRSAPublicKey(rsaPrivate.ExportRSAPublicKey(), out _);
-            PublicKey = new RsaSecurityKey(rsaPublic) { KeyId = Kid };
+            _rsaPublic = RSA.Create();
+            _rsaPublic.ImportRSAPublicKey(rsaPrivate.ExportRSAPublicKey(), out _);
+            PublicKey = new RsaSecurityKey(_rsaPublic) { KeyId = Kid };
         }
 
         public JsonWebKey GetPublicJwk()
         {
-            var parameters = ((RSA)PublicKey.RSA).ExportParameters(false);
+            var parameters = _rsaPublic.ExportParameters(false);
             return new JsonWebKey
             {
                 Kty = JsonWebAlgorithmsKeyTypes.RSA,

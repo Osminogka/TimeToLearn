@@ -1,3 +1,4 @@
+using Authentication.API.AsyncDataService;
 using Authentication.API.Infrastructure;
 using Authentication.DAL.Contexts;
 using Authentication.DAL.Models;
@@ -7,16 +8,19 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Authentication.API.AsyncDataService;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
+// Build RSA key service early so both DI registration and JWT config share the same instance
+using var bootstrapLoggerFactory = LoggerFactory.Create(b => b.AddConsole());
+var rsaKeyService = new RsaKeyService(builder.Configuration, bootstrapLoggerFactory.CreateLogger<RsaKeyService>());
+builder.Services.AddSingleton<IRsaKeyService>(rsaKeyService);
+
 builder.Services.AddTransient<IUsersRepository, UsersRepository>();
 builder.Services.AddTransient<IAuthService, AuthService>();
 
-builder.Services.AddSingleton<IRsaKeyService, RsaKeyService>();
 builder.Services.AddSingleton<IMessageBusClient, MessageBusClient>();
 
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
@@ -51,10 +55,6 @@ builder.Services.AddAuthentication(options =>
     .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, opts =>
     {
         opts.SaveToken = true;
-
-        var sp = builder.Services.BuildServiceProvider();
-        var rsaKeyService = sp.GetRequiredService<IRsaKeyService>();
-
         opts.TokenValidationParameters = new TokenValidationParameters
         {
             IssuerSigningKey = rsaKeyService.PublicKey,
