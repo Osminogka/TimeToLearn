@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
+using System.Security.Cryptography;
 using Core.API.AsyncDataService;
 using Core.API.EventProcessing;
 using Core.API.Grpc;
@@ -59,15 +59,29 @@ builder.Services.AddAuthentication(options =>
     .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, opts =>
     {
         opts.SaveToken = true;
+        opts.RequireHttpsMetadata = false;
+
+        var metadataAddress = builder.Configuration["OpenId:MetadataAddress"];
+        if (!string.IsNullOrWhiteSpace(metadataAddress))
+            opts.MetadataAddress = metadataAddress;
+
         opts.TokenValidationParameters = new TokenValidationParameters
         {
-            IssuerSigningKey = new SymmetricSecurityKey
-            (Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
             ValidateIssuerSigningKey = true,
-            ValidateIssuer = false,
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["OpenId:Issuer"],
             ValidateAudience = false,
             ValidateLifetime = true,
         };
+
+        // Fallback public key used when MetadataAddress is unavailable
+        var publicKeyB64 = builder.Configuration["OpenId:PublicKey"];
+        if (!string.IsNullOrWhiteSpace(publicKeyB64))
+        {
+            var rsa = RSA.Create();
+            rsa.ImportRSAPublicKey(Convert.FromBase64String(publicKeyB64), out _);
+            opts.TokenValidationParameters.IssuerSigningKey = new RsaSecurityKey(rsa) { KeyId = "ttl-rsa-key-1" };
+        }
     });
 
 builder.Services.AddAuthorization();

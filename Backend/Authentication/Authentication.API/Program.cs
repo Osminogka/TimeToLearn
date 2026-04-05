@@ -1,13 +1,12 @@
+using Authentication.API.Infrastructure;
 using Authentication.DAL.Contexts;
 using Authentication.DAL.Models;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using Authentication.API.Infrastructure;
 using Authentication.DL.Repositories;
 using Authentication.DL.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Authentication.API.AsyncDataService;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +16,7 @@ builder.Logging.AddConsole();
 builder.Services.AddTransient<IUsersRepository, UsersRepository>();
 builder.Services.AddTransient<IAuthService, AuthService>();
 
+builder.Services.AddSingleton<IRsaKeyService, RsaKeyService>();
 builder.Services.AddSingleton<IMessageBusClient, MessageBusClient>();
 
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
@@ -42,7 +42,6 @@ builder.Services.Configure<IdentityOptions>(opts =>
     opts.User.AllowedUserNameCharacters = "1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM_";
 });
 
-//Jwt configuration starts here
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -52,16 +51,20 @@ builder.Services.AddAuthentication(options =>
     .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, opts =>
     {
         opts.SaveToken = true;
+
+        var sp = builder.Services.BuildServiceProvider();
+        var rsaKeyService = sp.GetRequiredService<IRsaKeyService>();
+
         opts.TokenValidationParameters = new TokenValidationParameters
         {
-            IssuerSigningKey = new SymmetricSecurityKey
-            (Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
+            IssuerSigningKey = rsaKeyService.PublicKey,
             ValidateIssuerSigningKey = true,
-            ValidateIssuer = false,
+            ValidateIssuer = true,
+            ValidIssuer = rsaKeyService.Issuer,
             ValidateAudience = false,
             ValidateLifetime = true,
         };
-});
+    });
 
 builder.Services.AddAuthorization();
 

@@ -1,23 +1,20 @@
-﻿using Authentication.DAL.Models;
+using Authentication.DAL.Models;
 using Authentication.DL.Repositories;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 
 namespace Authentication.DL.Services
 {
     public class AuthService : IAuthService
     {
         private readonly IUsersRepository _userRepository;
-        private readonly IConfiguration _configuration;
+        private readonly IRsaKeyService _rsaKeyService;
 
-        public AuthService(IUsersRepository usersRepository, IConfiguration configuration)
+        public AuthService(IUsersRepository usersRepository, IRsaKeyService rsaKeyService)
         {
             _userRepository = usersRepository;
-            _configuration = configuration;
+            _rsaKeyService = rsaKeyService;
         }
 
         public async Task<ResponseMessage> LoginAsync(LoginRequestModel loginModel)
@@ -89,13 +86,11 @@ namespace Authentication.DL.Services
         private async Task<string> TokenGenerator(AppUser user)
         {
             var handler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:key"]);
-            var credentials = new SigningCredentials(
-                new SymmetricSecurityKey(key),
-                SecurityAlgorithms.HmacSha256Signature);
+            var credentials = new SigningCredentials(_rsaKeyService.PrivateKey, SecurityAlgorithms.RsaSha256);
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
+                Issuer = _rsaKeyService.Issuer,
                 Expires = DateTime.UtcNow.AddDays(30),
                 SigningCredentials = credentials,
                 Subject = await GenerateClaims(user),
