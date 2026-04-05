@@ -21,6 +21,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: users-clusterip-srv
+                name: core-clusterip-srv
                 port:
                   number: 80

@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-depl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coreservice
+  template:
+    metadata:
+      labels:
+        app: coreservice
+    spec:
+      containers:
+        - name: coreservice
+          image: ghcr.io/osminogka/coreservice:latest
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: core-clusterip-srv
+spec:
+  type: ClusterIP
+  selector:
+    app: coreservice
+  ports:
+    - name: coreservice
+      protocol: TCP
+      port: 80
+      targetPort: 8080

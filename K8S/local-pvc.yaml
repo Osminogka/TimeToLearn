@@ -14,7 +14,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: mssql-claim-users
+  name: mssql-claim-core
 spec:
   accessModes:
     - ReadWriteMany

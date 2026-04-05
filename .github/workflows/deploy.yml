@@ -35,13 +35,13 @@ jobs:
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/authservice:latest
 
-      - name: Build and push Core (Users) service
+      - name: Build and push Core service
         uses: docker/build-push-action@v5
         with:
           context: ./Backend/Core
           file: ./Backend/Core/Dockerfile
           push: true
-          tags: ${{ env.IMAGE_PREFIX }}/usersservice:latest
+          tags: ${{ env.IMAGE_PREFIX }}/coreservice:latest
 
       - name: Build and push Courses service
         uses: docker/build-push-action@v5
@@ -63,6 +63,6 @@ jobs:
         run: |
           kubectl apply -f K8S/
           kubectl rollout restart deployment/auth-depl
-          kubectl rollout restart deployment/users-depl
+          kubectl rollout restart deployment/core-depl
           kubectl rollout restart deployment/courses-depl
           kubectl rollout restart deployment/forums-depl
