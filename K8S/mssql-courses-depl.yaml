@@ -4,7 +4,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mssql-depl
+  name: mssql-courses-depl
 spec:
   replicas: 1
   selector:
@@ -63,7 +63,7 @@ metadata:
 spec:
   type: LoadBalancer
   selector:
-    app: mssql-auth
+    app: mssql-courses
   ports:
   - protocol: TCP
     port: 1435

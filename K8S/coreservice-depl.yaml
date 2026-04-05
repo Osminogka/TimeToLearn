@@ -27,7 +27,11 @@ spec:
   selector:
     app: coreservice
   ports:
-    - name: coreservice
+    - name: http
       protocol: TCP
       port: 80
       targetPort: 8080
+    - name: grpc
+      protocol: TCP
+      port: 666
+      targetPort: 666

@@ -66,3 +66,5 @@ jobs:
           kubectl rollout restart deployment/core-depl
           kubectl rollout restart deployment/courses-depl
           kubectl rollout restart deployment/forums-depl
+
+          
