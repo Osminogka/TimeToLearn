@@ -4,7 +4,7 @@ metadata:
   name: mssql-claim-auth
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 200Mi
@@ -17,7 +17,7 @@ metadata:
   name: mssql-claim-core
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 200Mi
@@ -30,7 +30,7 @@ metadata:
   name: mssql-claim-courses
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 200Mi
@@ -43,7 +43,7 @@ metadata:
   name: mssql-claim-forums
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 200Mi
