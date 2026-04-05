@@ -104,7 +104,18 @@ public class UniversityServiceTests
             }
         };
 
+        University secondUniversity = new University
+        {
+            Id = 2,
+            Name = "Narhoz",
+            Address = new Address { City = "Almaty", Country = "Kaz", Street = "Abaya" },
+            Description = "Second university",
+            IsOpened = false,
+            DirectorId = Director.Id,
+        };
+
         context.Add(universityDto);
+        context.Add(secondUniversity);
 
         context.SaveChanges();
     }
@@ -114,13 +125,12 @@ public class UniversityServiceTests
     {
         CreateUniversityDto universityDto = new CreateUniversityDto
         {
-            Name = "Narhoz",
+            Name = "NewUniversity",
             Address = new Address { City = "Almaty", Country = "Kaz", Street = "Pushkina" },
             Description = "Test",
             IsOpened = true,
         };
 
-        // StudentUser is not yet a director — can create a second university
         var result = await Service.CreateAsync(universityDto, StudentUser.Email);
 
         var response = Assert.IsType<ResponseWithValue<ReadUniversityDto>>(result);
@@ -130,10 +140,9 @@ public class UniversityServiceTests
     [Fact]
     public async Task CreateUniversity_DirectorCanCreateMultipleTest()
     {
-        // Director already directs DKU — should be allowed to create another university now
         CreateUniversityDto universityDto = new CreateUniversityDto
         {
-            Name = "Narhoz",
+            Name = "ThirdUniversity",
             Address = new Address { City = "Almaty", Country = "Kaz", Street = "Pushkina" },
             Description = "Test",
             IsOpened = true,
@@ -146,13 +155,57 @@ public class UniversityServiceTests
     }
 
     [Fact]
-    public async Task GetAllTest()
+    public async Task GetPagedTest()
     {
-        var result = await Service.GetAllAsync();
+        var result = await Service.GetPagedAsync(1, 10);
 
-        var response = Assert.IsType<ResponseGetEnum<string>>(result);
+        var response = Assert.IsType<PagedResponse<ReadUniversityDto>>(result);
         Assert.True(response.Success);
-        Assert.Single(response.Enum);
+        Assert.Equal(2, response.TotalCount);
+        Assert.Equal(2, response.Items.Count());
+    }
+
+    [Fact]
+    public async Task GetPaged_SecondPageTest()
+    {
+        var result = await Service.GetPagedAsync(2, 1);
+
+        var response = Assert.IsType<PagedResponse<ReadUniversityDto>>(result);
+        Assert.True(response.Success);
+        Assert.Equal(2, response.TotalCount);
+        Assert.Single(response.Items);
+    }
+
+    [Fact]
+    public async Task GetMyUniversitiesTest()
+    {
+        // Director directs both universities
+        var result = await Service.GetMyUniversitiesAsync(Director.Email, 1, 10);
+
+        var response = Assert.IsType<PagedResponse<ReadUniversityDto>>(result);
+        Assert.True(response.Success);
+        Assert.Equal(2, response.TotalCount);
+    }
+
+    [Fact]
+    public async Task GetMyUniversities_StudentTest()
+    {
+        // StudentUser is enrolled in DKU only
+        var result = await Service.GetMyUniversitiesAsync(StudentUser.Email, 1, 10);
+
+        var response = Assert.IsType<PagedResponse<ReadUniversityDto>>(result);
+        Assert.True(response.Success);
+        Assert.Equal(1, response.TotalCount);
+        Assert.Equal("DKU", response.Items.First().Name);
+    }
+
+    [Fact]
+    public async Task GetMyUniversities_UnknownUserTest()
+    {
+        var result = await Service.GetMyUniversitiesAsync("unknown@test.com", 1, 10);
+
+        var response = Assert.IsType<PagedResponse<ReadUniversityDto>>(result);
+        Assert.False(response.Success);
     }
 
     [Fact]
@@ -168,24 +221,24 @@ public class UniversityServiceTests
     [Fact]
     public async Task GetUniversityTeachers()
     {
-        var result = await Service.GetTeachersAsync("DKU", Director.Email);
+        var result = await Service.GetTeachersAsync("DKU", Director.Email, 1, 10);
 
-        var response = Assert.IsType<ResponseGetEnum<string>>(result);
+        var response = Assert.IsType<PagedResponse<string>>(result);
 
         Assert.True(response.Success);
-        Assert.Equal(2, response.Enum.Count());
-        Assert.Contains("Teacher", response.Enum);
+        Assert.Equal(2, response.TotalCount);
+        Assert.Contains("Teacher", response.Items);
     }
 
     [Fact]
     public async Task GetUniversityStudents()
     {
-        var result = await Service.GetStudentsAsync("DKU", Director.Email);
+        var result = await Service.GetStudentsAsync("DKU", Director.Email, 1, 10);
 
-        var response = Assert.IsType<ResponseGetEnum<string>>(result);
+        var response = Assert.IsType<PagedResponse<string>>(result);
 
         Assert.True(response.Success);
-        Assert.Single(response.Enum);
-        Assert.Contains("Student", response.Enum);
+        Assert.Equal(1, response.TotalCount);
+        Assert.Contains("Student", response.Items);
     }
 }

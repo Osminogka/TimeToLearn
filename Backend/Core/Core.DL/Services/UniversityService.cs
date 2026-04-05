@@ -29,13 +29,62 @@ namespace Core.DL.Services
             _teacherEnrollmentRepository = teacherEnrollmentRepository;
         }
 
-        public async Task<ResponseGetEnum<string>> GetAllAsync()
+        public async Task<PagedResponse<ReadUniversityDto>> GetPagedAsync(int page, int pageSize)
         {
-            ResponseGetEnum<string> response = new ResponseGetEnum<string>();
-            var universities = await _universityRepository.GetAllAsync();
+            PagedResponse<ReadUniversityDto> response = new PagedResponse<ReadUniversityDto>();
+
+            var totalCount = await _universityRepository.Where(_ => true).CountAsync();
+            var universities = await _universityRepository.Where(_ => true)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            response.Items = universities.Select(u => _mapper.Map<ReadUniversityDto>(u)).ToList();
+            response.TotalCount = totalCount;
             response.Success = true;
-            response.Message = "Got all universities";
-            response.Enum = universities.Select(obj => obj.Name).ToList();
+            response.Message = "Got universities";
+            return response;
+        }
+
+        public async Task<PagedResponse<ReadUniversityDto>> GetMyUniversitiesAsync(string email, int page, int pageSize)
+        {
+            PagedResponse<ReadUniversityDto> response = new PagedResponse<ReadUniversityDto>();
+
+            var user = await _userRepository.Where(u => u.Email == email).FirstOrDefaultAsync();
+            if (user == null)
+            {
+                response.Message = "Such user doesn't exist";
+                return response;
+            }
+
+            var studentUnivIds = await _studentEnrollmentRepository
+                .Where(e => e.BaseUserId == user.Id)
+                .Select(e => e.UniversityId)
+                .ToListAsync();
+
+            var teacherUnivIds = await _teacherEnrollmentRepository
+                .Where(e => e.BaseUserId == user.Id)
+                .Select(e => e.UniversityId)
+                .ToListAsync();
+
+            var directorUnivIds = await _universityRepository
+                .Where(u => u.DirectorId == user.Id)
+                .Select(u => u.Id)
+                .ToListAsync();
+
+            var allIds = studentUnivIds.Union(teacherUnivIds).Union(directorUnivIds).Distinct().ToList();
+
+            var totalCount = allIds.Count;
+            var universities = await _universityRepository
+                .Where(u => allIds.Contains(u.Id))
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            response.Items = universities.Select(u => _mapper.Map<ReadUniversityDto>(u)).ToList();
+            response.TotalCount = totalCount;
+            response.Success = true;
+            response.Message = "Got user universities";
             return response;
         }
 
@@ -90,12 +139,11 @@ namespace Core.DL.Services
             return response;
         }
 
-        public async Task<ResponseGetEnum<string>> GetStudentsAsync(string universityName, string userEmail)
+        public async Task<PagedResponse<string>> GetStudentsAsync(string universityName, string userEmail, int page, int pageSize)
         {
-            ResponseGetEnum<string> response = new ResponseGetEnum<string>();
+            PagedResponse<string> response = new PagedResponse<string>();
 
-            var user = await _userRepository.Where(obj => obj.Email == userEmail)
-                .FirstOrDefaultAsync();
+            var user = await _userRepository.Where(obj => obj.Email == userEmail).FirstOrDefaultAsync();
             if (user == null)
             {
                 response.Message = "Such user doesn't exist";
@@ -112,22 +160,26 @@ namespace Core.DL.Services
                 return response;
             }
 
-            var enrollments = await _studentEnrollmentRepository.Where(e => e.University.Name == universityName)
+            var query = _studentEnrollmentRepository.Where(e => e.University.Name == universityName);
+            var totalCount = await query.CountAsync();
+            var enrollments = await query
                 .Include(e => e.BaseUser)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
-            response.Enum = enrollments.Select(e => e.BaseUser.Username);
+            response.Items = enrollments.Select(e => e.BaseUser.Username).ToList();
+            response.TotalCount = totalCount;
             response.Success = true;
             response.Message = "Got student list";
             return response;
         }
 
-        public async Task<ResponseGetEnum<string>> GetTeachersAsync(string universityName, string userEmail)
+        public async Task<PagedResponse<string>> GetTeachersAsync(string universityName, string userEmail, int page, int pageSize)
         {
-            ResponseGetEnum<string> response = new ResponseGetEnum<string>();
+            PagedResponse<string> response = new PagedResponse<string>();
 
-            var user = await _userRepository.Where(obj => obj.Email == userEmail)
-                .FirstOrDefaultAsync();
+            var user = await _userRepository.Where(obj => obj.Email == userEmail).FirstOrDefaultAsync();
             if (user == null)
             {
                 response.Message = "Such user doesn't exist";
@@ -144,11 +196,16 @@ namespace Core.DL.Services
                 return response;
             }
 
-            var enrollments = await _teacherEnrollmentRepository.Where(e => e.University.Name == universityName)
+            var query = _teacherEnrollmentRepository.Where(e => e.University.Name == universityName);
+            var totalCount = await query.CountAsync();
+            var enrollments = await query
                 .Include(e => e.BaseUser)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
-            response.Enum = enrollments.Select(e => e.BaseUser.Username);
+            response.Items = enrollments.Select(e => e.BaseUser.Username).ToList();
+            response.TotalCount = totalCount;
             response.Success = true;
             response.Message = "Got teacher list";
             return response;

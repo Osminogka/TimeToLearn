@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Core.DAL.Dtos;
 using Core.DL.Services;
@@ -19,11 +19,29 @@ namespace Core.API.Controllers
 
         [HttpGet]
         [AllowAnonymous]
-        public async Task<IActionResult> GetAllUniversitiesAsync()
+        public async Task<IActionResult> GetPagedUniversitiesAsync([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
-                var result = await _universityService.GetAllAsync();
+                var result = await _universityService.GetPagedAsync(page, pageSize);
+                if (!result.Success)
+                    return BadRequest(result.Message);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return HandleException(ex);
+            }
+        }
+
+        [HttpGet("my")]
+        [Authorize]
+        public async Task<IActionResult> GetMyUniversitiesAsync([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var result = await _universityService.GetMyUniversitiesAsync(getUserEmail(), page, pageSize);
                 if (!result.Success)
                     return BadRequest(result.Message);
                 return Ok(result);
@@ -74,13 +92,11 @@ namespace Core.API.Controllers
         }
 
         [HttpGet("{name}/teachers")]
-        public async Task<IActionResult> GetUniversityTeachersAsync(string name)
+        public async Task<IActionResult> GetUniversityTeachersAsync(string name, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
-                if (!ModelState.IsValid)
-                    return BadRequest("Invalid request");
-                var result = await _universityService.GetTeachersAsync(name, getUserEmail());
+                var result = await _universityService.GetTeachersAsync(name, getUserEmail(), page, pageSize);
                 if (!result.Success)
                     return BadRequest(result.Message);
                 return Ok(result);
@@ -93,13 +109,11 @@ namespace Core.API.Controllers
         }
 
         [HttpGet("{name}/students")]
-        public async Task<IActionResult> GetUniversityStudentsAsync(string name)
+        public async Task<IActionResult> GetUniversityStudentsAsync(string name, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
-                if (!ModelState.IsValid)
-                    return BadRequest("Invalid request");
-                var result = await _universityService.GetStudentsAsync(name, getUserEmail());
+                var result = await _universityService.GetStudentsAsync(name, getUserEmail(), page, pageSize);
                 if (!result.Success)
                     return BadRequest(result.Message);
                 return Ok(result);
