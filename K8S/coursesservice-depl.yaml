@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: coursesservice
-          image: osminogka/coursesservice:latest
+          image: ghcr.io/osminogka/coursesservice:latest
 
 ---
 

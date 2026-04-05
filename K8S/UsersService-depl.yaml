@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: usersservice
-          image: osminogka/usersservice:latest
+          image: ghcr.io/osminogka/usersservice:latest
 
 ---
 
