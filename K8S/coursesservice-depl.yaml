@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: users-depl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coursesservice
+  template:
+    metadata:
+      labels:
+        app: coursesservice
+    spec:
+      containers:
+        - name: coursesservice
+          image: osminogka/coursesservice:latest
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: courses-clusterip-srv
+spec:
+  type: ClusterIP
+  selector:
+    app: coursesservice
+  ports:
+    - name: coursesservice
+      protocol: TCP
+      port: 80
+      targetPort: 8080
