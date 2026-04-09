@@ -1,33 +1,33 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: users-depl
+  name: frontend-depl
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: usersservice
+      app: frontend
   template:
     metadata:
       labels:
-        app: usersservice
+        app: frontend
     spec:
       containers:
-        - name: usersservice
-          image: ghcr.io/osminogka/usersservice:latest
+        - name: frontend
+          image: ghcr.io/osminogka/frontend:latest
 
 ---
 
 apiVersion: v1
 kind: Service
 metadata:
-  name: users-clusterip-srv
+  name: frontend-clusterip-srv
 spec:
   type: ClusterIP
   selector:
-    app: usersservice
+    app: frontend
   ports:
-    - name: usersservice
+    - name: frontend
       protocol: TCP
       port: 80
-      targetPort: 8080
+      targetPort: 80

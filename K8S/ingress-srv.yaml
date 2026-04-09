@@ -24,3 +24,24 @@ spec:
                 name: core-clusterip-srv
                 port:
                   number: 80
+          - path: /api/c
+            pathType: Prefix
+            backend:
+              service:
+                name: courses-clusterip-srv
+                port:
+                  number: 80
+          - path: /api/f
+            pathType: Prefix
+            backend:
+              service:
+                name: forums-clusterip-srv
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-clusterip-srv
+                port:
+                  number: 80

@@ -59,6 +59,22 @@ jobs:
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/forumsservice:latest
 
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Frontend
+          file: ./Frontend/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/frontend:latest
+
+      - name: Remove legacy UsersService resources
+        run: |
+          kubectl delete deployment/users-depl --ignore-not-found=true
+          kubectl delete service/users-clusterip-srv --ignore-not-found=true
+          kubectl delete deployment/mssql-users-depl --ignore-not-found=true
+          kubectl delete service/mssql-users-clusterip-srv --ignore-not-found=true
+          kubectl delete service/mssql-loadbalancer-users --ignore-not-found=true
+
       - name: Deploy to Kubernetes
         run: |
           kubectl apply -f K8S/
@@ -66,5 +82,4 @@ jobs:
           kubectl rollout restart deployment/core-depl
           kubectl rollout restart deployment/courses-depl
           kubectl rollout restart deployment/forums-depl
-
-          
+          kubectl rollout restart deployment/frontend-depl
