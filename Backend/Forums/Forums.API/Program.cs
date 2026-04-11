@@ -7,6 +7,8 @@ using Forums.DAL.Models;
 using Forums.DL.Repositories;
 using Forums.DL.Grpc;
 using Forums.DL.Services;
+using Grpc.Net.Client;
+using UserService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +20,10 @@ builder.Logging.AddConsole();
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 //Grpc
+builder.Services.AddSingleton(_ =>
+    GrpcChannel.ForAddress(builder.Configuration["GrpcUsersApi"]!));
+builder.Services.AddSingleton(sp =>
+    new GrpcUsers.GrpcUsersClient(sp.GetRequiredService<GrpcChannel>()));
 builder.Services.AddScoped<IUserInfoClient, UserInfoClient>();
 
 //Repositories

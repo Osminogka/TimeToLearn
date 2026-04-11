@@ -9,7 +9,7 @@ public class BaseController : ControllerBase
 {
     protected string getUserEmail()
     {
-        return HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name).Value;
+        return HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email).Value;
     }
 
     protected IActionResult HandleException(Exception ex)

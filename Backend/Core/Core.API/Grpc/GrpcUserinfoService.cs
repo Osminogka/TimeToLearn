@@ -45,6 +45,7 @@ namespace Core.API.Grpc
             response.UserId = user.Id;
             response.UniversityId = university.Id;
             response.IsAllowed = true;
+            response.IsTeacher = hasTeacherEnrollment;
 
             return response;
         }

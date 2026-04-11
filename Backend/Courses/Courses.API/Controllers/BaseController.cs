@@ -11,7 +11,7 @@ namespace Courses.API.Controllers
     {
         protected string getUserEmail()
         {
-            return HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value ?? string.Empty;
+            return HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value ?? string.Empty;
         }
 
         protected IActionResult HandleException(Exception ex)

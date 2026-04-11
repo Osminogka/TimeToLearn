@@ -12,7 +12,7 @@ namespace Courses.API.Infrastructure
                 .ForMember(dest => dest.UniversityId, opt => opt.MapFrom(src => src.UniversityId))
                 .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
                 .ForMember(dest => dest.IsAllowed, opt => opt.MapFrom(src => src.IsAllowed))
-                .ForMember(dest => dest.IsTeacher, opt => opt.MapFrom(src => false));
+                .ForMember(dest => dest.IsTeacher, opt => opt.MapFrom(src => src.IsTeacher));
             CreateMap<UniversityId, long>().ConvertUsing(src => src.UniversityId_);
 
             CreateMap<long, UniversityId>().ConvertUsing(src => new UniversityId { UniversityId_ = src });
