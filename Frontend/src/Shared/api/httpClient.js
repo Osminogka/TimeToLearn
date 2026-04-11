@@ -145,6 +145,18 @@ export const httpClient = {
         requiresAuth: true,
         body: JSON.stringify(data),
     }),
+    putAuth: (url, data, options = {}) => request(url, {
+        ...options,
+        method: 'PUT',
+        requiresAuth: true,
+        body: JSON.stringify(data),
+    }),
+    deleteAuth: (url, data, options = {}) => request(url, {
+        ...options,
+        method: 'DELETE',
+        requiresAuth: true,
+        ...(data !== undefined ? { body: JSON.stringify(data) } : {}),
+    }),
 };
 
 export { ApiError };

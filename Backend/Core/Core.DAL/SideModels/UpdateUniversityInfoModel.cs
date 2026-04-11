@@ -16,5 +16,7 @@ namespace Core.DAL.SideModels
         public string Description { get; set; } = string.Empty;
 
         public Address? Address { get; set; }
+
+        public bool? IsOpened { get; set; }
     }
 }

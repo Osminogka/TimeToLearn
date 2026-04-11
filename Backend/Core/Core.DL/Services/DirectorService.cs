@@ -150,6 +150,8 @@ namespace Core.DL.Services
                 university.Description = model.Description;
             if (model.Address != null)
                 university.Address = model.Address;
+            if (model.IsOpened.HasValue)
+                university.IsOpened = model.IsOpened.Value;
 
             await _universityRepository.UpdateAsync(university);
 

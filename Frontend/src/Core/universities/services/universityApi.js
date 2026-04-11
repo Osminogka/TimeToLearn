@@ -4,6 +4,7 @@ import { SERVICE_BASE_PATHS } from '@/Shared/api/serviceBasePaths';
 const BASE_URL = `${SERVICE_BASE_PATHS.users}/university`;
 const STUDENT_BASE_URL = `${SERVICE_BASE_PATHS.users}/student`;
 const TEACHER_BASE_URL = `${SERVICE_BASE_PATHS.users}/teacher`;
+const DIRECTOR_BASE_URL = `${SERVICE_BASE_PATHS.users}/director`;
 
 const encodeName = (name) => encodeURIComponent(name);
 
@@ -35,6 +36,36 @@ const requestJoinAsTeacher = (name) => {
 	return httpClient.postAuth(`${TEACHER_BASE_URL}/request/${encodeName(name)}`, {});
 };
 
+const inviteStudent = (universityName, username) => {
+	return httpClient.postAuth(`${DIRECTOR_BASE_URL}/invites/student`, {
+		university: universityName,
+		username,
+	});
+};
+
+const inviteTeacher = (universityName, username) => {
+	return httpClient.postAuth(`${DIRECTOR_BASE_URL}/invites/teacher`, {
+		university: universityName,
+		username,
+	});
+};
+
+const removeMember = (universityName, username) => {
+	return httpClient.deleteAuth(`${DIRECTOR_BASE_URL}/members/remove`, {
+		university: universityName,
+		username,
+	});
+};
+
+const updateUniversityInfo = ({ name, description, address, isOpened }) => {
+	return httpClient.postAuth(`${DIRECTOR_BASE_URL}/update`, {
+		name,
+		description,
+		address,
+		isOpened,
+	});
+};
+
 const createUniversity = (payload) => {
 	return httpClient.postAuth(BASE_URL, payload);
 };
@@ -47,6 +78,10 @@ export default {
 	getUniversityStudents,
 	enterUniversity,
 	requestJoinAsTeacher,
+	inviteStudent,
+	inviteTeacher,
+	removeMember,
+	updateUniversityInfo,
 	createUniversity,
 };
 
