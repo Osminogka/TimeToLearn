@@ -14,6 +14,7 @@ const TOKEN_KEY = 'jwt';
  */
 export const saveToken = (token) => {
     localStorage.setItem(TOKEN_KEY, token);
+    getCurrentUser();
 };
 
 /**

@@ -20,7 +20,16 @@ const register = async (name, email, password) => {
     return result;
 };
 
+const refreshToken = async () => {
+    const result = await httpClient.postAuth(`${BASE_URL}/refresh-token`, {});
+    if (result.success) {
+        saveToken(result.message);
+    }
+    return result;
+};
+
 export default {
     login,
     register,
+    refreshToken,
 };

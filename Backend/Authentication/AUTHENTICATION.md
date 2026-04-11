@@ -100,6 +100,23 @@ Base route: `api/a/authentication`
 
 **Response:** `ResponseMessage { Success, Message (JWT token) }`
 
+---
+
+### `POST /refresh-token`
+
+**Auth:** Requires valid Bearer token.
+
+**Request:** Empty body.
+
+**Flow:**
+1. Reads current user email from token claims
+2. Loads user from Identity store
+3. Generates a new JWT with latest role claim (from Core role lookup)
+
+**Response:** `ResponseMessage { Success, Message (JWT token) }`
+
+Use this endpoint after role-changing actions so the frontend can update role-based UI immediately without forcing re-login.
+
 > Note: RabbitMQ publishing is done in the controller after the service returns — not inside `AuthService`.
 
 ---

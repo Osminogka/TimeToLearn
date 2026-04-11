@@ -76,5 +76,25 @@ namespace Authentication.API.Controllers
                 return HandleException(ex);
             }
         }
+
+        [Authorize]
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshTokenAsync()
+        {
+            try
+            {
+                var email = getUserEmail();
+                var result = await _authService.RefreshTokenAsync(email);
+                if (!result.Success)
+                    return BadRequest(result.Message);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return HandleException(ex);
+            }
+        }
     }
 }

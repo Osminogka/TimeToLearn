@@ -85,6 +85,28 @@ namespace Authentication.DL.Services
             return response;
         }
 
+        public async Task<ResponseMessage> RefreshTokenAsync(string email)
+        {
+            var response = new ResponseMessage();
+
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                response.Message = "Email claim is missing";
+                return response;
+            }
+
+            var user = await _userRepository.GetByEmailAsync(email);
+            if (user == null)
+            {
+                response.Message = "User doesn't exist";
+                return response;
+            }
+
+            response.Success = true;
+            response.Message = await TokenGenerator(user);
+            return response;
+        }
+
         private async Task<string> TokenGenerator(AppUser user)
         {
             var handler = new JwtSecurityTokenHandler();

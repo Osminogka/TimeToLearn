@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import UniversitiesWorkspaceHeader from '@/Core/universities/components/UniversitiesWorkspaceHeader.vue';
 import roleApi from '@/Core/roles/services/roleApi';
+import authApi from '@/Authentication/services/authApi';
 import userApi from '../services/userApi';
 import authUtils, { isTeacherRole, isStudentRole, user } from '@/Shared/services/utils';
 import AppIcon from '@/Shared/components/AppIcon.vue';
@@ -50,6 +51,15 @@ function clearMessages() {
 }
 
 async function loadRoleState() {
+    syncRoleFromToken();
+}
+
+async function refreshSessionToken() {
+    const refreshed = await authApi.refreshToken();
+    if (!refreshed.success) {
+        throw new Error(refreshed.message || 'Could not refresh session token.');
+    }
+
     syncRoleFromToken();
 }
 
@@ -113,6 +123,7 @@ async function becomeTeacher() {
 
     try {
         const result = await roleApi.becomeTeacher();
+        await refreshSessionToken();
         successMessage.value = result.message || result.Message || 'You are now a teacher.';
         await loadRoleState();
     } catch (error) {
@@ -128,6 +139,7 @@ async function becomeStudent() {
 
     try {
         const result = await roleApi.becomeStudent();
+        await refreshSessionToken();
         successMessage.value = result.message || result.Message || 'You are now a student.';
         await loadRoleState();
     } catch (error) {
@@ -148,6 +160,7 @@ async function verifyDegree() {
 
     try {
         const result = await roleApi.verifyTeacher(degree.value.trim());
+        await refreshSessionToken();
         successMessage.value = result.message || result.Message || 'Teacher verification submitted.';
         degree.value = '';
         await loadRoleState();
