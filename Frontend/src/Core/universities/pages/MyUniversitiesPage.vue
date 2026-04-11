@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import UniversitiesWorkspaceHeader from '../components/UniversitiesWorkspaceHeader.vue';
 import universityApi from '../services/universityApi';
 
@@ -10,6 +11,7 @@ const infoMessage = ref('');
 const page = ref(1);
 const pageSize = ref(8);
 const totalCount = ref(0);
+const router = useRouter();
 
 const hasItems = computed(() => universities.value.length > 0);
 const hasNextPage = computed(() => page.value * pageSize.value < totalCount.value);
@@ -21,6 +23,15 @@ function normalizeItems(payload) {
 
 function normalizeTotalCount(payload) {
     return payload.totalCount || payload.TotalCount || 0;
+}
+
+function openUniversitySpace(item) {
+    const name = item.name || item.Name || '';
+    if (!name) {
+        return;
+    }
+
+    router.push({ name: 'UniversityCourses', params: { name } });
 }
 
 async function loadMyUniversities() {
@@ -111,6 +122,10 @@ onMounted(loadMyUniversities);
                         •
                         {{ item.address?.street || 'Street N/A' }}
                     </p>
+
+                    <button class="secondary-button university-card__open" type="button" @click="openUniversitySpace(item)">
+                        Open university
+                    </button>
                 </article>
             </div>
 
@@ -187,6 +202,10 @@ onMounted(loadMyUniversities);
     color: var(--ttl-text-muted);
     font-size: 0.88rem;
     line-height: 1.5;
+}
+
+.university-card__open {
+    margin-top: 0.2rem;
 }
 
 .pagination-row {

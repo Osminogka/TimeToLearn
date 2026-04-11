@@ -155,6 +155,10 @@ onMounted(loadDashboardData);
                     <p class="dashboard-university__address">
                         {{ item.address?.country || 'Country N/A' }} · {{ item.address?.city || 'City N/A' }} · {{ item.address?.street || 'Street N/A' }}
                     </p>
+
+                    <button class="secondary-button dashboard-university__open" @click="router.push({ name: 'UniversityCourses', params: { name: item.name } })">
+                        Open university
+                    </button>
                 </article>
             </div>
         </section>
@@ -310,6 +314,10 @@ onMounted(loadDashboardData);
     margin: 0;
     color: var(--ttl-text-muted);
     font-size: 0.88rem;
+}
+
+.dashboard-university__open {
+    margin-top: 0.2rem;
 }
 
 .dashboard-grid {

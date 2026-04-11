@@ -78,6 +78,33 @@ const routes = [
         }
     },
     {
+        path: '/universities/:name/courses',
+        name: 'UniversityCourses',
+        component: () => import('@/Core/universities/pages/UniversityCoursesPage.vue'),
+        meta: {
+            title: 'University Courses',
+            requiresAuth: true
+        }
+    },
+    {
+        path: '/universities/:name/info',
+        name: 'UniversityInfo',
+        component: () => import('@/Core/universities/pages/UniversityInfoPage.vue'),
+        meta: {
+            title: 'University Info',
+            requiresAuth: true
+        }
+    },
+    {
+        path: '/universities/:name/forums',
+        name: 'UniversityForums',
+        component: () => import('@/Core/universities/pages/UniversityForumsPage.vue'),
+        meta: {
+            title: 'University Forums',
+            requiresAuth: true
+        }
+    },
+    {
         path: '/account',
         name: 'AccountManagement',
         component: () => import('@/Users/pages/AccountManagementPage.vue'),

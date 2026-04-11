@@ -48,6 +48,21 @@ defineProps({
             <path d="M7.5 12h9M12 7.5v9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
             <path d="M5.2 5.2h13.6v13.6H5.2z" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
         </svg>
+
+        <svg v-else-if="name === 'courses'" viewBox="0 0 24 24" fill="none">
+            <path d="M5.4 6.2h13.2M5.4 10h13.2M5.4 13.8h8.6M5.4 17.6h6.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M16.2 13.1h2.4v4.5h-2.4z" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+        </svg>
+
+        <svg v-else-if="name === 'info'" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="8.6" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M12 10.6v5M12 8.1h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+
+        <svg v-else-if="name === 'forum'" viewBox="0 0 24 24" fill="none">
+            <path d="M5.2 6.2h13.6a1.4 1.4 0 0 1 1.4 1.4v7a1.4 1.4 0 0 1-1.4 1.4h-6.1L8.4 19v-3h-3.2a1.4 1.4 0 0 1-1.4-1.4v-7a1.4 1.4 0 0 1 1.4-1.4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="M8.1 10.3h7.8M8.1 13h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
     </span>
 </template>
 

@@ -1,19 +1,24 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import UniversitiesWorkspaceHeader from '../components/UniversitiesWorkspaceHeader.vue';
 import universityApi from '../services/universityApi';
+import authUtils, { isTeacherRole, user } from '@/Shared/services/utils';
 
 const universities = ref([]);
 const isLoading = ref(false);
+const actionLoadingMap = ref({});
 const errorMessage = ref('');
 const infoMessage = ref('');
 const page = ref(1);
 const pageSize = ref(8);
 const totalCount = ref(0);
+const router = useRouter();
 
 const hasItems = computed(() => universities.value.length > 0);
 const hasNextPage = computed(() => page.value * pageSize.value < totalCount.value);
 const hasPrevPage = computed(() => page.value > 1);
+const isTeacher = computed(() => isTeacherRole(user.value.role));
 
 function normalizeItems(payload) {
     return payload.items || payload.Items || [];
@@ -21,6 +26,67 @@ function normalizeItems(payload) {
 
 function normalizeTotalCount(payload) {
     return payload.totalCount || payload.TotalCount || 0;
+}
+
+function getUniversityName(item) {
+    return item.name || item.Name || '';
+}
+
+function isOpenedUniversity(item) {
+    return Boolean(item.isOpened ?? item.IsOpened);
+}
+
+function getActionKey(item) {
+    return getUniversityName(item).toLowerCase();
+}
+
+function getJoinLabel(item) {
+    if (!isOpenedUniversity(item)) {
+        return 'Private access';
+    }
+
+    return isTeacher.value ? 'Request as teacher' : 'Enter university';
+}
+
+function canJoin(item) {
+    return isOpenedUniversity(item);
+}
+
+function openUniversitySpace(item) {
+    const name = getUniversityName(item);
+    if (!name) {
+        return;
+    }
+
+    router.push({ name: 'UniversityCourses', params: { name } });
+}
+
+async function joinUniversity(item) {
+    if (!canJoin(item)) {
+        return;
+    }
+
+    const name = getUniversityName(item);
+    if (!name) {
+        return;
+    }
+
+    const key = getActionKey(item);
+    actionLoadingMap.value = { ...actionLoadingMap.value, [key]: true };
+    errorMessage.value = '';
+    infoMessage.value = '';
+
+    try {
+        const response = isTeacher.value
+            ? await universityApi.requestJoinAsTeacher(name)
+            : await universityApi.enterUniversity(name);
+
+        infoMessage.value = response?.message || response?.Message || (isTeacher.value ? 'Request sent to university director.' : 'You entered the university successfully.');
+    } catch (error) {
+        errorMessage.value = error?.message || 'Could not process university access action.';
+    } finally {
+        actionLoadingMap.value = { ...actionLoadingMap.value, [key]: false };
+    }
 }
 
 async function loadUniversities() {
@@ -67,7 +133,10 @@ function goToPrevPage() {
     loadUniversities();
 }
 
-onMounted(loadUniversities);
+onMounted(() => {
+    authUtils.getCurrentUser();
+    loadUniversities();
+});
 </script>
 
 <template>
@@ -111,6 +180,21 @@ onMounted(loadUniversities);
                         •
                         {{ item.address?.street || 'Street N/A' }}
                     </p>
+
+                    <div class="university-card__actions">
+                        <button class="secondary-button" type="button" @click="openUniversitySpace(item)">
+                            Open university
+                        </button>
+
+                        <button
+                            class="submit-button"
+                            type="button"
+                            @click="joinUniversity(item)"
+                            :disabled="!canJoin(item) || isLoading || actionLoadingMap[getActionKey(item)]"
+                        >
+                            {{ actionLoadingMap[getActionKey(item)] ? 'Please wait...' : getJoinLabel(item) }}
+                        </button>
+                    </div>
                 </article>
             </div>
 
@@ -189,6 +273,18 @@ onMounted(loadUniversities);
     line-height: 1.5;
 }
 
+.university-card__actions {
+    margin-top: 0.25rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+}
+
+.university-card__actions .secondary-button,
+.university-card__actions .submit-button {
+    min-height: 2.65rem;
+}
+
 .pagination-row {
     display: flex;
     align-items: center;
@@ -204,6 +300,12 @@ onMounted(loadUniversities);
 
 @media (max-width: 900px) {
     .university-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .university-card__actions {
         grid-template-columns: 1fr;
     }
 }
