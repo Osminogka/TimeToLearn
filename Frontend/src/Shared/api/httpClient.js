@@ -1,3 +1,5 @@
+import { getToken } from '@/Shared/services/utils';
+
 class ApiError extends Error {
     constructor(message, status, details = null) {
         super(message);
@@ -88,15 +90,31 @@ function buildFriendlyErrorMessage(status, payload) {
 }
 
 async function request(url, options = {}) {
+    const {
+        requiresAuth = false,
+        headers: customHeaders = {},
+        ...fetchOptions
+    } = options;
+
+    const headers = {
+        'Content-Type': 'application/json',
+        ...customHeaders,
+    };
+
+    if (requiresAuth) {
+        const token = getToken();
+        if (!token) {
+            throw new ApiError('Authorization required. Please sign in and try again.', 401);
+        }
+        headers.Authorization = `Bearer ${token}`;
+    }
+
     let response;
 
     try {
         response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...(options.headers || {}),
-            },
-            ...options,
+            ...fetchOptions,
+            headers,
         });
     } catch (error) {
         throw new ApiError('Network error: unable to reach API. Check connection, proxy, or ingress.', 0, error);
@@ -115,9 +133,16 @@ async function request(url, options = {}) {
 
 export const httpClient = {
     get: (url, options = {}) => request(url, { ...options, method: 'GET' }),
+    getAuth: (url, options = {}) => request(url, { ...options, method: 'GET', requiresAuth: true }),
     post: (url, data, options = {}) => request(url, {
         ...options,
         method: 'POST',
+        body: JSON.stringify(data),
+    }),
+    postAuth: (url, data, options = {}) => request(url, {
+        ...options,
+        method: 'POST',
+        requiresAuth: true,
         body: JSON.stringify(data),
     }),
 };

@@ -86,4 +86,7 @@ app.MapControllers();
 
 app.UseDefaultFiles();
 
+using (var scope = app.Services.CreateScope())
+    scope.ServiceProvider.GetRequiredService<DataContext>().Database.Migrate();
+
 app.Run();

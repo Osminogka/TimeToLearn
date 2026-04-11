@@ -26,33 +26,11 @@ namespace Core.API.Migrations
                     Address_Country = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     Address_City = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     Address_Street = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    IsTeacher = table.Column<bool>(type: "bit", nullable: false),
-                    TeacherId = table.Column<long>(type: "bigint", nullable: true),
-                    StudentId = table.Column<long>(type: "bigint", nullable: true),
-                    UniversityId = table.Column<long>(type: "bigint", nullable: true)
+                    TeacherId = table.Column<long>(type: "bigint", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_BaseUsers", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Students",
-                columns: table => new
-                {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    BaseUserId = table.Column<long>(type: "bigint", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Students", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Students_BaseUsers_BaseUserId",
-                        column: x => x.BaseUserId,
-                        principalTable: "BaseUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -98,7 +76,7 @@ namespace Core.API.Migrations
                         column: x => x.DirectorId,
                         principalTable: "BaseUsers",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -128,10 +106,57 @@ namespace Core.API.Migrations
                         onDelete: ReferentialAction.Restrict);
                 });
 
-            migrationBuilder.CreateIndex(
-                name: "IX_BaseUsers_UniversityId",
-                table: "BaseUsers",
-                column: "UniversityId");
+            migrationBuilder.CreateTable(
+                name: "StudentEnrollments",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BaseUserId = table.Column<long>(type: "bigint", nullable: false),
+                    UniversityId = table.Column<long>(type: "bigint", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_StudentEnrollments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_StudentEnrollments_BaseUsers_BaseUserId",
+                        column: x => x.BaseUserId,
+                        principalTable: "BaseUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_StudentEnrollments_Universities_UniversityId",
+                        column: x => x.UniversityId,
+                        principalTable: "Universities",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TeacherEnrollments",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BaseUserId = table.Column<long>(type: "bigint", nullable: false),
+                    UniversityId = table.Column<long>(type: "bigint", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TeacherEnrollments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_TeacherEnrollments_BaseUsers_BaseUserId",
+                        column: x => x.BaseUserId,
+                        principalTable: "BaseUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_TeacherEnrollments_Universities_UniversityId",
+                        column: x => x.UniversityId,
+                        principalTable: "Universities",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
 
             migrationBuilder.CreateIndex(
                 name: "IX_EntryRequests_BaseUserId",
@@ -144,10 +169,26 @@ namespace Core.API.Migrations
                 column: "UniversityId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Students_BaseUserId",
-                table: "Students",
-                column: "BaseUserId",
+                name: "IX_StudentEnrollments_BaseUserId_UniversityId",
+                table: "StudentEnrollments",
+                columns: new[] { "BaseUserId", "UniversityId" },
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StudentEnrollments_UniversityId",
+                table: "StudentEnrollments",
+                column: "UniversityId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TeacherEnrollments_BaseUserId_UniversityId",
+                table: "TeacherEnrollments",
+                columns: new[] { "BaseUserId", "UniversityId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TeacherEnrollments_UniversityId",
+                table: "TeacherEnrollments",
+                column: "UniversityId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Teachers_BaseUserId",
@@ -158,29 +199,20 @@ namespace Core.API.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Universities_DirectorId",
                 table: "Universities",
-                column: "DirectorId",
-                unique: true);
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_BaseUsers_Universities_UniversityId",
-                table: "BaseUsers",
-                column: "UniversityId",
-                principalTable: "Universities",
-                principalColumn: "Id");
+                column: "DirectorId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_BaseUsers_Universities_UniversityId",
-                table: "BaseUsers");
-
             migrationBuilder.DropTable(
                 name: "EntryRequests");
 
             migrationBuilder.DropTable(
-                name: "Students");
+                name: "StudentEnrollments");
+
+            migrationBuilder.DropTable(
+                name: "TeacherEnrollments");
 
             migrationBuilder.DropTable(
                 name: "Teachers");

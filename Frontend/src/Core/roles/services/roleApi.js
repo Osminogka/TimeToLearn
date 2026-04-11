@@ -6,15 +6,15 @@ const getRole = async (email) => {
 };
 
 const becomeTeacher = async () => {
-	return httpClient.post(`${SERVICE_BASE_PATHS.users}/teacher/become`, {});
+	return httpClient.postAuth(`${SERVICE_BASE_PATHS.users}/teacher/become`, {});
 };
 
 const becomeStudent = async () => {
-	return httpClient.post(`${SERVICE_BASE_PATHS.users}/student/become`, {});
+	return httpClient.postAuth(`${SERVICE_BASE_PATHS.users}/student/become`, {});
 };
 
 const verifyTeacher = async (degree) => {
-	return httpClient.post(`${SERVICE_BASE_PATHS.users}/teacher/verify`, degree, {
+	return httpClient.postAuth(`${SERVICE_BASE_PATHS.users}/teacher/verify`, degree, {
 		headers: {
 			'Content-Type': 'application/json',
 		},

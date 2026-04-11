@@ -8,7 +8,7 @@ const getUniversities = ({ page = 1, pageSize = 12 } = {}) => {
 };
 
 const getMyUniversities = ({ page = 1, pageSize = 12 } = {}) => {
-	return httpClient.get(`${BASE_URL}/my?page=${page}&pageSize=${pageSize}`);
+	return httpClient.getAuth(`${BASE_URL}/my?page=${page}&pageSize=${pageSize}`);
 };
 
 const getUniversityByName = (name) => {
@@ -16,7 +16,7 @@ const getUniversityByName = (name) => {
 };
 
 const createUniversity = (payload) => {
-	return httpClient.post(BASE_URL, payload);
+	return httpClient.postAuth(BASE_URL, payload);
 };
 
 export default {
