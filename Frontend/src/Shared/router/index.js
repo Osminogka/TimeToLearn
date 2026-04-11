@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { isAuthenticated } from '@/Shared/services/utils';
+import { hasRole, isAuthenticated } from '@/Shared/services/utils';
 
 const routes = [
     {
@@ -73,7 +73,8 @@ const routes = [
         component: () => import('@/Core/universities/pages/CreateUniversityPage.vue'),
         meta: {
             title: 'Create University',
-            requiresAuth: true
+            requiresAuth: true,
+            requiresTeacher: true
         }
     },
     {
@@ -106,6 +107,10 @@ router.beforeEach((to, from, next) => {
 
     if (to.meta.requiresAuth && !isAuth) {
         return next({ name: 'Login' });
+    }
+
+    if (to.meta.requiresTeacher && !hasRole('teacher')) {
+        return next({ name: 'Dashboard' });
     }
 
     next();

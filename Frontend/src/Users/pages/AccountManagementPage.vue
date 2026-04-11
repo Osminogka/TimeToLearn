@@ -1,10 +1,10 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import UniversitiesWorkspaceHeader from '@/Core/universities/components/UniversitiesWorkspaceHeader.vue';
 import roleApi from '@/Core/roles/services/roleApi';
 import userApi from '../services/userApi';
-import authUtils, { user } from '@/Shared/services/utils';
+import authUtils, { isTeacherRole, isStudentRole, user } from '@/Shared/services/utils';
 import AppIcon from '@/Shared/components/AppIcon.vue';
 
 const profile = reactive({
@@ -22,6 +22,14 @@ const roleState = reactive({
     isTeacher: false,
     isStudent: false,
 });
+
+const currentRoleLabel = computed(() => roleState.isTeacher ? 'Teacher' : roleState.isStudent ? 'Student' : 'No role yet');
+
+function syncRoleFromToken() {
+    authUtils.getCurrentUser();
+    roleState.isTeacher = isTeacherRole(user.value.role);
+    roleState.isStudent = isStudentRole(user.value.role) || !roleState.isTeacher;
+}
 
 const degree = ref('');
 const isLoadingProfile = ref(false);
@@ -42,14 +50,7 @@ function clearMessages() {
 }
 
 async function loadRoleState() {
-    const currentUser = authUtils.getCurrentUser();
-    if (!currentUser?.email) {
-        return;
-    }
-
-    const roleResponse = await roleApi.getRole(currentUser.email);
-    roleState.isTeacher = roleResponse.isTeacher ?? roleResponse.IsTeacher ?? false;
-    roleState.isStudent = roleResponse.isStudent ?? roleResponse.IsStudent ?? false;
+    syncRoleFromToken();
 }
 
 async function loadProfile() {
@@ -189,7 +190,7 @@ onMounted(async () => {
             <div class="account-hero__actions">
                 <span class="pill pill--accent">
                     <AppIcon name="profile" />
-                    {{ roleState.isTeacher ? 'Teacher' : roleState.isStudent ? 'Student' : 'No role yet' }}
+                    {{ currentRoleLabel }}
                 </span>
                 <button class="secondary-button account-logout" type="button" @click="logout">
                     <AppIcon name="logout" />
@@ -251,7 +252,7 @@ onMounted(async () => {
                         <h2 class="section-title">Role management</h2>
                     </div>
                     <span class="pill pill--accent">
-                        {{ roleState.isTeacher ? 'Teacher' : roleState.isStudent ? 'Student' : 'No role yet' }}
+                        {{ currentRoleLabel }}
                     </span>
                 </div>
 

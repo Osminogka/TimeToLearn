@@ -2,40 +2,69 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AppIcon from '@/Shared/components/AppIcon.vue';
-import authUtils, { user } from '@/Shared/services/utils';
+import authUtils, { isTeacherRole, user } from '@/Shared/services/utils';
 import universityApi from '../services/universityApi';
-import roleApi from '@/Core/roles/services/roleApi';
 
 const router = useRouter();
 
 const myUniversities = ref([]);
 const isLoadingUniversities = ref(false);
 const dashboardMessage = ref('');
-const roleState = ref('Student');
 
-const quickActions = [
-    {
-        icon: 'join',
-        title: 'Join a university',
-        copy: 'Browse the full catalog and enter a new community that fits your goals.',
-        routeName: 'UniversitiesAll',
-        button: 'Browse catalog',
-    },
-    {
-        icon: 'create',
-        title: 'Create new university',
-        copy: 'Launch a learning space with a name, description, and access settings.',
-        routeName: 'UniversitiesCreate',
-        button: 'Start creation',
-    },
-    {
-        icon: 'account',
-        title: 'Manage my profile',
-        copy: 'Update your account details, role, and teacher verification in one place.',
-        routeName: 'AccountManagement',
-        button: 'Open profile',
-    },
-];
+const isTeacher = computed(() => isTeacherRole(user.value.role));
+const roleState = computed(() => isTeacher.value ? 'Teacher' : 'Student');
+
+const quickActions = computed(() => {
+    if (isTeacher.value) {
+        return [
+            {
+                icon: 'create',
+                title: 'Create new university',
+                copy: 'Launch a learning space with a name, description, and access settings.',
+                routeName: 'UniversitiesCreate',
+                button: 'Start creation',
+            },
+            {
+                icon: 'users',
+                title: 'Manage my universities',
+                copy: 'Review the spaces you belong to and keep your community up to date.',
+                routeName: 'UniversitiesMine',
+                button: 'Open list',
+            },
+            {
+                icon: 'account',
+                title: 'Manage my profile',
+                copy: 'Update your account details, role, and teacher verification in one place.',
+                routeName: 'AccountManagement',
+                button: 'Open profile',
+            },
+        ];
+    }
+
+    return [
+        {
+            icon: 'join',
+            title: 'Join a university',
+            copy: 'Browse the full catalog and enter a new community that fits your goals.',
+            routeName: 'UniversitiesAll',
+            button: 'Browse catalog',
+        },
+        {
+            icon: 'users',
+            title: 'My universities',
+            copy: 'See your enrolled spaces and quickly return to where you are active.',
+            routeName: 'UniversitiesMine',
+            button: 'Open list',
+        },
+        {
+            icon: 'account',
+            title: 'Manage my profile',
+            copy: 'Update account details and switch roles when needed.',
+            routeName: 'AccountManagement',
+            button: 'Open profile',
+        },
+    ];
+});
 
 const hasUniversities = computed(() => myUniversities.value.length > 0);
 const displayedUniversities = computed(() => myUniversities.value.slice(0, 4));
@@ -49,27 +78,13 @@ async function loadDashboardData() {
     isLoadingUniversities.value = true;
 
     try {
-        const currentUser = authUtils.getCurrentUser();
-        const [universitiesResponse, roleResponse] = await Promise.allSettled([
-            universityApi.getMyUniversities({ page: 1, pageSize: 4 }),
-            currentUser?.email ? roleApi.getRole(currentUser.email) : Promise.resolve(null),
-        ]);
+        authUtils.getCurrentUser();
+        const universitiesResponse = await universityApi.getMyUniversities({ page: 1, pageSize: 4 });
 
-        if (universitiesResponse.status === 'fulfilled') {
-            myUniversities.value = normalizeItems(universitiesResponse.value);
-        } else {
-            dashboardMessage.value = universitiesResponse.reason?.message || 'Could not load your universities.';
-            myUniversities.value = [];
-        }
-
-        if (roleResponse.status === 'fulfilled' && roleResponse.value) {
-            const resolved = roleResponse.value;
-            const isTeacher = resolved.isTeacher ?? resolved.IsTeacher ?? false;
-            const isStudent = resolved.isStudent ?? resolved.IsStudent ?? false;
-            roleState.value = isTeacher ? 'Teacher' : (isStudent ? 'Student' : 'Student');
-        }
+        myUniversities.value = normalizeItems(universitiesResponse);
     } catch (error) {
         dashboardMessage.value = error?.message || 'Could not load dashboard data.';
+        myUniversities.value = [];
     } finally {
         isLoadingUniversities.value = false;
     }
@@ -85,7 +100,9 @@ onMounted(loadDashboardData);
                 <p class="section-kicker">Student dashboard</p>
                 <h1 class="section-title">Hi, {{ user.name || 'Student' }}. Your day starts here.</h1>
                 <p class="section-copy">
-                    Check the universities you already belong to, then join or create a new one when you are ready.
+                    {{ isTeacher
+                        ? 'Manage your learning communities, create new universities, and keep your profile in sync.'
+                        : 'Check the universities you already belong to, then join a new one when you are ready.' }}
                 </p>
 
                 <div class="dashboard-hero__chips">

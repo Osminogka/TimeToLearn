@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import AppIcon from '@/Shared/components/AppIcon.vue';
-import { user } from '@/Shared/services/utils';
+import { isTeacherRole, user } from '@/Shared/services/utils';
 
 const props = defineProps({
     title: {
@@ -21,9 +21,24 @@ const props = defineProps({
 const links = [
     { key: 'all', label: 'Join university', routeName: 'UniversitiesAll', icon: 'join' },
     { key: 'mine', label: 'My universities', routeName: 'UniversitiesMine', icon: 'users' },
-    { key: 'create', label: 'Create', routeName: 'UniversitiesCreate', icon: 'create' },
     { key: 'account', label: 'Profile', routeName: 'AccountManagement', icon: 'account' },
 ];
+
+const isTeacher = computed(() => isTeacherRole(user.value.role));
+
+const visibleLinks = computed(() => {
+    if (isTeacher.value) {
+        return [
+            ...links.slice(0, 2),
+            { key: 'create', label: 'Create', routeName: 'UniversitiesCreate', icon: 'create' },
+            links[2],
+        ];
+    }
+
+    return links;
+});
+
+const currentRoleLabel = computed(() => isTeacher.value ? 'Teacher' : 'Student');
 </script>
 
 <template>
@@ -43,13 +58,14 @@ const links = [
                 <div>
                     <p class="workspace-header__user-name">{{ user.name || 'Student' }}</p>
                     <p class="workspace-header__user-email">{{ user.email || 'Account active' }}</p>
+                    <p class="workspace-header__user-role">{{ currentRoleLabel }}</p>
                 </div>
             </div>
         </div>
 
         <nav class="workspace-nav" aria-label="University workspace navigation">
             <router-link
-                v-for="link in links"
+                v-for="link in visibleLinks"
                 :key="link.key"
                 :to="{ name: link.routeName }"
                 class="workspace-nav__link"
@@ -116,6 +132,13 @@ const links = [
     margin: 0.1rem 0 0;
     color: var(--ttl-text-secondary);
     font-size: 0.82rem;
+}
+
+.workspace-header__user-role {
+    margin: 0.2rem 0 0;
+    color: var(--ttl-accent-dark);
+    font-size: 0.78rem;
+    font-weight: 700;
 }
 
 .workspace-nav {
