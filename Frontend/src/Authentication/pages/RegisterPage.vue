@@ -62,7 +62,7 @@ async function submitRegister() {
     try {
         const result = await authApi.register(form.name.trim(), form.email.trim(), form.password);
         if (result.success) {
-            router.push({ name: 'Main' });
+            router.replace({ name: 'Dashboard' });
             return;
         }
 

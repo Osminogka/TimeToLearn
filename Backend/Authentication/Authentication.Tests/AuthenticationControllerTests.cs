@@ -87,7 +87,10 @@ namespace Authentication.Tests
                 .ReturnsAsync(roles);
 
             var rsaKeyService = CreateTestRsaKeyService();
-            var authService = new AuthService(Repository.Object, rsaKeyService);
+            var coreRoleClient = new Mock<ICoreRoleClient>();
+            coreRoleClient.Setup(x => x.GetRoleAsync(It.IsAny<string>()))
+                .ReturnsAsync(Roles.Student);
+            var authService = new AuthService(Repository.Object, rsaKeyService, coreRoleClient.Object);
             var logger = new Mock<ILogger<AuthenticationController>>();
 
             var config = new MapperConfiguration(cfg =>

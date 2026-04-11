@@ -5,9 +5,7 @@ const routes = [
     {
         path: '/',
         name: "Main",
-        component: () => isAuthenticated()
-            ? import('@/Core/universities/pages/DashboardUniversties.vue')
-            : import('@/Shared/pages/GreetingPage.vue'),
+        component: () => import('@/Shared/pages/GreetingPage.vue'),
         meta: {
             title: "Time to Learn",
             requiresAuth: false
@@ -32,6 +30,15 @@ const routes = [
                 }
             }
         ]
+    },
+    {
+        path: '/dashboard',
+        name: 'Dashboard',
+        component: () => import('@/Core/universities/pages/DashboardUniversties.vue'),
+        meta: {
+            title: 'Dashboard',
+            requiresAuth: true
+        }
     },
     {
         path: '/define-role',
@@ -89,8 +96,12 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
     const isAuth = isAuthenticated();
 
+    if (to.name === 'Main' && isAuth) {
+        return next({ name: 'Dashboard' });
+    }
+
     if (to.meta.guestOnly && isAuth) {
-        return next({ name: 'Main' });
+        return next({ name: 'Dashboard' });
     }
 
     if (to.meta.requiresAuth && !isAuth) {

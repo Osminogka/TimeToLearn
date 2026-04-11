@@ -25,10 +25,7 @@ namespace Authentication.DL.Repositories
 
         public async Task<IdentityResult> CreateAsync(AppUser user, string password)
         {
-            var result = await _userManager.CreateAsync(user, password);
-            if (result.Succeeded)
-                return await _userManager.AddToRoleAsync(user, Roles.Student);
-            return IdentityResult.Failed();
+            return await _userManager.CreateAsync(user, password);
         }
 
         public async Task<IdentityResult> DeleteAsync(AppUser user)

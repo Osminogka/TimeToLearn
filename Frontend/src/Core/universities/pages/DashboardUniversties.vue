@@ -1,65 +1,165 @@
 <script setup>
-import authUtils from '@/Shared/services/utils';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import AppIcon from '@/Shared/components/AppIcon.vue';
+import authUtils, { user } from '@/Shared/services/utils';
+import universityApi from '../services/universityApi';
+import roleApi from '@/Core/roles/services/roleApi';
 
 const router = useRouter();
 
+const myUniversities = ref([]);
+const isLoadingUniversities = ref(false);
+const dashboardMessage = ref('');
+const roleState = ref('Student');
+
 const quickActions = [
     {
-        title: 'Browse all universities',
-        copy: 'Discover open and private campuses and review where you want to study.',
+        icon: 'join',
+        title: 'Join a university',
+        copy: 'Browse the full catalog and enter a new community that fits your goals.',
         routeName: 'UniversitiesAll',
-        button: 'Open catalog',
+        button: 'Browse catalog',
     },
     {
-        title: 'Your university spaces',
-        copy: 'See all universities where you are already a member and keep context in one place.',
-        routeName: 'UniversitiesMine',
-        button: 'View my universities',
-    },
-    {
-        title: 'Create a university',
-        copy: 'Set up a new learning community with a clear description and visibility settings.',
+        icon: 'create',
+        title: 'Create new university',
+        copy: 'Launch a learning space with a name, description, and access settings.',
         routeName: 'UniversitiesCreate',
-        button: 'Create now',
+        button: 'Start creation',
     },
     {
-        title: 'Manage account and role',
-        copy: 'Update profile details, switch between student and teacher roles, and verify your degree.',
+        icon: 'account',
+        title: 'Manage my profile',
+        copy: 'Update your account details, role, and teacher verification in one place.',
         routeName: 'AccountManagement',
-        button: 'Open account',
+        button: 'Open profile',
     },
 ];
 
-function logout(){
-    authUtils.clearToken();
-    window.location.reload();
+const hasUniversities = computed(() => myUniversities.value.length > 0);
+const displayedUniversities = computed(() => myUniversities.value.slice(0, 4));
+
+function normalizeItems(payload) {
+    return payload.items || payload.Items || [];
 }
+
+async function loadDashboardData() {
+    dashboardMessage.value = '';
+    isLoadingUniversities.value = true;
+
+    try {
+        const currentUser = authUtils.getCurrentUser();
+        const [universitiesResponse, roleResponse] = await Promise.allSettled([
+            universityApi.getMyUniversities({ page: 1, pageSize: 4 }),
+            currentUser?.email ? roleApi.getRole(currentUser.email) : Promise.resolve(null),
+        ]);
+
+        if (universitiesResponse.status === 'fulfilled') {
+            myUniversities.value = normalizeItems(universitiesResponse.value);
+        } else {
+            dashboardMessage.value = universitiesResponse.reason?.message || 'Could not load your universities.';
+            myUniversities.value = [];
+        }
+
+        if (roleResponse.status === 'fulfilled' && roleResponse.value) {
+            const resolved = roleResponse.value;
+            const isTeacher = resolved.isTeacher ?? resolved.IsTeacher ?? false;
+            const isStudent = resolved.isStudent ?? resolved.IsStudent ?? false;
+            roleState.value = isTeacher ? 'Teacher' : (isStudent ? 'Student' : 'Student');
+        }
+    } catch (error) {
+        dashboardMessage.value = error?.message || 'Could not load dashboard data.';
+    } finally {
+        isLoadingUniversities.value = false;
+    }
+}
+
+onMounted(loadDashboardData);
 </script>
 
 <template>
     <main class="dashboard-shell">
         <section class="dashboard-hero surface-card surface-card--raised">
-            <div>
-                <p class="section-kicker">Welcome back</p>
-                <h1 class="section-title">Your learning dashboard is ready.</h1>
+            <div class="dashboard-hero__copy">
+                <p class="section-kicker">Student dashboard</p>
+                <h1 class="section-title">Hi, {{ user.name || 'Student' }}. Your day starts here.</h1>
                 <p class="section-copy">
-                    Pick up your next lesson, jump into a forum, or review your university spaces from a clean overview.
+                    Check the universities you already belong to, then join or create a new one when you are ready.
                 </p>
+
+                <div class="dashboard-hero__chips">
+                    <span class="pill pill--accent"><AppIcon name="profile" />{{ user.email || 'Account active' }}</span>
+                    <span class="pill"><AppIcon name="role" />{{ roleState }}</span>
+                    <span class="pill pill--pink"><AppIcon name="users" />{{ hasUniversities ? `${myUniversities.length} universities` : 'No universities yet' }}</span>
+                </div>
             </div>
 
-            <button @click="logout" class="secondary-button dashboard-logout">Logout</button>
+            <div class="dashboard-hero__panel">
+                <div class="dashboard-avatar">{{ (user.name || 'S').slice(0, 1).toUpperCase() }}</div>
+                <p class="dashboard-hero__panel-copy">Use the cards below to move quickly without hunting through menus.</p>
+            </div>
         </section>
 
-        <section class="dashboard-grid">
-            <article v-for="action in quickActions" :key="action.title" class="dashboard-card surface-card hover-lift">
-                <p class="section-kicker">Quick action</p>
-                <h2 class="dashboard-card__title">{{ action.title }}</h2>
-                <p class="section-copy">{{ action.copy }}</p>
-                <button class="secondary-button dashboard-action" @click="router.push({ name: action.routeName })">
-                    {{ action.button }}
-                </button>
-            </article>
+        <section class="dashboard-section">
+            <div class="section-heading-row">
+                <div>
+                    <p class="section-kicker">My universities</p>
+                    <h2 class="section-title">Your current spaces</h2>
+                </div>
+
+                <button class="secondary-button" @click="router.push({ name: 'UniversitiesMine' })">View all</button>
+            </div>
+
+            <p v-if="dashboardMessage" class="dashboard-note">{{ dashboardMessage }}</p>
+
+            <div v-if="isLoadingUniversities" class="dashboard-empty surface-card">
+                Loading your universities...
+            </div>
+
+            <div v-else-if="!hasUniversities" class="dashboard-empty surface-card">
+                <AppIcon name="users" />
+                <div>
+                    <h3>No universities yet</h3>
+                    <p>Join a university from the catalog or create a new one to start building your space.</p>
+                </div>
+            </div>
+
+            <div v-else class="dashboard-universities">
+                <article v-for="item in displayedUniversities" :key="item.name" class="dashboard-university surface-card hover-lift">
+                    <div class="dashboard-university__top">
+                        <AppIcon name="university" />
+                        <span class="pill" :class="item.isOpened ? 'pill--accent' : 'pill--pink'">{{ item.isOpened ? 'Open' : 'Private' }}</span>
+                    </div>
+
+                    <h3 class="dashboard-university__title">{{ item.name }}</h3>
+                    <p class="section-copy dashboard-university__copy">{{ item.description }}</p>
+
+                    <p class="dashboard-university__address">
+                        {{ item.address?.country || 'Country N/A' }} · {{ item.address?.city || 'City N/A' }} · {{ item.address?.street || 'Street N/A' }}
+                    </p>
+                </article>
+            </div>
+        </section>
+
+        <section class="dashboard-section">
+            <div class="section-heading-row">
+                <div>
+                    <p class="section-kicker">Actions</p>
+                    <h2 class="section-title">What do you want to do next?</h2>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <article v-for="action in quickActions" :key="action.title" class="dashboard-card surface-card hover-lift">
+                    <AppIcon :name="action.icon" />
+                    <h3 class="dashboard-card__title">{{ action.title }}</h3>
+                    <p class="section-copy">{{ action.copy }}</p>
+                    <button class="submit-button dashboard-action" @click="router.push({ name: action.routeName })">
+                        {{ action.button }}
+                    </button>
+                </article>
+            </div>
         </section>
     </main>
 </template>
@@ -76,34 +176,136 @@ function logout(){
 
 .dashboard-hero {
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: space-between;
     gap: 1rem;
     padding: 1.4rem;
 }
 
-.dashboard-logout {
-    flex: 0 0 auto;
+.dashboard-hero__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.95rem;
+}
+
+.dashboard-hero__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.dashboard-hero__panel {
+    min-width: 14rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.8rem;
+    padding: 1rem;
+    border-radius: 1.2rem;
+    background: linear-gradient(180deg, rgba(143, 44, 226, 0.08), rgba(255, 95, 162, 0.06));
+    border: 1px solid rgba(143, 44, 226, 0.08);
+}
+
+.dashboard-avatar {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--ttl-accent) 0%, var(--ttl-accent-bright) 100%);
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.dashboard-hero__panel-copy {
+    margin: 0;
+    color: var(--ttl-text-secondary);
+    line-height: 1.6;
+}
+
+.dashboard-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.section-heading-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.dashboard-note {
+    margin: 0;
+    color: var(--ttl-text-secondary);
+}
+
+.dashboard-empty {
+    padding: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    color: var(--ttl-text-secondary);
+}
+
+.dashboard-empty h3,
+.dashboard-university__title,
+.dashboard-card__title {
+    margin: 0;
+    color: var(--ttl-text-primary);
+    letter-spacing: -0.02em;
+}
+
+.dashboard-empty p,
+.dashboard-university__copy {
+    margin: 0;
+}
+
+.dashboard-universities {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem;
+}
+
+.dashboard-university {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.dashboard-university__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+}
+
+.dashboard-university__title,
+.dashboard-card__title {
+    font-size: 1.08rem;
+}
+
+.dashboard-university__address {
+    margin: 0;
+    color: var(--ttl-text-muted);
+    font-size: 0.88rem;
 }
 
 .dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1rem;
 }
 
 .dashboard-card {
-    padding: 1.3rem;
+    padding: 1.15rem;
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
-}
-
-.dashboard-card__title {
-    margin: 0 0 0.55rem;
-    color: var(--ttl-text-primary);
-    font-size: 1.15rem;
-    letter-spacing: -0.02em;
+    gap: 0.8rem;
 }
 
 .dashboard-action {
@@ -112,13 +314,15 @@ function logout(){
 }
 
 @media (max-width: 900px) {
-    .dashboard-grid {
-        grid-template-columns: 1fr;
+    .dashboard-hero,
+    .section-heading-row {
+        flex-direction: column;
+        align-items: flex-start;
     }
 
-    .dashboard-hero {
-        flex-direction: column;
-        align-items: start;
+    .dashboard-universities,
+    .dashboard-grid {
+        grid-template-columns: 1fr;
     }
 }
 </style>

@@ -62,7 +62,7 @@ async function submitLogin() {
     try {
         const result = await authApi.login(form.email.trim(), form.password);
         if (result.success) {
-            router.push('/');
+            router.replace({ name: 'Dashboard' });
             return;
         }
 

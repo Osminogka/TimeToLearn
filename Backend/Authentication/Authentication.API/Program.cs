@@ -21,6 +21,12 @@ builder.Services.AddSingleton<IRsaKeyService>(rsaKeyService);
 builder.Services.AddTransient<IUsersRepository, UsersRepository>();
 builder.Services.AddTransient<IAuthService, AuthService>();
 
+builder.Services.AddHttpClient<ICoreRoleClient, CoreRoleClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["CoreServiceUrl"]!);
+    client.Timeout = TimeSpan.FromSeconds(3);
+});
+
 builder.Services.AddSingleton<IMessageBusClient, MessageBusClient>();
 
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());

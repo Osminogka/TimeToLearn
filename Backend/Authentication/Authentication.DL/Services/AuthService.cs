@@ -10,11 +10,13 @@ namespace Authentication.DL.Services
     {
         private readonly IUsersRepository _userRepository;
         private readonly IRsaKeyService _rsaKeyService;
+        private readonly ICoreRoleClient _coreRoleClient;
 
-        public AuthService(IUsersRepository usersRepository, IRsaKeyService rsaKeyService)
+        public AuthService(IUsersRepository usersRepository, IRsaKeyService rsaKeyService, ICoreRoleClient coreRoleClient)
         {
             _userRepository = usersRepository;
             _rsaKeyService = rsaKeyService;
+            _coreRoleClient = coreRoleClient;
         }
 
         public async Task<ResponseMessage> LoginAsync(LoginRequestModel loginModel)
@@ -106,10 +108,8 @@ namespace Authentication.DL.Services
             claims.AddClaim(new Claim(ClaimTypes.Name, user.UserName));
             claims.AddClaim(new Claim(ClaimTypes.Email, user.Email));
 
-            var roles = await _userRepository.GetUserRolesAsync(user);
-
-            foreach (var role in roles)
-                claims.AddClaim(new Claim(ClaimTypes.Role, role));
+            var role = await _coreRoleClient.GetRoleAsync(user.Email);
+            claims.AddClaim(new Claim(ClaimTypes.Role, role));
 
             return claims;
         }

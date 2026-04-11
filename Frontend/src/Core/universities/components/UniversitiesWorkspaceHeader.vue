@@ -1,5 +1,7 @@
 <script setup>
 import { computed } from 'vue';
+import AppIcon from '@/Shared/components/AppIcon.vue';
+import { user } from '@/Shared/services/utils';
 
 const props = defineProps({
     title: {
@@ -17,25 +19,32 @@ const props = defineProps({
 });
 
 const links = [
-    { key: 'all', label: 'All universities', routeName: 'UniversitiesAll' },
-    { key: 'mine', label: 'My universities', routeName: 'UniversitiesMine' },
-    { key: 'create', label: 'Create university', routeName: 'UniversitiesCreate' },
-    { key: 'account', label: 'Account', routeName: 'AccountManagement' },
+    { key: 'all', label: 'Join university', routeName: 'UniversitiesAll', icon: 'join' },
+    { key: 'mine', label: 'My universities', routeName: 'UniversitiesMine', icon: 'users' },
+    { key: 'create', label: 'Create', routeName: 'UniversitiesCreate', icon: 'create' },
+    { key: 'account', label: 'Profile', routeName: 'AccountManagement', icon: 'account' },
 ];
-
-const activeLabel = computed(() => links.find((link) => link.key === props.active)?.label || 'Workspace');
 </script>
 
 <template>
     <header class="workspace-header surface-card surface-card--raised">
         <div class="workspace-header__top">
-            <div>
-                <p class="section-kicker">University workspace</p>
-                <h1 class="section-title">{{ title }}</h1>
-                <p class="section-copy">{{ subtitle }}</p>
+            <div class="workspace-header__title">
+                <AppIcon :name="active === 'all' ? 'join' : active === 'mine' ? 'users' : active === 'create' ? 'create' : 'account'" />
+                <div>
+                    <p class="section-kicker">University workspace</p>
+                    <h1 class="section-title">{{ title }}</h1>
+                    <p class="section-copy">{{ subtitle }}</p>
+                </div>
             </div>
 
-            <span class="pill pill--accent">{{ activeLabel }}</span>
+            <div class="workspace-header__user">
+                <span class="workspace-header__avatar">{{ (user.name || 'U').slice(0, 1).toUpperCase() }}</span>
+                <div>
+                    <p class="workspace-header__user-name">{{ user.name || 'Student' }}</p>
+                    <p class="workspace-header__user-email">{{ user.email || 'Account active' }}</p>
+                </div>
+            </div>
         </div>
 
         <nav class="workspace-nav" aria-label="University workspace navigation">
@@ -46,6 +55,7 @@ const activeLabel = computed(() => links.find((link) => link.key === props.activ
                 class="workspace-nav__link"
                 :class="{ 'workspace-nav__link--active': active === link.key }"
             >
+                <AppIcon :name="link.icon" />
                 {{ link.label }}
             </router-link>
         </nav>
@@ -54,7 +64,7 @@ const activeLabel = computed(() => links.find((link) => link.key === props.activ
 
 <style scoped>
 .workspace-header {
-    padding: 1.2rem;
+    padding: 1.15rem;
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -65,6 +75,47 @@ const activeLabel = computed(() => links.find((link) => link.key === props.activ
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
+}
+
+.workspace-header__title {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+}
+
+.workspace-header__user {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 1rem;
+    background: rgba(143, 44, 226, 0.06);
+    border: 1px solid rgba(143, 44, 226, 0.1);
+}
+
+.workspace-header__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 0.85rem;
+    background: linear-gradient(135deg, var(--ttl-accent) 0%, var(--ttl-accent-bright) 100%);
+    color: #fff;
+    font-weight: 800;
+}
+
+.workspace-header__user-name {
+    margin: 0;
+    color: var(--ttl-text-primary);
+    font-size: 0.95rem;
+    font-weight: 800;
+}
+
+.workspace-header__user-email {
+    margin: 0.1rem 0 0;
+    color: var(--ttl-text-secondary);
+    font-size: 0.82rem;
 }
 
 .workspace-nav {
@@ -78,6 +129,7 @@ const activeLabel = computed(() => links.find((link) => link.key === props.activ
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 0.55rem;
     min-height: 2.6rem;
     border-radius: 0.8rem;
     background: rgba(143, 44, 226, 0.06);

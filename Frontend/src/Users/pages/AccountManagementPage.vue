@@ -1,9 +1,11 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import UniversitiesWorkspaceHeader from '@/Core/universities/components/UniversitiesWorkspaceHeader.vue';
 import roleApi from '@/Core/roles/services/roleApi';
 import userApi from '../services/userApi';
 import authUtils, { user } from '@/Shared/services/utils';
+import AppIcon from '@/Shared/components/AppIcon.vue';
 
 const profile = reactive({
     firstName: '',
@@ -28,6 +30,7 @@ const isSwitchingRole = ref(false);
 const isVerifying = ref(false);
 const errorMessage = ref('');
 const successMessage = ref('');
+const router = useRouter();
 
 function normalizeValue(payload) {
     return payload.value || payload.Value || null;
@@ -154,6 +157,11 @@ async function verifyDegree() {
     }
 }
 
+function logout() {
+    authUtils.clearToken();
+    router.push({ name: 'Main' });
+}
+
 onMounted(async () => {
     await loadRoleState();
     await loadProfile();
@@ -167,6 +175,28 @@ onMounted(async () => {
             title="Manage your account"
             subtitle="Update personal details and switch between student and teacher roles."
         />
+
+        <section class="account-hero surface-card surface-card--raised">
+            <div class="account-hero__profile">
+                <span class="account-hero__avatar">{{ (user.name || 'U').slice(0, 1).toUpperCase() }}</span>
+                <div>
+                    <p class="section-kicker">Account</p>
+                    <h2 class="section-title">{{ user.name || 'Your profile' }}</h2>
+                    <p class="section-copy">{{ user.email || 'Your account details and role settings live here.' }}</p>
+                </div>
+            </div>
+
+            <div class="account-hero__actions">
+                <span class="pill pill--accent">
+                    <AppIcon name="profile" />
+                    {{ roleState.isTeacher ? 'Teacher' : roleState.isStudent ? 'Student' : 'No role yet' }}
+                </span>
+                <button class="secondary-button account-logout" type="button" @click="logout">
+                    <AppIcon name="logout" />
+                    Log out
+                </button>
+            </div>
+        </section>
 
         <section class="account-grid">
             <article class="surface-card account-card">
@@ -259,6 +289,44 @@ onMounted(async () => {
     gap: 1rem;
 }
 
+.account-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.25rem;
+}
+
+.account-hero__profile {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.account-hero__avatar {
+    width: 3.2rem;
+    height: 3.2rem;
+    border-radius: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--ttl-accent) 0%, var(--ttl-accent-bright) 100%);
+    color: #fff;
+    font-weight: 800;
+    font-size: 1.1rem;
+}
+
+.account-hero__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.account-logout {
+    min-width: 10rem;
+}
+
 .account-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -298,6 +366,10 @@ onMounted(async () => {
     gap: 1rem;
 }
 
+.account-form .field-group {
+    position: relative;
+}
+
 .split-fields {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -311,6 +383,12 @@ onMounted(async () => {
 }
 
 @media (max-width: 900px) {
+    .account-hero,
+    .account-card__header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
     .account-grid {
         grid-template-columns: 1fr;
     }
