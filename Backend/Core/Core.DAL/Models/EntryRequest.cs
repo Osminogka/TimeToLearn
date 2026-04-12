@@ -8,6 +8,8 @@
 
         public bool SentByUniversity { get; set; }
 
+        public bool InviteAsTeacher { get; set; }
+
         public BaseUser BaseUser { get; set; }
 
         public University University { get; set; }

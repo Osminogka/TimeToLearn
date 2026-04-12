@@ -92,7 +92,7 @@ async function loadUniversities() {
     infoMessage.value = '';
 
     try {
-        const result = await universityApi.getUniversities({
+        const result = await universityApi.getAvailableUniversities({
             page: page.value,
             pageSize: pageSize.value,
         });
@@ -101,7 +101,7 @@ async function loadUniversities() {
         totalCount.value = normalizeTotalCount(result);
 
         if (!universities.value.length) {
-            infoMessage.value = 'No universities found yet. You can create the first one.';
+            infoMessage.value = 'No available universities right now. You are already a member of everything in this list.';
         }
     } catch (error) {
         errorMessage.value = error?.message || 'Failed to load universities.';

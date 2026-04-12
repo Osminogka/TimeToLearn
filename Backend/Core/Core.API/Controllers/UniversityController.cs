@@ -53,13 +53,31 @@ namespace Core.API.Controllers
             }
         }
 
+        [HttpGet("catalog/available")]
+        [Authorize]
+        public async Task<IActionResult> GetAvailableUniversitiesAsync([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var result = await _universityService.GetAvailableAsync(getUserEmail(), page, pageSize);
+                if (!result.Success)
+                    return BadRequest(result.Message);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return HandleException(ex);
+            }
+        }
+
         [HttpGet("{name}")]
-        [AllowAnonymous]
+        [Authorize]
         public async Task<IActionResult> GetUniversityByNameAsync(string name)
         {
             try
             {
-                var result = await _universityService.GetAsync(name);
+                var result = await _universityService.GetAsync(name, getUserEmail());
                 if (!result.Success)
                     return BadRequest(result.Message);
                 return Ok(result);

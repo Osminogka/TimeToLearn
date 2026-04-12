@@ -46,6 +46,49 @@ namespace Core.DL.Services
             return response;
         }
 
+        public async Task<PagedResponse<ReadUniversityDto>> GetAvailableAsync(string email, int page, int pageSize)
+        {
+            PagedResponse<ReadUniversityDto> response = new PagedResponse<ReadUniversityDto>();
+
+            var user = await _userRepository.Where(u => u.Email == email).FirstOrDefaultAsync();
+            if (user == null)
+            {
+                response.Message = "Such user doesn't exist";
+                return response;
+            }
+
+            var studentUnivIds = await _studentEnrollmentRepository
+                .Where(e => e.BaseUserId == user.Id)
+                .Select(e => e.UniversityId)
+                .ToListAsync();
+
+            var teacherUnivIds = await _teacherEnrollmentRepository
+                .Where(e => e.BaseUserId == user.Id)
+                .Select(e => e.UniversityId)
+                .ToListAsync();
+
+            var directorUnivIds = await _universityRepository
+                .Where(u => u.DirectorId == user.Id)
+                .Select(u => u.Id)
+                .ToListAsync();
+
+            var blockedIds = studentUnivIds.Union(teacherUnivIds).Union(directorUnivIds).Distinct().ToList();
+
+            var query = _universityRepository.Where(u => !blockedIds.Contains(u.Id));
+            var totalCount = await query.CountAsync();
+            var universities = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            response.Items = universities.Select(u => _mapper.Map<ReadUniversityDto>(u)).ToList();
+            response.TotalCount = totalCount;
+            response.Success = true;
+            response.Message = "Got available universities";
+
+            return response;
+        }
+
         public async Task<PagedResponse<ReadUniversityDto>> GetMyUniversitiesAsync(string email, int page, int pageSize)
         {
             PagedResponse<ReadUniversityDto> response = new PagedResponse<ReadUniversityDto>();
@@ -122,7 +165,7 @@ namespace Core.DL.Services
             return response;
         }
 
-        public async Task<ResponseWithValue<ReadUniversityDto>> GetAsync(string name)
+        public async Task<ResponseWithValue<ReadUniversityDto>> GetAsync(string name, string userEmail)
         {
             ResponseWithValue<ReadUniversityDto> response = new ResponseWithValue<ReadUniversityDto>();
 
@@ -130,6 +173,27 @@ namespace Core.DL.Services
             if (university == null)
             {
                 response.Message = "Such university doesn't exist";
+                return response;
+            }
+
+            var user = await _userRepository.Where(obj => obj.Email == userEmail).FirstOrDefaultAsync();
+            if (user == null)
+            {
+                response.Message = "Such user doesn't exist";
+                return response;
+            }
+
+            var isDirector = university.DirectorId == user.Id;
+            var hasStudentEnrollment = await _studentEnrollmentRepository
+                .Where(e => e.BaseUserId == user.Id && e.UniversityId == university.Id)
+                .AnyAsync();
+            var hasTeacherEnrollment = await _teacherEnrollmentRepository
+                .Where(e => e.BaseUserId == user.Id && e.UniversityId == university.Id)
+                .AnyAsync();
+
+            if (!isDirector && !hasStudentEnrollment && !hasTeacherEnrollment)
+            {
+                response.Message = "You are not a member of this university";
                 return response;
             }
 

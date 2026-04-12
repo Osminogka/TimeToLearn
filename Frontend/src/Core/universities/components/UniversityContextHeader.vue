@@ -1,7 +1,10 @@
 <script setup>
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { isTeacherRole, user } from '@/Shared/services/utils';
 import AppIcon from '@/Shared/components/AppIcon.vue';
+
+const router = useRouter();
 
 const props = defineProps({
     universityName: {
@@ -56,6 +59,18 @@ const tabs = computed(() => [
 function triggerJoin() {
     emit('join');
 }
+
+function goDashboard() {
+    router.push({ name: 'Dashboard' });
+}
+
+function goMyUniversities() {
+    router.push({ name: 'UniversitiesMine' });
+}
+
+function goCatalog() {
+    router.push({ name: 'UniversitiesAll' });
+}
 </script>
 
 <template>
@@ -81,6 +96,18 @@ function triggerJoin() {
         </div>
 
         <div class="context-header__bottom">
+            <div class="context-nav-actions" aria-label="Workspace quick navigation">
+                <button class="secondary-button context-nav-actions__button" type="button" @click="goDashboard">
+                    Dashboard
+                </button>
+                <button class="secondary-button context-nav-actions__button" type="button" @click="goMyUniversities">
+                    My universities
+                </button>
+                <button class="secondary-button context-nav-actions__button" type="button" @click="goCatalog">
+                    Catalog
+                </button>
+            </div>
+
             <nav class="context-nav" aria-label="University tabs">
                 <router-link
                     v-for="tab in tabs"
@@ -138,9 +165,20 @@ function triggerJoin() {
 
 .context-header__bottom {
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: space-between;
     gap: 0.8rem;
+}
+
+.context-nav-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+    min-width: 12.5rem;
+}
+
+.context-nav-actions__button {
+    min-height: 2.6rem;
 }
 
 .context-nav {
@@ -194,9 +232,16 @@ function triggerJoin() {
     .context-header__join {
         width: 100%;
     }
+
+    .context-nav-actions {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        width: 100%;
+        min-width: 0;
+    }
 }
 
 @media (max-width: 680px) {
+    .context-nav-actions,
     .context-nav {
         grid-template-columns: 1fr;
     }

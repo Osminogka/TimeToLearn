@@ -210,7 +210,8 @@ namespace Core.DL.Services
             {
                 BaseUserId = baseUser.Id,
                 UniversityId = university.Id,
-                SentByUniversity = true
+                SentByUniversity = true,
+                InviteAsTeacher = false
             };
 
             await _entryRequestRepository.AddAsync(entryRequest);
@@ -263,7 +264,8 @@ namespace Core.DL.Services
             {
                 BaseUserId = teacher.Id,
                 UniversityId = university.Id,
-                SentByUniversity = true
+                SentByUniversity = true,
+                InviteAsTeacher = true
             };
 
             await _entryRequestRepository.AddAsync(entryRequest);

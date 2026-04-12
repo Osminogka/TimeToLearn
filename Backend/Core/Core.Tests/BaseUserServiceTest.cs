@@ -95,7 +95,8 @@ namespace Users.Tests
             {
                 BaseUserId = 1,
                 UniversityId = 1,
-                SentByUniversity = true
+                SentByUniversity = true,
+                InviteAsTeacher = true
             };
             context.Add(invite);
 

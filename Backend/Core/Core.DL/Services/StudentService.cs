@@ -171,10 +171,17 @@ namespace Core.DL.Services
             }
 
             var entryRequestCheck = await _entryRequestRepository.Where(obj => obj.UniversityId == university.Id && obj.BaseUserId == user.Id).ToListAsync();
-            if (!university.IsOpened && entryRequestCheck.FirstOrDefault(obj => obj.SentByUniversity) == null)
+            if (!university.IsOpened)
             {
-                response.Message = "You are not allowed to entry";
-                return response;
+                var studentInvite = entryRequestCheck.FirstOrDefault(obj => obj.SentByUniversity && obj.InviteAsTeacher == false);
+                if (studentInvite == null)
+                {
+                    var teacherInvite = entryRequestCheck.FirstOrDefault(obj => obj.SentByUniversity && obj.InviteAsTeacher);
+                    response.Message = teacherInvite != null
+                        ? "This invite allows joining as teacher only"
+                        : "You are not allowed to entry";
+                    return response;
+                }
             }
 
             if (entryRequestCheck.Count > 0)

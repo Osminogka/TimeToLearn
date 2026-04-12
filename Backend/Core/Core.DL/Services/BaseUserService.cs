@@ -139,7 +139,6 @@ namespace Core.DL.Services
                 response.Message = "Such invite doesn't exist";
                 return response;
             }
-            await _entryRequestRepository.DeleteAsync(doesRequestExist);
 
             var user = await _baseUserRepository.Where(obj => obj.Email == email)
                 .FirstOrDefaultAsync();
@@ -157,6 +156,12 @@ namespace Core.DL.Services
 
             if (user.TeacherId != null)
             {
+                if (!doesRequestExist.InviteAsTeacher)
+                {
+                    response.Message = "This invite allows joining as student only";
+                    return response;
+                }
+
                 var existing = await _teacherEnrollmentRepository.SingleOrDefaultAsync(
                     e => e.BaseUserId == user.Id && e.UniversityId == doesRequestExist.UniversityId);
                 if (existing != null)
@@ -172,6 +177,12 @@ namespace Core.DL.Services
             }
             else
             {
+                if (doesRequestExist.InviteAsTeacher)
+                {
+                    response.Message = "This invite allows joining as teacher only";
+                    return response;
+                }
+
                 var existing = await _studentEnrollmentRepository.SingleOrDefaultAsync(
                     e => e.BaseUserId == user.Id && e.UniversityId == doesRequestExist.UniversityId);
                 if (existing != null)
@@ -185,6 +196,8 @@ namespace Core.DL.Services
                     UniversityId = doesRequestExist.UniversityId
                 });
             }
+
+            await _entryRequestRepository.DeleteAsync(doesRequestExist);
 
             response.Success = true;
             response.Message = "Invite accepted";

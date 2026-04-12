@@ -211,11 +211,31 @@ public class UniversityServiceTests
     [Fact]
     public async Task GetUniversityTest()
     {
-        var result = await Service.GetAsync("DKU");
+        var result = await Service.GetAsync("DKU", Director.Email);
 
         var response = Assert.IsType<ResponseWithValue<ReadUniversityDto>>(result);
         Assert.True(response.Success);
         Assert.Equal("DKU", response.Value.Name);
+    }
+
+    [Fact]
+    public async Task GetUniversity_NonMember_FailsTest()
+    {
+        var outsider = new BaseUser
+        {
+            Id = 99,
+            OriginalId = Guid.NewGuid(),
+            Username = "Outsider",
+            Email = "outsider@test.com",
+        };
+
+        await UserRepository.AddAsync(outsider);
+
+        var result = await Service.GetAsync("DKU", outsider.Email);
+
+        var response = Assert.IsType<ResponseWithValue<ReadUniversityDto>>(result);
+        Assert.False(response.Success);
+        Assert.Equal("You are not a member of this university", response.Message);
     }
 
     [Fact]

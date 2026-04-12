@@ -16,8 +16,12 @@ const getMyUniversities = ({ page = 1, pageSize = 12 } = {}) => {
 	return httpClient.getAuth(`${BASE_URL}/my?page=${page}&pageSize=${pageSize}`);
 };
 
+const getAvailableUniversities = ({ page = 1, pageSize = 12 } = {}) => {
+	return httpClient.getAuth(`${BASE_URL}/catalog/available?page=${page}&pageSize=${pageSize}`);
+};
+
 const getUniversityByName = (name) => {
-	return httpClient.get(`${BASE_URL}/${encodeName(name)}`);
+	return httpClient.getAuth(`${BASE_URL}/${encodeName(name)}`);
 };
 
 const getUniversityTeachers = (name, { page = 1, pageSize = 6 } = {}) => {
@@ -73,6 +77,7 @@ const createUniversity = (payload) => {
 export default {
 	getUniversities,
 	getMyUniversities,
+	getAvailableUniversities,
 	getUniversityByName,
 	getUniversityTeachers,
 	getUniversityStudents,
