@@ -10,7 +10,9 @@ namespace Core.API.Infrastructure
         {
             //Source > Destination
 
-            CreateMap<University, ReadUniversityDto>();
+            CreateMap<University, ReadUniversityDto>()
+                .ForMember(dest => dest.DirectorUsername,
+                    opt => opt.MapFrom(src => src.Director != null ? src.Director.Username : string.Empty));
             CreateMap<ReadUniversityDto, University>();
 
             CreateMap<CreateUniversityDto, University>();

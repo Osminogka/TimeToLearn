@@ -16,6 +16,8 @@ namespace Core.DAL.Dtos
         [Required]
         public long DirectorId { get; set; }
 
+        public string DirectorUsername { get; set; } = string.Empty;
+
         [Required]
         public Address Address { get; set; }
 

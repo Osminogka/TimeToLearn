@@ -169,7 +169,9 @@ namespace Core.DL.Services
         {
             ResponseWithValue<ReadUniversityDto> response = new ResponseWithValue<ReadUniversityDto>();
 
-            var university = await _universityRepository.SingleOrDefaultAsync(obj => obj.Name == name);
+            var university = await _universityRepository.Where(obj => obj.Name == name)
+                .Include(obj => obj.Director)
+                .FirstOrDefaultAsync();
             if (university == null)
             {
                 response.Message = "Such university doesn't exist";

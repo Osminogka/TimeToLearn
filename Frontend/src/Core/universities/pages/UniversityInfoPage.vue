@@ -44,6 +44,13 @@ const isTeacher = computed(() => isTeacherRole(user.value.role));
 
 const joinLabel = computed(() => isTeacher.value ? 'Enter as student' : 'Enter university');
 const joinVisible = computed(() => !isMember.value && !!university.value?.isOpened);
+const directorName = computed(() => {
+    return university.value?.directorUsername
+        || university.value?.DirectorUsername
+        || (university.value?.directorId || university.value?.DirectorId
+            ? `Director #${university.value?.directorId || university.value?.DirectorId}`
+            : 'Director information unavailable');
+});
 
 const teacherOptions = computed(() => {
     const existing = new Set(teachers.value.map((name) => String(name).toLowerCase()));
@@ -349,6 +356,21 @@ onMounted(async () => {
                 </div>
             </article>
 
+            <article class="surface-card director-card">
+                <div class="director-card__top">
+                    <h3>University director</h3>
+                    <span class="pill pill--accent">Manager</span>
+                </div>
+
+                <div class="director-card__person">
+                    <AppIcon name="profile" />
+                    <div>
+                        <p class="director-card__name">{{ directorName }}</p>
+                        <p class="director-card__caption">Responsible for invites, membership, and university settings.</p>
+                    </div>
+                </div>
+            </article>
+
             <div class="members-grid">
                 <article class="surface-card member-block">
                     <div class="member-block__top">
@@ -554,6 +576,44 @@ onMounted(async () => {
     color: var(--ttl-text-muted);
 }
 
+.director-card {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.director-card__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+}
+
+.director-card__top h3 {
+    margin: 0;
+    color: var(--ttl-text-primary);
+    letter-spacing: -0.02em;
+}
+
+.director-card__person {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.director-card__name {
+    margin: 0;
+    color: var(--ttl-text-primary);
+    font-weight: 800;
+}
+
+.director-card__caption {
+    margin: 0.2rem 0 0;
+    color: var(--ttl-text-secondary);
+    font-size: 0.88rem;
+}
+
 .members-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -717,6 +777,7 @@ onMounted(async () => {
 @media (max-width: 640px) {
     .page-content__heading-row,
     .info-card__top,
+    .director-card__top,
     .manager-panel__top {
         flex-direction: column;
         align-items: flex-start;
