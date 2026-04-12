@@ -62,7 +62,7 @@ async function submitLogin() {
     try {
         const result = await authApi.login(form.email.trim(), form.password);
         if (result.success) {
-            router.replace({ name: 'Dashboard' });
+            router.replace({ name: 'UniversitiesMine' });
             return;
         }
 
@@ -87,8 +87,6 @@ async function submitLogin() {
 
 <template>
     <div class="auth-form-shell">
-        <p class="field-hint auth-form-intro">Use your university email to return to your study spaces and discussions.</p>
-
         <div v-if="hasAnyError" class="error-summary" role="alert" aria-live="assertive">
             <p class="error-summary-title">We could not sign you in:</p>
             <ul>
@@ -145,10 +143,6 @@ async function submitLogin() {
     display: flex;
     flex-direction: column;
     gap: 0.9rem;
-}
-
-.auth-form-intro {
-    margin-bottom: 0.25rem;
 }
 
 .auth-submit {

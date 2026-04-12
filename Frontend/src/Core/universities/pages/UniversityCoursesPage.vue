@@ -1,13 +1,12 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import UniversityContextHeader from '../components/UniversityContextHeader.vue';
 import universityApi from '../services/universityApi';
 import authUtils, { isTeacherRole, user } from '@/Shared/services/utils';
 import AppIcon from '@/Shared/components/AppIcon.vue';
 
 const route = useRoute();
-const router = useRouter();
 
 const university = ref(null);
 const isLoading = ref(false);
@@ -26,17 +25,17 @@ const plannedCourseBlocks = computed(() => {
     return [
         {
             title: 'Course feed area',
-            description: 'This center section is prepared for the Courses service list endpoint with pagination and role-aware actions.',
+            description: 'Prepared for paged university course lists.',
             status: 'Planned',
         },
         {
             title: 'Teacher actions panel',
-            description: 'Teachers will be able to create and edit courses directly from this page once Courses UI is connected.',
+            description: 'Create and edit flows will appear here.',
             status: isTeacher.value ? 'Ready for teacher flow' : 'Hidden for students',
         },
         {
             title: 'Student learning queue',
-            description: 'Students will see ordered lessons and progress entry points after Courses lesson views are integrated.',
+            description: 'Lesson entry points and progress shortcuts.',
             status: 'Planned',
         },
     ];
@@ -108,7 +107,7 @@ onMounted(loadUniversity);
         <UniversityContextHeader
             :university-name="universityName"
             active-tab="courses"
-            subtitle="Main study space prepared for university courses and lesson flow."
+            subtitle="Main study space for course work."
             :is-opened="Boolean(university?.isOpened)"
             :is-member="isMember"
             :join-visible="joinVisible"
@@ -136,10 +135,7 @@ onMounted(loadUniversity);
             <div class="hero-placeholder surface-card">
                 <AppIcon name="courses" />
                 <div>
-                    <h3>Courses integration is the primary center block</h3>
-                    <p>
-                        This page is ready for Courses service UI wiring. The center area will host university courses, while keeping the same dashboard language and spacing.
-                    </p>
+                    <h3>Courses module is ready for integration</h3>
                 </div>
             </div>
 
@@ -150,15 +146,6 @@ onMounted(loadUniversity);
                     <p class="section-copy">{{ block.description }}</p>
                 </article>
             </div>
-
-            <footer class="next-steps">
-                <button class="secondary-button" type="button" @click="router.push({ name: 'UniversityInfo', params: { name: universityName } })">
-                    Open university info
-                </button>
-                <button class="secondary-button" type="button" @click="router.push({ name: 'UniversityForums', params: { name: universityName } })">
-                    Open university forums
-                </button>
-            </footer>
         </section>
     </main>
 </template>
@@ -238,13 +225,6 @@ onMounted(loadUniversity);
     letter-spacing: -0.02em;
 }
 
-.next-steps {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.7rem;
-    flex-wrap: wrap;
-}
-
 @media (max-width: 900px) {
     .plan-grid {
         grid-template-columns: 1fr;
@@ -255,14 +235,6 @@ onMounted(loadUniversity);
     .workspace-content__heading-row {
         flex-direction: column;
         align-items: flex-start;
-    }
-
-    .next-steps {
-        width: 100%;
-    }
-
-    .next-steps .secondary-button {
-        width: 100%;
     }
 }
 </style>

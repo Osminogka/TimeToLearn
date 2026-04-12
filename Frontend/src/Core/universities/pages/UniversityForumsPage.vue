@@ -24,17 +24,17 @@ const joinVisible = computed(() => !isMember.value && !!university.value?.isOpen
 const forumModules = [
     {
         title: 'Topic feed',
-        description: 'Upcoming Forums integration will render paged topics for this university in this section.',
+        description: 'Prepared for paged university topic lists.',
         status: 'Planned',
     },
     {
         title: 'Comment threads',
-        description: 'Nested comment and reply interactions will be connected to the Forums comments endpoint.',
+        description: 'Comment and reply threads.',
         status: 'Planned',
     },
     {
         title: 'Like/dislike actions',
-        description: 'Role-aware interaction controls and lightweight counters will be placed in each post card.',
+        description: 'Lightweight reaction controls per post.',
         status: 'Planned',
     },
 ];
@@ -105,7 +105,7 @@ onMounted(loadUniversity);
         <UniversityContextHeader
             :university-name="universityName"
             active-tab="forums"
-            subtitle="Forum collaboration area prepared for topic and comment functionality."
+            subtitle="Forum collaboration space."
             :is-opened="Boolean(university?.isOpened)"
             :is-member="isMember"
             :join-visible="joinVisible"
@@ -133,10 +133,7 @@ onMounted(loadUniversity);
             <article class="forum-hero surface-card">
                 <AppIcon name="forum" />
                 <div>
-                    <h3>Forums feature shell is ready</h3>
-                    <p>
-                        This page is intentionally prepared for the Forums service without adding temporary patterns. Topic cards and comments will plug in here next.
-                    </p>
+                    <h3>Forums module is ready for integration</h3>
                 </div>
             </article>
 
@@ -199,12 +196,6 @@ onMounted(loadUniversity);
     margin: 0;
     color: var(--ttl-text-primary);
     letter-spacing: -0.02em;
-}
-
-.forum-hero p {
-    margin: 0.3rem 0 0;
-    color: var(--ttl-text-secondary);
-    line-height: 1.6;
 }
 
 .module-grid {

@@ -18,25 +18,7 @@ const props = defineProps({
     },
 });
 
-const links = [
-    { key: 'all', label: 'Join university', routeName: 'UniversitiesAll', icon: 'join' },
-    { key: 'mine', label: 'My universities', routeName: 'UniversitiesMine', icon: 'users' },
-    { key: 'account', label: 'Profile', routeName: 'AccountManagement', icon: 'account' },
-];
-
 const isTeacher = computed(() => isTeacherRole(user.value.role));
-
-const visibleLinks = computed(() => {
-    if (isTeacher.value) {
-        return [
-            ...links.slice(0, 2),
-            { key: 'create', label: 'Create', routeName: 'UniversitiesCreate', icon: 'create' },
-            links[2],
-        ];
-    }
-
-    return links;
-});
 
 const currentRoleLabel = computed(() => isTeacher.value ? 'Teacher' : 'Student');
 </script>
@@ -57,24 +39,11 @@ const currentRoleLabel = computed(() => isTeacher.value ? 'Teacher' : 'Student')
                 <span class="workspace-header__avatar">{{ (user.name || 'U').slice(0, 1).toUpperCase() }}</span>
                 <div>
                     <p class="workspace-header__user-name">{{ user.name || 'Student' }}</p>
-                    <p class="workspace-header__user-email">{{ user.email || 'Account active' }}</p>
-                    <p class="workspace-header__user-role">{{ currentRoleLabel }}</p>
+                    <p class="workspace-header__user-email">{{ currentRoleLabel }} · {{ user.email || 'Account active' }}</p>
                 </div>
             </div>
         </div>
 
-        <nav class="workspace-nav" aria-label="University workspace navigation">
-            <router-link
-                v-for="link in visibleLinks"
-                :key="link.key"
-                :to="{ name: link.routeName }"
-                class="workspace-nav__link"
-                :class="{ 'workspace-nav__link--active': active === link.key }"
-            >
-                <AppIcon :name="link.icon" />
-                {{ link.label }}
-            </router-link>
-        </nav>
     </header>
 </template>
 
@@ -134,55 +103,7 @@ const currentRoleLabel = computed(() => isTeacher.value ? 'Teacher' : 'Student')
     font-size: 0.82rem;
 }
 
-.workspace-header__user-role {
-    margin: 0.2rem 0 0;
-    color: var(--ttl-accent-dark);
-    font-size: 0.78rem;
-    font-weight: 700;
-}
-
-.workspace-nav {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.65rem;
-}
-
-.workspace-nav__link {
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.55rem;
-    min-height: 2.6rem;
-    border-radius: 0.8rem;
-    background: rgba(143, 44, 226, 0.06);
-    border: 1px solid transparent;
-    color: var(--ttl-accent-dark);
-    font-size: 0.9rem;
-    font-weight: 700;
-    transition: transform var(--ttl-transition-fast), border-color var(--ttl-transition-base), background var(--ttl-transition-base);
-}
-
-.workspace-nav__link:hover {
-    transform: translateY(-1px);
-}
-
-.workspace-nav__link--active {
-    background: rgba(143, 44, 226, 0.14);
-    border-color: rgba(143, 44, 226, 0.25);
-}
-
-@media (max-width: 880px) {
-    .workspace-nav {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
 @media (max-width: 560px) {
-    .workspace-nav {
-        grid-template-columns: 1fr;
-    }
-
     .workspace-header__top {
         flex-direction: column;
         align-items: flex-start;

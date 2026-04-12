@@ -366,7 +366,6 @@ onMounted(async () => {
                     <AppIcon name="profile" />
                     <div>
                         <p class="director-card__name">{{ directorName }}</p>
-                        <p class="director-card__caption">Responsible for invites, membership, and university settings.</p>
                     </div>
                 </div>
             </article>
@@ -439,14 +438,10 @@ onMounted(async () => {
 
                         <div class="field-group">
                             <label class="field-label">Access type</label>
-                            <div class="toggle-row">
-                                <button class="secondary-button toggle-row__item" :class="{ 'toggle-row__item--active': manageForm.isOpened }" type="button" @click="manageForm.isOpened = true">
-                                    Open
-                                </button>
-                                <button class="secondary-button toggle-row__item" :class="{ 'toggle-row__item--active': !manageForm.isOpened }" type="button" @click="manageForm.isOpened = false">
-                                    Private
-                                </button>
-                            </div>
+                            <select v-model="manageForm.isOpened" class="input-field">
+                                <option :value="true">Open</option>
+                                <option :value="false">Private</option>
+                            </select>
                         </div>
 
                         <button class="submit-button" type="button" @click="saveUniversitySettings" :disabled="isProcessingManagerAction">
@@ -482,8 +477,6 @@ onMounted(async () => {
 
                     <article class="manager-card manager-card--wide">
                         <h4>Members management</h4>
-
-                        <p class="section-copy">Select any member below to remove them from this university.</p>
 
                         <div class="manager-members-list">
                             <button
@@ -608,12 +601,6 @@ onMounted(async () => {
     font-weight: 800;
 }
 
-.director-card__caption {
-    margin: 0.2rem 0 0;
-    color: var(--ttl-text-secondary);
-    font-size: 0.88rem;
-}
-
 .members-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -716,16 +703,6 @@ onMounted(async () => {
     gap: 0.65rem;
 }
 
-.toggle-row {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.65rem;
-}
-
-.toggle-row__item--active {
-    background: rgba(143, 44, 226, 0.18);
-}
-
 .manager-members-list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -784,7 +761,7 @@ onMounted(async () => {
     }
 
     .manager-address-grid,
-    .toggle-row {
+    .manager-members-list {
         grid-template-columns: 1fr;
     }
 }

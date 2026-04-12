@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, ref } from 'vue';
 import { user } from '@/Shared/services/utils';
+import { useBackNavigation } from '@/Shared/services/useBackNavigation';
 
 const firstName = ref('');
 const lastName = ref('');
@@ -15,12 +16,15 @@ const address = reactive({
 const submit = () => {
     console.log("Form Submitted");
 };
+
+const { goBack } = useBackNavigation('Main');
 </script>
 
 <template>
   <main class="setup-shell">
     <section class="setup-card surface-card surface-card--raised">
       <header class="setup-header">
+        <button class="secondary-button setup-back" type="button" @click="goBack">Back</button>
         <p class="section-kicker">Profile setup</p>
         <h1 class="section-title">Welcome, {{ user.name }}</h1>
         <p class="section-copy">Complete a few details so your university profile feels more personal and useful.</p>
@@ -111,6 +115,10 @@ const submit = () => {
 
 .setup-submit {
   margin-top: 0.35rem;
+}
+
+.setup-back {
+  width: fit-content;
 }
 
 @media (max-width: 640px) {

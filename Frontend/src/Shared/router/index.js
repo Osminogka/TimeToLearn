@@ -32,15 +32,6 @@ const routes = [
         ]
     },
     {
-        path: '/dashboard',
-        name: 'Dashboard',
-        component: () => import('@/Core/universities/pages/DashboardUniversties.vue'),
-        meta: {
-            title: 'Dashboard',
-            requiresAuth: true
-        }
-    },
-    {
         path: '/define-role',
         name: 'DefineRole',
         component: () => import('@/Core/roles/pages/DefineRole.vue'),
@@ -83,7 +74,8 @@ const routes = [
         component: () => import('@/Core/universities/pages/UniversityCoursesPage.vue'),
         meta: {
             title: 'University Courses',
-            requiresAuth: true
+            requiresAuth: true,
+            hidePrimaryNavigation: true
         }
     },
     {
@@ -92,7 +84,8 @@ const routes = [
         component: () => import('@/Core/universities/pages/UniversityInfoPage.vue'),
         meta: {
             title: 'University Info',
-            requiresAuth: true
+            requiresAuth: true,
+            hidePrimaryNavigation: true
         }
     },
     {
@@ -101,7 +94,8 @@ const routes = [
         component: () => import('@/Core/universities/pages/UniversityForumsPage.vue'),
         meta: {
             title: 'University Forums',
-            requiresAuth: true
+            requiresAuth: true,
+            hidePrimaryNavigation: true
         }
     },
     {
@@ -125,11 +119,11 @@ router.beforeEach((to, from, next) => {
     const isAuth = isAuthenticated();
 
     if (to.name === 'Main' && isAuth) {
-        return next({ name: 'Dashboard' });
+        return next({ name: 'UniversitiesMine' });
     }
 
     if (to.meta.guestOnly && isAuth) {
-        return next({ name: 'Dashboard' });
+        return next({ name: 'UniversitiesMine' });
     }
 
     if (to.meta.requiresAuth && !isAuth) {
@@ -137,7 +131,7 @@ router.beforeEach((to, from, next) => {
     }
 
     if (to.meta.requiresTeacher && !hasRole('teacher')) {
-        return next({ name: 'Dashboard' });
+        return next({ name: 'UniversitiesMine' });
     }
 
     next();

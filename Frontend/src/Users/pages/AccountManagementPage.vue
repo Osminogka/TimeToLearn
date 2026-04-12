@@ -33,7 +33,9 @@ function syncRoleFromToken() {
 }
 
 const degree = ref('');
+const roleTarget = ref('student');
 const invites = ref([]);
+const inviteSecondaryAction = ref({});
 const isLoadingProfile = ref(false);
 const isLoadingInvites = ref(false);
 const isSavingProfile = ref(false);
@@ -59,6 +61,7 @@ function clearMessages() {
 
 async function loadRoleState() {
     syncRoleFromToken();
+    roleTarget.value = roleState.isTeacher ? 'student' : 'teacher';
 }
 
 function isInviteActionLoading(universityName, action) {
@@ -182,6 +185,15 @@ async function becomeStudent() {
     }
 }
 
+async function switchRole() {
+    if (roleTarget.value === 'teacher') {
+        await becomeTeacher();
+        return;
+    }
+
+    await becomeStudent();
+}
+
 async function verifyDegree() {
     if (!degree.value.trim()) {
         errorMessage.value = 'Degree field is required to verify teacher status.';
@@ -253,6 +265,30 @@ async function rejectInvite(universityName) {
     } finally {
         setInviteActionLoading(universityName, 'reject', false);
     }
+}
+
+function setInviteSecondaryAction(universityName, action) {
+    inviteSecondaryAction.value = {
+        ...inviteSecondaryAction.value,
+        [universityName]: action,
+    };
+}
+
+async function runInviteSecondaryAction(universityName) {
+    const action = inviteSecondaryAction.value[universityName];
+    if (!action) {
+        return;
+    }
+
+    if (action === 'student') {
+        await acceptInviteAsStudent(universityName);
+    }
+
+    if (action === 'reject') {
+        await rejectInvite(universityName);
+    }
+
+    setInviteSecondaryAction(universityName, '');
 }
 
 onMounted(async () => {
@@ -351,11 +387,15 @@ onMounted(async () => {
                     </span>
                 </div>
 
-                <p class="section-copy">Use these controls to switch roles and submit your degree for teacher verification.</p>
-
-                <div class="role-actions">
-                    <button class="secondary-button" @click="becomeStudent" :disabled="isSwitchingRole">Become student</button>
-                    <button class="secondary-button" @click="becomeTeacher" :disabled="isSwitchingRole">Become teacher</button>
+                <div class="field-group">
+                    <label class="field-label" for="role-target">Switch role</label>
+                    <select id="role-target" v-model="roleTarget" class="input-field">
+                        <option value="student">Student</option>
+                        <option value="teacher">Teacher</option>
+                    </select>
+                    <button class="submit-button" @click="switchRole" :disabled="isSwitchingRole || roleTarget === currentRoleLabel.toLowerCase()" type="button">
+                        {{ isSwitchingRole ? 'Switching...' : `Become ${roleTarget}` }}
+                    </button>
                 </div>
 
                 <div class="field-group">
@@ -390,12 +430,6 @@ onMounted(async () => {
                     <article v-for="universityName in invites" :key="`invite-${universityName}`" class="invite-card">
                         <div>
                             <p class="invite-card__title">{{ universityName }}</p>
-                            <p class="invite-card__copy" v-if="roleState.isTeacher">
-                                As teacher, you can join with this invite as teacher or enter as student.
-                            </p>
-                            <p class="invite-card__copy" v-else>
-                                Accept to join this university as student.
-                            </p>
                         </div>
 
                         <div class="invite-actions">
@@ -410,24 +444,25 @@ onMounted(async () => {
                                     : roleState.isTeacher ? 'Join as teacher' : 'Accept invite' }}
                             </button>
 
-                            <button
-                                v-if="roleState.isTeacher"
-                                class="secondary-button"
-                                type="button"
-                                @click="acceptInviteAsStudent(universityName)"
-                                :disabled="isInviteActionLoading(universityName, 'student') || isInviteActionLoading(universityName, 'accept') || isInviteActionLoading(universityName, 'reject')"
-                            >
-                                {{ isInviteActionLoading(universityName, 'student') ? 'Joining...' : 'Join as student' }}
-                            </button>
-
-                            <button
-                                class="secondary-button"
-                                type="button"
-                                @click="rejectInvite(universityName)"
-                                :disabled="isInviteActionLoading(universityName, 'reject') || isInviteActionLoading(universityName, 'accept') || isInviteActionLoading(universityName, 'student')"
-                            >
-                                {{ isInviteActionLoading(universityName, 'reject') ? 'Rejecting...' : 'Reject invite' }}
-                            </button>
+                            <div class="invite-actions__secondary">
+                                <select
+                                    class="input-field"
+                                    :value="inviteSecondaryAction[universityName] || ''"
+                                    @change="setInviteSecondaryAction(universityName, $event.target.value)"
+                                >
+                                    <option value="">Secondary action</option>
+                                    <option v-if="roleState.isTeacher" value="student">Join as student</option>
+                                    <option value="reject">Reject invite</option>
+                                </select>
+                                <button
+                                    class="secondary-button"
+                                    type="button"
+                                    @click="runInviteSecondaryAction(universityName)"
+                                    :disabled="!(inviteSecondaryAction[universityName]) || isInviteActionLoading(universityName, 'reject') || isInviteActionLoading(universityName, 'accept') || isInviteActionLoading(universityName, 'student')"
+                                >
+                                    Apply
+                                </button>
+                            </div>
                         </div>
                     </article>
                 </div>
@@ -532,12 +567,6 @@ onMounted(async () => {
     gap: 0.75rem;
 }
 
-.role-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
-}
-
 .invite-list {
     display: flex;
     flex-direction: column;
@@ -569,8 +598,18 @@ onMounted(async () => {
 
 .invite-actions {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     gap: 0.6rem;
+}
+
+.invite-actions__secondary {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.6rem;
+}
+
+.invite-actions__secondary .secondary-button {
+    min-width: 5.5rem;
 }
 
 @media (max-width: 900px) {
@@ -587,8 +626,8 @@ onMounted(async () => {
 
 @media (max-width: 640px) {
     .split-fields,
-    .role-actions,
-    .invite-actions {
+    .invite-actions,
+    .invite-actions__secondary {
         grid-template-columns: 1fr;
     }
 }

@@ -160,7 +160,16 @@ onMounted(() => {
             <p v-else-if="infoMessage" class="state-message">{{ infoMessage }}</p>
 
             <div v-if="hasItems" class="university-grid">
-                <article v-for="item in universities" :key="item.name" class="university-card surface-card hover-lift">
+                <article
+                    v-for="item in universities"
+                    :key="item.name"
+                    class="university-card surface-card hover-lift university-card--clickable"
+                    role="button"
+                    tabindex="0"
+                    @click="openUniversitySpace(item)"
+                    @keydown.enter.prevent="openUniversitySpace(item)"
+                    @keydown.space.prevent="openUniversitySpace(item)"
+                >
                     <div class="university-card__top">
                         <h3>{{ item.name }}</h3>
                         <span class="pill" :class="item.isOpened ? 'pill--accent' : 'pill--pink'">
@@ -179,10 +188,6 @@ onMounted(() => {
                     </p>
 
                     <div class="university-card__actions">
-                        <button class="secondary-button" type="button" @click="openUniversitySpace(item)">
-                            Open university
-                        </button>
-
                         <button
                             class="submit-button"
                             type="button"
@@ -249,6 +254,16 @@ onMounted(() => {
     gap: 0.7rem;
 }
 
+.university-card--clickable {
+    cursor: pointer;
+}
+
+.university-card--clickable:focus-visible {
+    outline: none;
+    border-color: rgba(143, 44, 226, 0.34);
+    box-shadow: 0 0 0 4px rgba(143, 44, 226, 0.14);
+}
+
 .university-card__top {
     display: flex;
     justify-content: space-between;
@@ -272,13 +287,11 @@ onMounted(() => {
 
 .university-card__actions {
     margin-top: 0.25rem;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.65rem;
+    display: flex;
 }
 
-.university-card__actions .secondary-button,
 .university-card__actions .submit-button {
+    width: 100%;
     min-height: 2.65rem;
 }
 
@@ -302,8 +315,8 @@ onMounted(() => {
 }
 
 @media (max-width: 640px) {
-    .university-card__actions {
-        grid-template-columns: 1fr;
+    .university-card__actions .submit-button {
+        width: 100%;
     }
 }
 

@@ -98,15 +98,12 @@ async function submitCreateUniversity() {
             <div>
                 <p class="section-kicker">New university</p>
                 <h2 class="section-title">Create community</h2>
-                <p class="section-copy">Students discover your university from the shared catalog as soon as it is created.</p>
             </div>
 
             <p v-if="errorMessage" class="state-message state-message--error">{{ errorMessage }}</p>
             <p v-else-if="successMessage" class="state-message state-message--success">{{ successMessage }}</p>
 
-            <p v-if="!isTeacher" class="state-message state-message--warning">
-                Your current role is student. Switch to teacher in Profile to enable university creation.
-            </p>
+            <p v-if="!isTeacher" class="state-message state-message--warning">Teacher role required to create a university.</p>
 
             <form class="create-form" @submit.prevent="submitCreateUniversity" novalidate>
                 <div class="field-group">
@@ -137,26 +134,10 @@ async function submitCreateUniversity() {
 
                 <div class="field-group">
                     <label class="field-label">Access type</label>
-                    <div class="toggle-row">
-                        <button
-                            class="secondary-button toggle-row__item"
-                            :class="{ 'toggle-row__item--active': form.isOpened }"
-                            type="button"
-                            @click="form.isOpened = true"
-                            :disabled="!isTeacher || isSubmitting"
-                        >
-                            Open university
-                        </button>
-                        <button
-                            class="secondary-button toggle-row__item"
-                            :class="{ 'toggle-row__item--active': !form.isOpened }"
-                            type="button"
-                            @click="form.isOpened = false"
-                            :disabled="!isTeacher || isSubmitting"
-                        >
-                            Private university
-                        </button>
-                    </div>
+                    <select v-model="form.isOpened" class="input-field" :disabled="!isTeacher || isSubmitting">
+                        <option :value="true">Open university</option>
+                        <option :value="false">Private university</option>
+                    </select>
                 </div>
 
                 <button class="submit-button create-form__submit" type="submit" :disabled="!isTeacher || isSubmitting">
@@ -217,27 +198,12 @@ async function submitCreateUniversity() {
     gap: 0.75rem;
 }
 
-.toggle-row {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
-}
-
-.toggle-row__item {
-    width: 100%;
-}
-
-.toggle-row__item--active {
-    background: rgba(143, 44, 226, 0.18);
-}
-
 .create-form__submit {
     width: 100%;
 }
 
 @media (max-width: 760px) {
-    .address-grid,
-    .toggle-row {
+    .address-grid {
         grid-template-columns: 1fr;
     }
 }

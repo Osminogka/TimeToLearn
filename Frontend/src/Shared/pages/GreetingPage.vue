@@ -11,21 +11,6 @@ const isAuthFormVisible = computed(() => {
 });
 
 const currentAuthLabel = computed(() => route.name === 'Register' ? 'Create your account' : 'Sign in');
-const currentAuthSubtitle = computed(() => route.name === 'Register'
-    ? 'Join your university space, save your progress, and keep every discussion in one place.'
-    : 'Pick up where you left off and keep your study spaces, courses, and forums organized.');
-
-const authHighlights = [
-    'Clear structure for classes, communities, and follow-up tasks',
-    'Made for students who want a fast, calm, mobile-friendly experience',
-    'Simple sign-in and registration with a polished product feel',
-];
-
-const stats = [
-    { value: '4', label: 'connected study areas' },
-    { value: '1', label: 'focused workspace' },
-    { value: '24/7', label: 'access from any device' },
-];
 
 const previewBlocks = [
     {
@@ -58,10 +43,18 @@ const previewBlocks = [
             </router-link>
 
             <nav class="hero-actions" aria-label="Authentication shortcuts">
-                <router-link v-if="route.name !== 'Login'" :to="{ name: 'Login' }" class="nav-button nav-button--soft">
+                <router-link
+                    v-if="route.name !== 'Login'"
+                    :to="{ name: 'Login' }"
+                    class="nav-button nav-button--solid"
+                >
                     Log in
                 </router-link>
-                <router-link v-if="route.name !== 'Register'" :to="{ name: 'Register' }" class="nav-button nav-button--solid">
+                <router-link
+                    v-else
+                    :to="{ name: 'Register' }"
+                    class="nav-button nav-button--solid"
+                >
                     Create account
                 </router-link>
             </nav>
@@ -73,30 +66,13 @@ const previewBlocks = [
                     <p class="section-kicker">Built for students and university communities</p>
                     <h1 class="gradient-title hero-title">A calmer way to keep learning, collaborating, and showing up.</h1>
                     <p class="hero-text">
-                        Time to Learn turns coursework, university spaces, and forum discussions into one polished workspace
-                        that feels modern, fast, and easy to return to every day.
+                        One workspace for university communities, courses, and forum discussions.
                     </p>
 
                     <div class="hero-actions-row">
                         <router-link :to="{ name: 'Register' }" class="nav-button nav-button--solid hero-cta">
                             Start free
                         </router-link>
-                        <a href="#features" class="nav-button nav-button--soft hero-cta-secondary">
-                            Explore features
-                        </a>
-                    </div>
-
-                    <div class="hero-pills" aria-label="Key benefits">
-                        <span class="pill pill--accent">University-ready</span>
-                        <span class="pill">Course + forum flow</span>
-                        <span class="pill pill--pink">Light-only interface</span>
-                    </div>
-
-                    <div class="hero-stats" aria-label="Platform highlights">
-                        <article v-for="stat in stats" :key="stat.label" class="stat-card surface-card hover-lift">
-                            <strong>{{ stat.value }}</strong>
-                            <span>{{ stat.label }}</span>
-                        </article>
                     </div>
                 </div>
 
@@ -106,7 +82,6 @@ const previewBlocks = [
                             <div class="auth-panel__header">
                                 <p class="section-kicker">{{ route.name === 'Register' ? 'Join the platform' : 'Welcome back' }}</p>
                                 <h2 class="section-title">{{ currentAuthLabel }}</h2>
-                                <p class="section-copy">{{ currentAuthSubtitle }}</p>
                             </div>
 
                             <router-view v-slot="{ Component }">
@@ -141,21 +116,11 @@ const previewBlocks = [
                 <div class="section-heading-row">
                     <div>
                         <p class="section-kicker">What students get</p>
-                        <h2 class="section-title">A landing page that feels like a product, not a brochure.</h2>
+                        <h2 class="section-title">Everything needed to get started.</h2>
                     </div>
-                    <p class="section-copy section-heading-row__copy">
-                        The interface is intentionally light, clear, and structured so the brand feels trustworthy to new users.
-                    </p>
                 </div>
 
                 <InfoCardGrid />
-            </section>
-
-            <section v-else class="auth-support-grid">
-                <article v-for="highlight in authHighlights" :key="highlight" class="support-card surface-card hover-lift">
-                    <span class="support-card__dot"></span>
-                    <p>{{ highlight }}</p>
-                </article>
             </section>
         </main>
     </div>
@@ -298,44 +263,12 @@ const previewBlocks = [
 
 .hero-actions-row {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.85rem;
+    width: 100%;
 }
 
 .hero-cta,
 .hero-cta-secondary {
-    min-width: 10.75rem;
-}
-
-.hero-pills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.65rem;
-}
-
-.hero-stats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.9rem;
-}
-
-.stat-card {
-    padding: 1rem 1.05rem;
-}
-
-.stat-card strong {
-    display: block;
-    margin-bottom: 0.25rem;
-    color: var(--ttl-text-primary);
-    font-size: 1.35rem;
-    line-height: 1;
-    letter-spacing: -0.04em;
-}
-
-.stat-card span {
-    color: var(--ttl-text-secondary);
-    font-size: 0.88rem;
-    line-height: 1.45;
+    width: 100%;
 }
 
 .hero-panel {
@@ -399,46 +332,13 @@ const previewBlocks = [
 
 .section-heading-row {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 1rem;
     align-items: end;
 }
 
-.section-heading-row__copy {
-    max-width: 30rem;
-}
-
-.auth-support-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1rem;
-}
-
-.support-card {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    padding: 1rem 1.1rem;
-}
-
-.support-card__dot {
-    width: 0.8rem;
-    height: 0.8rem;
-    border-radius: 999px;
-    background: linear-gradient(135deg, var(--ttl-accent) 0%, var(--ttl-accent-bright) 100%);
-    box-shadow: 0 0 0 6px rgba(143, 44, 226, 0.1);
-    flex: 0 0 auto;
-}
-
-.support-card p {
-    margin: 0;
-    color: var(--ttl-text-secondary);
-    line-height: 1.55;
-}
-
 @media (max-width: 1024px) {
-    .hero-grid,
-    .auth-support-grid {
+    .hero-grid {
         grid-template-columns: 1fr;
     }
 

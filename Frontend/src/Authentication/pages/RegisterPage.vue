@@ -62,7 +62,7 @@ async function submitRegister() {
     try {
         const result = await authApi.register(form.name.trim(), form.email.trim(), form.password);
         if (result.success) {
-            router.replace({ name: 'Dashboard' });
+            router.replace({ name: 'UniversitiesMine' });
             return;
         }
 
@@ -89,8 +89,6 @@ async function submitRegister() {
 
 <template>
     <div class="auth-form-shell">
-        <p class="field-hint auth-form-intro">Create a student account to join university spaces and keep your activity organized.</p>
-
         <div v-if="hasAnyError" class="error-summary" role="alert" aria-live="assertive">
             <p class="error-summary-title">We could not create your account:</p>
             <ul>
@@ -165,10 +163,6 @@ async function submitRegister() {
     display: flex;
     flex-direction: column;
     gap: 0.9rem;
-}
-
-.auth-form-intro {
-    margin-bottom: 0.25rem;
 }
 
 .auth-submit {

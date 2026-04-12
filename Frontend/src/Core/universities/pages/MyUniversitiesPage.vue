@@ -105,7 +105,16 @@ onMounted(loadMyUniversities);
             <p v-else-if="infoMessage" class="state-message">{{ infoMessage }}</p>
 
             <div v-if="hasItems" class="university-grid">
-                <article v-for="item in universities" :key="item.name" class="university-card surface-card hover-lift">
+                <article
+                    v-for="item in universities"
+                    :key="item.name"
+                    class="university-card surface-card hover-lift university-card--clickable"
+                    role="button"
+                    tabindex="0"
+                    @click="openUniversitySpace(item)"
+                    @keydown.enter.prevent="openUniversitySpace(item)"
+                    @keydown.space.prevent="openUniversitySpace(item)"
+                >
                     <div class="university-card__top">
                         <h3>{{ item.name }}</h3>
                         <span class="pill" :class="item.isOpened ? 'pill--accent' : 'pill--pink'">
@@ -122,10 +131,6 @@ onMounted(loadMyUniversities);
                         •
                         {{ item.address?.street || 'Street N/A' }}
                     </p>
-
-                    <button class="secondary-button university-card__open" type="button" @click="openUniversitySpace(item)">
-                        Open university
-                    </button>
                 </article>
             </div>
 
@@ -183,6 +188,16 @@ onMounted(loadMyUniversities);
     gap: 0.7rem;
 }
 
+.university-card--clickable {
+    cursor: pointer;
+}
+
+.university-card--clickable:focus-visible {
+    outline: none;
+    border-color: rgba(143, 44, 226, 0.34);
+    box-shadow: 0 0 0 4px rgba(143, 44, 226, 0.14);
+}
+
 .university-card__top {
     display: flex;
     justify-content: space-between;
@@ -202,10 +217,6 @@ onMounted(loadMyUniversities);
     color: var(--ttl-text-muted);
     font-size: 0.88rem;
     line-height: 1.5;
-}
-
-.university-card__open {
-    margin-top: 0.2rem;
 }
 
 .pagination-row {
