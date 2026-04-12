@@ -174,11 +174,11 @@ namespace Core.DL.Services
                 return response;
             }
 
-            var baseUser = await _baseUserRepository.Where(obj => obj.Username == studentUsername && obj.TeacherId == null)
+            var baseUser = await _baseUserRepository.Where(obj => obj.Username == studentUsername)
                 .FirstOrDefaultAsync();
             if (baseUser == null)
             {
-                response.Message = "Such user doesn't exist or is not a student";
+                response.Message = "Such user doesn't exist";
                 return response;
             }
 
@@ -186,7 +186,15 @@ namespace Core.DL.Services
                 e => e.BaseUserId == baseUser.Id && e.UniversityId == university.Id);
             if (alreadyEnrolled != null)
             {
-                response.Message = "Such user doesn't exist or already belongs to this university";
+                response.Message = "User already belongs to this university as a student";
+                return response;
+            }
+
+            var alreadyTeacherEnrolled = await _teacherEnrollmentRepository.SingleOrDefaultAsync(
+                e => e.BaseUserId == baseUser.Id && e.UniversityId == university.Id);
+            if (alreadyTeacherEnrolled != null)
+            {
+                response.Message = "User already belongs to this university as a teacher";
                 return response;
             }
 

@@ -42,7 +42,7 @@ const inviteForm = reactive({
 const universityName = computed(() => String(route.params.name || ''));
 const isTeacher = computed(() => isTeacherRole(user.value.role));
 
-const joinLabel = computed(() => isTeacher.value ? 'Request as teacher' : 'Enter university');
+const joinLabel = computed(() => isTeacher.value ? 'Enter as student' : 'Enter university');
 const joinVisible = computed(() => !isMember.value && !!university.value?.isOpened);
 
 const teacherOptions = computed(() => {
@@ -189,17 +189,11 @@ async function joinUniversity() {
     errorMessage.value = '';
 
     try {
-        const response = isTeacher.value
-            ? await universityApi.requestJoinAsTeacher(universityName.value)
-            : await universityApi.enterUniversity(universityName.value);
-
+        const response = await universityApi.enterUniversity(universityName.value);
         const serverMessage = response?.message || response?.Message;
-        actionMessage.value = serverMessage || (isTeacher.value ? 'Join request sent to university director.' : 'You entered the university successfully.');
-
-        if (!isTeacher.value) {
-            isMember.value = true;
-            await loadMembers();
-        }
+        actionMessage.value = serverMessage || 'You entered the university as student.';
+        isMember.value = true;
+        await loadMembers();
     } catch (error) {
         errorMessage.value = error?.message || 'Could not process university access action.';
     } finally {

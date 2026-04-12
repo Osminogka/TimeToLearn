@@ -33,16 +33,23 @@ function syncRoleFromToken() {
 }
 
 const degree = ref('');
+const invites = ref([]);
 const isLoadingProfile = ref(false);
+const isLoadingInvites = ref(false);
 const isSavingProfile = ref(false);
 const isSwitchingRole = ref(false);
 const isVerifying = ref(false);
+const inviteActionMap = ref({});
 const errorMessage = ref('');
 const successMessage = ref('');
 const router = useRouter();
 
 function normalizeValue(payload) {
     return payload.value || payload.Value || null;
+}
+
+function normalizeItems(payload) {
+    return payload.items || payload.Items || payload.enum || payload.Enum || [];
 }
 
 function clearMessages() {
@@ -52,6 +59,30 @@ function clearMessages() {
 
 async function loadRoleState() {
     syncRoleFromToken();
+}
+
+function isInviteActionLoading(universityName, action) {
+    return Boolean(inviteActionMap.value[`${action}:${universityName}`]);
+}
+
+function setInviteActionLoading(universityName, action, value) {
+    inviteActionMap.value = {
+        ...inviteActionMap.value,
+        [`${action}:${universityName}`]: value,
+    };
+}
+
+async function loadInvites() {
+    isLoadingInvites.value = true;
+
+    try {
+        const response = await userApi.getInvites();
+        invites.value = normalizeItems(response);
+    } catch {
+        invites.value = [];
+    } finally {
+        isLoadingInvites.value = false;
+    }
 }
 
 async function refreshSessionToken() {
@@ -126,6 +157,7 @@ async function becomeTeacher() {
         await refreshSessionToken();
         successMessage.value = result.message || result.Message || 'You are now a teacher.';
         await loadRoleState();
+        await loadInvites();
     } catch (error) {
         errorMessage.value = error?.message || 'Failed to switch role to teacher.';
     } finally {
@@ -142,6 +174,7 @@ async function becomeStudent() {
         await refreshSessionToken();
         successMessage.value = result.message || result.Message || 'You are now a student.';
         await loadRoleState();
+        await loadInvites();
     } catch (error) {
         errorMessage.value = error?.message || 'Failed to switch role to student.';
     } finally {
@@ -164,6 +197,7 @@ async function verifyDegree() {
         successMessage.value = result.message || result.Message || 'Teacher verification submitted.';
         degree.value = '';
         await loadRoleState();
+        await loadInvites();
     } catch (error) {
         errorMessage.value = error?.message || 'Failed to verify teacher degree.';
     } finally {
@@ -176,9 +210,57 @@ function logout() {
     router.push({ name: 'Main' });
 }
 
+async function acceptInviteAsCurrentRole(universityName) {
+    setInviteActionLoading(universityName, 'accept', true);
+    clearMessages();
+
+    try {
+        const response = await userApi.acceptInvite(universityName);
+        successMessage.value = response?.message || response?.Message || 'Invite accepted.';
+        await loadInvites();
+    } catch (error) {
+        errorMessage.value = error?.message || 'Failed to accept invite.';
+    } finally {
+        setInviteActionLoading(universityName, 'accept', false);
+    }
+}
+
+async function acceptInviteAsStudent(universityName) {
+    setInviteActionLoading(universityName, 'student', true);
+    clearMessages();
+
+    try {
+        const response = await userApi.enterUniversityAsStudent(universityName);
+        successMessage.value = response?.message || response?.Message || 'You entered university as student.';
+        await loadInvites();
+    } catch (error) {
+        errorMessage.value = error?.message || 'Failed to enter university as student.';
+    } finally {
+        setInviteActionLoading(universityName, 'student', false);
+    }
+}
+
+async function rejectInvite(universityName) {
+    setInviteActionLoading(universityName, 'reject', true);
+    clearMessages();
+
+    try {
+        const response = await userApi.rejectInvite(universityName);
+        successMessage.value = response?.message || response?.Message || 'Invite rejected.';
+        await loadInvites();
+    } catch (error) {
+        errorMessage.value = error?.message || 'Failed to reject invite.';
+    } finally {
+        setInviteActionLoading(universityName, 'reject', false);
+    }
+}
+
 onMounted(async () => {
     await loadRoleState();
-    await loadProfile();
+    await Promise.all([
+        loadProfile(),
+        loadInvites(),
+    ]);
 });
 </script>
 
@@ -290,6 +372,66 @@ onMounted(async () => {
                     </button>
                 </div>
             </article>
+
+            <article class="surface-card account-card">
+                <div class="account-card__header">
+                    <div>
+                        <p class="section-kicker">University invites</p>
+                        <h2 class="section-title">Pending invitations</h2>
+                    </div>
+                    <span class="pill">{{ isLoadingInvites ? 'Loading...' : `${invites.length} pending` }}</span>
+                </div>
+
+                <p class="section-copy" v-if="!invites.length && !isLoadingInvites">
+                    You have no pending invites right now.
+                </p>
+
+                <div v-else class="invite-list">
+                    <article v-for="universityName in invites" :key="`invite-${universityName}`" class="invite-card">
+                        <div>
+                            <p class="invite-card__title">{{ universityName }}</p>
+                            <p class="invite-card__copy" v-if="roleState.isTeacher">
+                                As teacher, you can join with this invite as teacher or enter as student.
+                            </p>
+                            <p class="invite-card__copy" v-else>
+                                Accept to join this university as student.
+                            </p>
+                        </div>
+
+                        <div class="invite-actions">
+                            <button
+                                class="submit-button"
+                                type="button"
+                                @click="acceptInviteAsCurrentRole(universityName)"
+                                :disabled="isInviteActionLoading(universityName, 'accept') || isInviteActionLoading(universityName, 'student') || isInviteActionLoading(universityName, 'reject')"
+                            >
+                                {{ isInviteActionLoading(universityName, 'accept')
+                                    ? 'Joining...'
+                                    : roleState.isTeacher ? 'Join as teacher' : 'Accept invite' }}
+                            </button>
+
+                            <button
+                                v-if="roleState.isTeacher"
+                                class="secondary-button"
+                                type="button"
+                                @click="acceptInviteAsStudent(universityName)"
+                                :disabled="isInviteActionLoading(universityName, 'student') || isInviteActionLoading(universityName, 'accept') || isInviteActionLoading(universityName, 'reject')"
+                            >
+                                {{ isInviteActionLoading(universityName, 'student') ? 'Joining...' : 'Join as student' }}
+                            </button>
+
+                            <button
+                                class="secondary-button"
+                                type="button"
+                                @click="rejectInvite(universityName)"
+                                :disabled="isInviteActionLoading(universityName, 'reject') || isInviteActionLoading(universityName, 'accept') || isInviteActionLoading(universityName, 'student')"
+                            >
+                                {{ isInviteActionLoading(universityName, 'reject') ? 'Rejecting...' : 'Reject invite' }}
+                            </button>
+                        </div>
+                    </article>
+                </div>
+            </article>
         </section>
     </main>
 </template>
@@ -396,6 +538,41 @@ onMounted(async () => {
     gap: 0.75rem;
 }
 
+.invite-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.invite-card {
+    border: 1px solid var(--ttl-border-subtle);
+    border-radius: 0.95rem;
+    background: rgba(143, 44, 226, 0.05);
+    padding: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+
+.invite-card__title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--ttl-text-primary);
+}
+
+.invite-card__copy {
+    margin: 0.2rem 0 0;
+    color: var(--ttl-text-secondary);
+    font-size: 0.88rem;
+}
+
+.invite-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.6rem;
+}
+
 @media (max-width: 900px) {
     .account-hero,
     .account-card__header {
@@ -410,7 +587,8 @@ onMounted(async () => {
 
 @media (max-width: 640px) {
     .split-fields,
-    .role-actions {
+    .role-actions,
+    .invite-actions {
         grid-template-columns: 1fr;
     }
 }

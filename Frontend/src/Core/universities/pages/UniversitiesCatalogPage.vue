@@ -45,7 +45,7 @@ function getJoinLabel(item) {
         return 'Private access';
     }
 
-    return isTeacher.value ? 'Request as teacher' : 'Enter university';
+    return isTeacher.value ? 'Enter as student' : 'Enter university';
 }
 
 function canJoin(item) {
@@ -77,11 +77,8 @@ async function joinUniversity(item) {
     infoMessage.value = '';
 
     try {
-        const response = isTeacher.value
-            ? await universityApi.requestJoinAsTeacher(name)
-            : await universityApi.enterUniversity(name);
-
-        infoMessage.value = response?.message || response?.Message || (isTeacher.value ? 'Request sent to university director.' : 'You entered the university successfully.');
+        const response = await universityApi.enterUniversity(name);
+        infoMessage.value = response?.message || response?.Message || 'You entered the university as student.';
     } catch (error) {
         errorMessage.value = error?.message || 'Could not process university access action.';
     } finally {

@@ -122,50 +122,7 @@ namespace Core.DL.Services
         {
             ResponseMessage response = new ResponseMessage();
 
-            var university = await _universityRepository.Where(obj => obj.Name == universityName && obj.IsOpened == true)
-                .FirstOrDefaultAsync();
-            if (university == null)
-            {
-                response.Message = "Such university doesn't exist or is not open for requests";
-                return response;
-            }
-
-            var teacher = await _baseUserRepository.Where(obj => obj.Email == teacherEmail && obj.TeacherId != null && obj.Teacher.IsVerified == true)
-                .Include(obj => obj.Teacher)
-                .FirstOrDefaultAsync();
-            if (teacher == null)
-            {
-                response.Message = "Such user doesn't exist or is not a verified teacher";
-                return response;
-            }
-
-            var alreadyEnrolled = await _teacherEnrollmentRepository.SingleOrDefaultAsync(
-                e => e.BaseUserId == teacher.Id && e.UniversityId == university.Id);
-            if (alreadyEnrolled != null)
-            {
-                response.Message = "You already belong to this university";
-                return response;
-            }
-
-            var doesEntryRequestExist = await _entryRequestRepository.SingleOrDefaultAsync(
-                er => er.BaseUserId == teacher.Id && er.UniversityId == university.Id && er.SentByUniversity == false);
-            if (doesEntryRequestExist != null)
-            {
-                response.Message = "You already sent entry request to this university";
-                return response;
-            }
-
-            EntryRequest entryRequest = new EntryRequest
-            {
-                BaseUserId = teacher.Id,
-                UniversityId = university.Id,
-                SentByUniversity = false
-            };
-
-            await _entryRequestRepository.AddAsync(entryRequest);
-
-            response.Success = true;
-            response.Message = "Request is sent";
+            response.Message = "Teachers can join as teachers by invite only";
 
             return response;
         }

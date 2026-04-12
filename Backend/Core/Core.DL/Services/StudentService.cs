@@ -96,7 +96,7 @@ namespace Core.DL.Services
                 return response;
             }
 
-            var mainUser = await _baseUserRepository.Where(obj => obj.Email == mainUserEmail && obj.TeacherId == null)
+            var mainUser = await _baseUserRepository.Where(obj => obj.Email == mainUserEmail)
                 .FirstOrDefaultAsync();
             if (mainUser == null)
             {
@@ -146,7 +146,7 @@ namespace Core.DL.Services
                 return response;
             }
 
-            var user = await _baseUserRepository.Where(obj => obj.Email == userEmail && obj.TeacherId == null)
+            var user = await _baseUserRepository.Where(obj => obj.Email == userEmail)
                 .FirstOrDefaultAsync();
             if (user == null)
             {
@@ -157,6 +157,14 @@ namespace Core.DL.Services
             var alreadyEnrolled = await _studentEnrollmentRepository.SingleOrDefaultAsync(
                 e => e.BaseUserId == user.Id && e.UniversityId == university.Id);
             if (alreadyEnrolled != null)
+            {
+                response.Message = "You already belong to this university";
+                return response;
+            }
+
+            var teacherEnrollment = await _teacherEnrollmentRepository.SingleOrDefaultAsync(
+                e => e.BaseUserId == user.Id && e.UniversityId == university.Id);
+            if (teacherEnrollment != null)
             {
                 response.Message = "You already belong to this university";
                 return response;
