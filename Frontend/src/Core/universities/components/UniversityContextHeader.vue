@@ -66,32 +66,27 @@ function triggerJoin() {
 <template>
     <header class="context-header surface-card surface-card--raised">
         <div class="context-header__top">
-            <div class="context-header__title-wrap">
-                <AppIcon name="university" />
-
-                <div>
-                    <p class="section-kicker">University workspace</p>
-                    <h1 class="section-title">{{ universityName }}</h1>
-                    <p class="section-copy">{{ subtitle || 'Stay focused on one university space with clear sections for study and collaboration.' }}</p>
-                </div>
-            </div>
-
             <div class="context-header__meta">
                 <router-link 
                     to="/universities/my" 
                     class="secondary-button context-header__back" 
-                    tag="button"
-                    >
-                    Back
+                    custom 
+                    v-slot="{ navigate }"
+                >
+                    <button @click="navigate" type="button">
+                        Back
+                    </button>
                 </router-link>
-                <span class="pill" :class="isOpened ? 'pill--accent' : 'pill--pink'">
-                    {{ isOpened ? 'Open university' : 'Private university' }}
-                </span>
-                <span class="pill"><AppIcon name="role" />{{ currentRoleLabel }}</span>
-                <span class="pill" :class="isMember ? 'pill--accent' : ''">{{ isMember ? 'Member' : 'Not a member' }}</span>
+            </div>
+
+            <div class="context-header__title-wrap">
+                <AppIcon name="university" />
+                <div>
+                    <h1 class="section-title">{{ universityName }}</h1>
+                    <p class="section-kicker">University workspace</p>
+                </div>
             </div>
         </div>
-
         <div v-if="showNavigation" class="context-header__bottom">
             <nav class="context-nav" aria-label="University tabs">
                 <router-link
