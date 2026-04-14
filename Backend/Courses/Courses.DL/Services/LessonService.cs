@@ -10,16 +10,124 @@ namespace Courses.DL.Services
     public class LessonService : ILessonService
     {
         private readonly IBaseRepository<Lesson> _lessonRepository;
+        private readonly IBaseRepository<LessonResource> _lessonResourceRepository;
         private readonly IBaseRepository<Course> _courseRepository;
         private readonly IUserInfoClient _grpcClient;
         private readonly IMarkdownService _markdownService;
 
-        public LessonService(IBaseRepository<Lesson> lessonRepository, IBaseRepository<Course> courseRepository, IUserInfoClient grpcClient, IMarkdownService markdownService)
+        public LessonService(
+            IBaseRepository<Lesson> lessonRepository,
+            IBaseRepository<LessonResource> lessonResourceRepository,
+            IBaseRepository<Course> courseRepository,
+            IUserInfoClient grpcClient,
+            IMarkdownService markdownService)
         {
             _lessonRepository = lessonRepository;
+            _lessonResourceRepository = lessonResourceRepository;
             _courseRepository = courseRepository;
             _grpcClient = grpcClient;
             _markdownService = markdownService;
+        }
+
+        private static string NormalizeResourceType(string? type)
+        {
+            return string.IsNullOrWhiteSpace(type) ? "other" : type.Trim().ToLowerInvariant();
+        }
+
+        private static List<LessonResourceDto> NormalizeResourceDtos(IEnumerable<LessonResourceDto>? resources)
+        {
+            if (resources == null)
+                return new List<LessonResourceDto>();
+
+            return resources
+                .Where(r => r != null && !string.IsNullOrWhiteSpace(r.Url))
+                .Select(r => new LessonResourceDto
+                {
+                    Title = string.IsNullOrWhiteSpace(r.Title) ? r.Url.Trim() : r.Title.Trim(),
+                    Url = r.Url.Trim(),
+                    Type = NormalizeResourceType(r.Type)
+                })
+                .GroupBy(r => r.Url, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .ToList();
+        }
+
+        private static List<LessonResourceDto> MergeLegacyLinksWithResources(string? videoLink, string? materialLink, IEnumerable<LessonResourceDto>? resources)
+        {
+            var normalized = NormalizeResourceDtos(resources);
+
+            if (!string.IsNullOrWhiteSpace(videoLink))
+            {
+                normalized.Add(new LessonResourceDto
+                {
+                    Title = "Video material",
+                    Url = videoLink.Trim(),
+                    Type = "video"
+                });
+            }
+
+            if (!string.IsNullOrWhiteSpace(materialLink))
+            {
+                normalized.Add(new LessonResourceDto
+                {
+                    Title = "Additional material",
+                    Url = materialLink.Trim(),
+                    Type = "material"
+                });
+            }
+
+            return normalized
+                .GroupBy(r => r.Url, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .ToList();
+        }
+
+        private static void ApplyLegacyLinksFromResources(Lesson lesson)
+        {
+            var firstVideo = lesson.Resources.FirstOrDefault(r => r.Type == "video");
+            var firstNonVideo = lesson.Resources.FirstOrDefault(r => r.Type != "video");
+
+            lesson.VideoLink = firstVideo?.Url;
+            lesson.MaterialLink = firstNonVideo?.Url;
+        }
+
+        private static List<LessonResourceDto> MapResourcesForRead(Lesson lesson)
+        {
+            var resources = lesson.Resources
+                .Select(resource => new LessonResourceDto
+                {
+                    Title = resource.Title,
+                    Url = resource.Url,
+                    Type = resource.Type
+                })
+                .ToList();
+
+            return MergeLegacyLinksWithResources(lesson.VideoLink, lesson.MaterialLink, resources);
+        }
+
+        private async Task ReplaceLessonResourcesAsync(Lesson lesson, IEnumerable<LessonResourceDto> resources)
+        {
+            if (lesson.Resources.Any())
+            {
+                await _lessonResourceRepository.DeleteRangeAsync(lesson.Resources.ToList());
+                lesson.Resources.Clear();
+            }
+
+            var normalizedResources = NormalizeResourceDtos(resources);
+
+            foreach (var resourceDto in normalizedResources)
+            {
+                lesson.Resources.Add(new LessonResource
+                {
+                    LessonId = lesson.Id,
+                    Title = resourceDto.Title ?? resourceDto.Url,
+                    Url = resourceDto.Url,
+                    Type = NormalizeResourceType(resourceDto.Type),
+                    CreatedAt = DateTime.UtcNow,
+                });
+            }
+
+            ApplyLegacyLinksFromResources(lesson);
         }
 
 
@@ -47,6 +155,7 @@ namespace Courses.DL.Services
                 return response;
 
             var lessons = await _lessonRepository.Where(obj => obj.CourseId == courseId)
+                .Include(obj => obj.Resources)
                 .OrderBy(obj => obj.OrderNumber)
                 .ToListAsync();
 
@@ -59,6 +168,7 @@ namespace Courses.DL.Services
                 IsMarkdown = lesson.IsMarkdown,
                 VideoLink = lesson.VideoLink,
                 MaterialLink = lesson.MaterialLink,
+                Resources = MapResourcesForRead(lesson),
                 OrderNumber = lesson.OrderNumber,
                 CreatedAt = lesson.CreatedAt,
                 UpdatedAt = lesson.UpdatedAt
@@ -79,6 +189,7 @@ namespace Courses.DL.Services
 
             var lesson = await _lessonRepository.Where(obj => obj.Id == lessonId)
                 .Include(obj => obj.Course)
+                .Include(obj => obj.Resources)
                 .FirstOrDefaultAsync();
 
             if (lesson == null)
@@ -110,6 +221,7 @@ namespace Courses.DL.Services
                 RenderedContent = lesson.IsMarkdown ? _markdownService.ConvertToHtml(lesson.Content) : null,
                 VideoLink = lesson.VideoLink,
                 MaterialLink = lesson.MaterialLink,
+                Resources = MapResourcesForRead(lesson),
                 OrderNumber = lesson.OrderNumber,
                 CreatedAt = lesson.CreatedAt,
                 UpdatedAt = lesson.UpdatedAt
@@ -162,14 +274,17 @@ namespace Courses.DL.Services
                 Title = lessonDto.Title,
                 Content = lessonDto.Content,
                 IsMarkdown = lessonDto.IsMarkdown,
-                VideoLink = lessonDto.VideoLink,
-                MaterialLink = lessonDto.MaterialLink,
                 OrderNumber = lessonDto.OrderNumber,
                 CourseId = lessonDto.CourseId,
                 CreatedAt = DateTime.UtcNow
             };
 
             await _lessonRepository.AddAsync(lesson);
+
+            var mergedResources = MergeLegacyLinksWithResources(lessonDto.VideoLink, lessonDto.MaterialLink, lessonDto.Resources);
+            await ReplaceLessonResourcesAsync(lesson, mergedResources);
+            await _lessonRepository.UpdateAsync(lesson);
+
             response.Success = true;
             response.Message = "Lesson created successfully";
 
@@ -183,6 +298,7 @@ namespace Courses.DL.Services
 
             var lesson = await _lessonRepository.Where(obj => obj.Id == lessonDto.LessonId)
                 .Include(obj => obj.Course)
+                .Include(obj => obj.Resources)
                 .FirstOrDefaultAsync();
 
             if (lesson == null)
@@ -211,14 +327,14 @@ namespace Courses.DL.Services
             if (!string.IsNullOrWhiteSpace(lessonDto.Content))
                 lesson.Content = lessonDto.Content;
 
-            if (lessonDto.VideoLink != null)
-                lesson.VideoLink = lessonDto.VideoLink;
-
-            if (lessonDto.MaterialLink != null)
-                lesson.MaterialLink = lessonDto.MaterialLink;
-
             if (lessonDto.OrderNumber.HasValue)
                 lesson.OrderNumber = lessonDto.OrderNumber.Value;
+
+            if (lessonDto.Resources != null || lessonDto.VideoLink != null || lessonDto.MaterialLink != null)
+            {
+                var mergedResources = MergeLegacyLinksWithResources(lessonDto.VideoLink, lessonDto.MaterialLink, lessonDto.Resources);
+                await ReplaceLessonResourcesAsync(lesson, mergedResources);
+            }
 
             lesson.UpdatedAt = DateTime.UtcNow;
 

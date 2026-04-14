@@ -20,6 +20,8 @@ namespace Courses.DAL.Dtos
         [MaxLength(500)]
         public string? MaterialLink { get; set; }
 
+        public List<LessonResourceDto>? Resources { get; set; }
+
         public int? OrderNumber { get; set; }
     }
 }

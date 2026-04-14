@@ -25,6 +25,7 @@ builder.Services.AddScoped<IUserInfoClient, UserInfoClient>();
 
 builder.Services.AddTransient<IBaseRepository<Course>, BaseRepository<Course>>();
 builder.Services.AddTransient<IBaseRepository<Lesson>, BaseRepository<Lesson>>();
+builder.Services.AddTransient<IBaseRepository<LessonResource>, BaseRepository<LessonResource>>();
 
 builder.Services.AddTransient<IMarkdownService, MarkdownService>();
 builder.Services.AddTransient<ICourseService, CourseService>();

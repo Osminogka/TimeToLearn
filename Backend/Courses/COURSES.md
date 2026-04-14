@@ -37,14 +37,16 @@ Courses/
 │   ├── Models/
 │   │   ├── BaseEntity.cs             # Abstract base: long Id
 │   │   ├── Course.cs                 # Title, Description, TeacherId, UniversityId, timestamps
-│   │   └── Lesson.cs                 # Title, Content, IsMarkdown, links, OrderNumber, timestamps
+│   │   ├── Lesson.cs                 # Title, Content, IsMarkdown, links, OrderNumber, timestamps
+│   │   └── LessonResource.cs         # LessonId, Title, Url, Type, timestamps
 │   ├── Dtos/
 │   │   ├── CreateCourseDto.cs        # Title, Description, UniversityName
 │   │   ├── ReadCourseDto.cs          # Includes TeacherName (resolved via gRPC), LessonsCount
 │   │   ├── UpdateCourseDto.cs        # CourseId + nullable Title/Description
-│   │   ├── CreateLessonDto.cs        # CourseId, Title, Content, IsMarkdown, links, OrderNumber
-│   │   ├── ReadLessonDto.cs          # Includes RenderedContent (HTML, only if IsMarkdown=true)
-│   │   └── UpdateLessonDto.cs        # LessonId + nullable fields (IsMarkdown is NOT updatable)
+│   │   ├── LessonResourceDto.cs      # Resource item: Title, Url, Type
+│   │   ├── CreateLessonDto.cs        # CourseId, Title, Content, IsMarkdown, legacy links, resources[], OrderNumber
+│   │   ├── ReadLessonDto.cs          # Includes RenderedContent and resources[]
+│   │   └── UpdateLessonDto.cs        # LessonId + nullable fields + optional resources[] replacement
 │   └── SideModels/
 │       ├── ResponseMessage.cs        # Success + Message
 │       ├── ResponseArray.cs          # Success + Message + IEnumerable<T>
@@ -109,6 +111,12 @@ Lesson
   VideoLink?, MaterialLink? (max 500 each)
   OrderNumber (int)     ← controls display sequence
   CourseId (FK)
+  CreatedAt, UpdatedAt?
+  └── Resources (1:N, cascade delete)
+
+LessonResource
+  Id, LessonId (FK)
+  Title (max 120), Url (max 500), Type (max 32)
   CreatedAt, UpdatedAt?
 ```
 
@@ -215,3 +223,4 @@ RabbitMQ:    localhost:5672
 - **Pagination** — courses only; lessons are always returned in full ordered by `OrderNumber`
 - **Partial updates** — all `Update*Dto` fields are nullable; service only applies non-null values
 - **`UpdatedAt`** is set in the service layer on every update, not via EF interceptors
+- **Lesson resources support** — lessons now support a full `resources[]` collection while keeping `VideoLink` / `MaterialLink` for backward compatibility

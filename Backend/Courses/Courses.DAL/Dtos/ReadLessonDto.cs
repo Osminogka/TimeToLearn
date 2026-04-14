@@ -18,6 +18,8 @@ namespace Courses.DAL.Dtos
 
         public string? MaterialLink { get; set; }
 
+        public IEnumerable<LessonResourceDto> Resources { get; set; } = new List<LessonResourceDto>();
+
         public int OrderNumber { get; set; }
 
         public DateTime CreatedAt { get; set; }

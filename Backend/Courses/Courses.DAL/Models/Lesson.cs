@@ -28,6 +28,8 @@ namespace Courses.DAL.Models
 
         public Course Course { get; set; }
 
+        public ICollection<LessonResource> Resources { get; set; } = new List<LessonResource>();
+
         public DateTime CreatedAt { get; set; }
 
         public DateTime? UpdatedAt { get; set; }
