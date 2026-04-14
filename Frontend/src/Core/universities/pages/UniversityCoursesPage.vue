@@ -1,9 +1,9 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import UniversityContextHeader from '../components/UniversityContextHeader.vue';
 import universityApi from '../services/universityApi';
-import authUtils, { isTeacherRole, user } from '@/Shared/services/utils';
+import authUtils, { canManageUniversityContent, user } from '@/Shared/services/utils';
 import AppIcon from '@/Shared/components/AppIcon.vue';
 import courseApi from '@/Courses/services/courseApi';
 import CourseCard from '@/Courses/components/CourseCard.vue';
@@ -12,6 +12,7 @@ import CourseFormPanel from '@/Courses/components/CourseFormPanel.vue';
 const COURSES_PAGE_SIZE = 10;
 
 const route = useRoute();
+const router = useRouter();
 
 const university = ref(null);
 const courses = ref([]);
@@ -19,6 +20,7 @@ const isLoadingWorkspace = ref(false);
 const isLoadingCourses = ref(false);
 const isJoining = ref(false);
 const isSubmittingCourse = ref(false);
+const isDeletingCourse = ref(false);
 const isMember = ref(false);
 const actionMessage = ref('');
 const errorMessage = ref('');
@@ -29,8 +31,7 @@ const isCourseFormOpen = ref(false);
 const editingCourseId = ref(0);
 
 const universityName = computed(() => String(route.params.name || ''));
-const isTeacher = computed(() => isTeacherRole(user.value.role));
-const currentUsername = computed(() => String(user.value.name || '').trim().toLowerCase());
+const canManageCourses = computed(() => isMember.value && canManageUniversityContent(user.value.role));
 const editingCourse = computed(() => {
     if (!editingCourseId.value) {
         return null;
@@ -40,10 +41,10 @@ const editingCourse = computed(() => {
 });
 const hasCourses = computed(() => courses.value.length > 0);
 const hasPrevCoursePage = computed(() => coursePage.value > 1);
-const canCreateCourses = computed(() => isMember.value && isTeacher.value);
+const canCreateCourses = computed(() => canManageCourses.value);
 const canViewCourses = computed(() => isMember.value);
 
-const joinLabel = computed(() => isTeacher.value ? 'Enter as student' : 'Enter university');
+const joinLabel = computed(() => canManageUniversityContent(user.value.role) ? 'Enter as student' : 'Enter university');
 const joinVisible = computed(() => !isMember.value && !!university.value?.isOpened);
 const isEditingMode = computed(() => Boolean(editingCourseId.value));
 const formInitialTitle = computed(() => editingCourse.value?.title || editingCourse.value?.Title || '');
@@ -70,15 +71,6 @@ function resetCourseForm() {
     formErrorMessage.value = '';
     editingCourseId.value = 0;
     isCourseFormOpen.value = false;
-}
-
-function isCourseOwner(course) {
-    const teacherName = String(course.teacherName || course.TeacherName || '').trim().toLowerCase();
-    if (!teacherName || !currentUsername.value) {
-        return false;
-    }
-
-    return teacherName === currentUsername.value;
 }
 
 async function loadUniversity() {
@@ -229,8 +221,48 @@ async function submitCourseForm(payload) {
 }
 
 function openLessonsWorkspace(course) {
-    const title = course?.title || course?.Title || 'Selected course';
-    actionMessage.value = `${title}: lessons workspace will be connected next.`;
+    const courseId = Number(course?.id || course?.Id || 0);
+    if (!courseId) {
+        return;
+    }
+
+    router.push({
+        name: 'UniversityCourseLessons',
+        params: {
+            name: universityName.value,
+            courseId,
+        },
+    });
+}
+
+async function removeCourse(course) {
+    const courseId = Number(course?.id || course?.Id || 0);
+    if (!courseId || !canManageCourses.value || isDeletingCourse.value) {
+        return;
+    }
+
+    clearStateMessages();
+    isDeletingCourse.value = true;
+
+    try {
+        const response = await courseApi.deleteCourse(courseId);
+        actionMessage.value = readMessage(response) || 'Course deleted successfully.';
+
+        if (isEditingMode.value && editingCourseId.value === courseId) {
+            resetCourseForm();
+        }
+
+        await loadCourses();
+
+        if (!courses.value.length && hasPrevCoursePage.value) {
+            coursePage.value -= 1;
+            await loadCourses();
+        }
+    } catch (error) {
+        errorMessage.value = error?.message || 'Could not delete course.';
+    } finally {
+        isDeletingCourse.value = false;
+    }
 }
 
 async function goToPrevCoursePage() {
@@ -329,9 +361,11 @@ onMounted(async () => {
                         v-for="course in courses"
                         :key="course.id || course.Id"
                         :course="course"
-                        :can-edit="isTeacher && isCourseOwner(course)"
-                        :disable-actions="isLoadingCourses || isSubmittingCourse"
+                        :can-edit="canManageCourses"
+                        :can-delete="canManageCourses"
+                        :disable-actions="isLoadingCourses || isSubmittingCourse || isDeletingCourse"
                         @edit="openEditCourseForm"
+                        @delete="removeCourse"
                         @open-lessons="openLessonsWorkspace"
                     />
                 </transition-group>

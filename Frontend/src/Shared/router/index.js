@@ -79,6 +79,16 @@ const routes = [
         }
     },
     {
+        path: '/universities/:name/courses/:courseId/lessons',
+        name: 'UniversityCourseLessons',
+        component: () => import('@/Core/universities/pages/UniversityCourseLessonsPage.vue'),
+        meta: {
+            title: 'Course Lessons',
+            requiresAuth: true,
+            hidePrimaryNavigation: true
+        }
+    },
+    {
         path: '/universities/:name/info',
         name: 'UniversityInfo',
         component: () => import('@/Core/universities/pages/UniversityInfoPage.vue'),

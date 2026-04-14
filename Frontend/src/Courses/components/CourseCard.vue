@@ -14,9 +14,13 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    canDelete: {
+        type: Boolean,
+        default: false,
+    },
 });
 
-const emit = defineEmits(['edit', 'open-lessons']);
+const emit = defineEmits(['edit', 'delete', 'open-lessons']);
 
 const createdLabel = computed(() => {
     const value = props.course?.createdAt || props.course?.CreatedAt;
@@ -59,6 +63,10 @@ function triggerEdit() {
 function triggerOpenLessons() {
     emit('open-lessons', props.course);
 }
+
+function triggerDelete() {
+    emit('delete', props.course);
+}
 </script>
 
 <template>
@@ -93,6 +101,16 @@ function triggerOpenLessons() {
                 @click="triggerEdit"
             >
                 Edit course
+            </button>
+
+            <button
+                v-if="canDelete"
+                class="secondary-button course-card__button course-card__button--danger"
+                type="button"
+                :disabled="disableActions"
+                @click="triggerDelete"
+            >
+                Delete course
             </button>
         </div>
     </article>
@@ -139,7 +157,7 @@ function triggerOpenLessons() {
 
 .course-card__actions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.6rem;
 }
 
@@ -147,6 +165,11 @@ function triggerOpenLessons() {
     min-height: 2.4rem;
     padding: 0.65rem 0.8rem;
     font-size: 0.86rem;
+}
+
+.course-card__button--danger {
+    color: var(--ttl-danger);
+    border-color: rgba(241, 59, 113, 0.35);
 }
 
 @media (max-width: 640px) {

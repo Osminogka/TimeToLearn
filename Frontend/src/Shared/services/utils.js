@@ -69,6 +69,14 @@ export function isTeacherRole(role) {
     return toRoleKey(role) === 'teacher';
 }
 
+export function isDirectorRole(role) {
+    return toRoleKey(role) === 'director';
+}
+
+export function canManageUniversityContent(role) {
+    return isTeacherRole(role) || isDirectorRole(role);
+}
+
 export function isStudentRole(role) {
     return toRoleKey(role) === 'student';
 }
@@ -135,5 +143,7 @@ export default {
     getCurrentRole,
     hasRole,
     isTeacherRole,
+    isDirectorRole,
+    canManageUniversityContent,
     isStudentRole,
 };
