@@ -17,7 +17,7 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
         '/api': {
-            target: 'http://acme.com',
+            target: 'https://timetolearn.ddns.net',
             changeOrigin: true,
             secure: false,
         }

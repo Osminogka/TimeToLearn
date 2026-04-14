@@ -240,7 +240,7 @@ After a user joins, all related `EntryRequest` records for that user/university 
 
 | Method | Request | Response | Usage |
 |--------|---------|----------|-------|
-| `GetInfoForTopic` | `{ userEmail, universityName }` | `{ userId, universityId, hasPermission }` | Courses/Forums check membership |
+| `GetInfoForTopic` | `{ userEmail, universityName }` | `{ userId, universityId, isAllowed, isTeacher, isDirector }` | Courses/Forums check membership and write permissions |
 | `GetUniversityName` | `{ universityId }` | `{ universityName }` | Resolve university name |
 | `GetUserName` | `{ userId }` | `{ userName }` | Resolve username |
 

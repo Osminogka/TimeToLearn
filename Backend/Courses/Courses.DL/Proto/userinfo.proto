@@ -18,6 +18,7 @@ message GrpcTopicInfoModel {
     int64 userId = 2;
     bool isAllowed = 3;
     bool isTeacher = 4;
+    bool isDirector = 5;
 }
 
 message UniversityName {

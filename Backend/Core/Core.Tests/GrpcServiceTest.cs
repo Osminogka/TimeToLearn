@@ -112,6 +112,7 @@ namespace Users.Tests
             Assert.Equal(1, reply.UniversityId);
             Assert.Equal(2, reply.UserId);
             Assert.True(reply.IsAllowed);
+            Assert.True(reply.IsDirector);
         }
 
         [Fact]

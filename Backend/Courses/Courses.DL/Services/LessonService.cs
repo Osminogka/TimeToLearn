@@ -151,15 +151,9 @@ namespace Courses.DL.Services
             }
 
             var reply = await _grpcClient.GetUserInfoForCourse(universityName, teacherEmail);
-            if (reply == null || !reply.IsAllowed || !reply.IsTeacher)
+            if (reply == null || !reply.IsAllowed || (!reply.IsTeacher && !reply.IsDirector))
             {
-                response.Message = "Only teachers can create lessons";
-                return response;
-            }
-
-            if (course.TeacherId != reply.UserId)
-            {
-                response.Message = "You can only add lessons to your own courses";
+                response.Message = "Only university teachers or directors can create lessons";
                 return response;
             }
 
@@ -205,15 +199,9 @@ namespace Courses.DL.Services
             }
 
             var reply = await _grpcClient.GetUserInfoForCourse(universityName, teacherEmail);
-            if (reply == null || !reply.IsAllowed || !reply.IsTeacher)
+            if (reply == null || !reply.IsAllowed || (!reply.IsTeacher && !reply.IsDirector))
             {
-                response.Message = "Only teachers can update lessons";
-                return response;
-            }
-
-            if (lesson.Course.TeacherId != reply.UserId)
-            {
-                response.Message = "You can only update lessons in your own courses";
+                response.Message = "Only university teachers or directors can update lessons";
                 return response;
             }
 
@@ -264,15 +252,9 @@ namespace Courses.DL.Services
             }
 
             var reply = await _grpcClient.GetUserInfoForCourse(universityName, teacherEmail);
-            if (reply == null || !reply.IsAllowed || !reply.IsTeacher)
+            if (reply == null || !reply.IsAllowed || (!reply.IsTeacher && !reply.IsDirector))
             {
-                response.Message = "Only teachers can delete lessons";
-                return response;
-            }
-
-            if (lesson.Course.TeacherId != reply.UserId)
-            {
-                response.Message = "You can only delete lessons from your own courses";
+                response.Message = "Only university teachers or directors can delete lessons";
                 return response;
             }
 
@@ -309,15 +291,9 @@ namespace Courses.DL.Services
             }
 
             var reply = await _grpcClient.GetUserInfoForCourse(universityName, teacherEmail);
-            if (reply == null || !reply.IsAllowed || !reply.IsTeacher)
+            if (reply == null || !reply.IsAllowed || (!reply.IsTeacher && !reply.IsDirector))
             {
-                response.Message = "Only teachers can reorder lessons";
-                return response;
-            }
-
-            if (course.TeacherId != reply.UserId)
-            {
-                response.Message = "You can only reorder lessons in your own courses";
+                response.Message = "Only university teachers or directors can reorder lessons";
                 return response;
             }
 

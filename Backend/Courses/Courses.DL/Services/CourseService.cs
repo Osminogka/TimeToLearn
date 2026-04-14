@@ -127,9 +127,9 @@ namespace Courses.DL.Services
             }
 
             var reply = await _grpcClient.GetUserInfoForCourse(courseDto.UniversityName, teacherEmail);
-            if (reply == null || !reply.IsAllowed || !reply.IsTeacher)
+            if (reply == null || !reply.IsAllowed || (!reply.IsTeacher && !reply.IsDirector))
             {
-                response.Message = "Only teachers can create courses";
+                response.Message = "Only university teachers or directors can create courses";
                 return response;
             }
 
@@ -169,15 +169,9 @@ namespace Courses.DL.Services
             }
 
             var reply = await _grpcClient.GetUserInfoForCourse(universityName, teacherEmail);
-            if (reply == null || !reply.IsAllowed || !reply.IsTeacher)
+            if (reply == null || !reply.IsAllowed || (!reply.IsTeacher && !reply.IsDirector))
             {
-                response.Message = "Only teachers can update courses";
-                return response;
-            }
-
-            if (course.TeacherId != reply.UserId)
-            {
-                response.Message = "You can only update your own courses";
+                response.Message = "Only university teachers or directors can update courses";
                 return response;
             }
 
@@ -216,15 +210,9 @@ namespace Courses.DL.Services
             }
 
             var reply = await _grpcClient.GetUserInfoForCourse(universityName, teacherEmail);
-            if (reply == null || !reply.IsAllowed || !reply.IsTeacher)
+            if (reply == null || !reply.IsAllowed || (!reply.IsTeacher && !reply.IsDirector))
             {
-                response.Message = "Only teachers can delete courses";
-                return response;
-            }
-
-            if (course.TeacherId != reply.UserId)
-            {
-                response.Message = "You can only delete your own courses";
+                response.Message = "Only university teachers or directors can delete courses";
                 return response;
             }
 

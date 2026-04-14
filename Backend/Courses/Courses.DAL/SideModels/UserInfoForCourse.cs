@@ -9,5 +9,7 @@ namespace Courses.DAL.SideModels
         public bool IsAllowed { get; set; }
 
         public bool IsTeacher { get; set; }
+
+        public bool IsDirector { get; set; }
     }
 }

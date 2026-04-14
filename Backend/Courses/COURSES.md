@@ -49,7 +49,7 @@ Courses/
 │       ├── ResponseMessage.cs        # Success + Message
 │       ├── ResponseArray.cs          # Success + Message + IEnumerable<T>
 │       ├── ResponseWithValue.cs      # Success + Message + T?
-│       └── UserInfoForCourse.cs      # gRPC result: UserId, UniversityId, IsAllowed, IsTeacher
+│       └── UserInfoForCourse.cs      # gRPC result: UserId, UniversityId, IsAllowed, IsTeacher, IsDirector
 └── Courses.Tests/
     └── UnitTest1.cs                  # Empty placeholder — no tests implemented
 ```
@@ -147,8 +147,7 @@ All authorization is resolved by calling the Core service via gRPC — this serv
 | Operation | Check |
 |-----------|-------|
 | Read (get courses/lessons) | `UserInfoForCourse.IsAllowed == true` (user is university member) |
-| Create | `IsAllowed && IsTeacher` |
-| Update / Delete | `IsAllowed && IsTeacher && course.TeacherId == reply.UserId` |
+| Create / Update / Delete | `IsAllowed && (IsTeacher || IsDirector)` |
 
 Anonymous users receive empty result sets for read operations rather than 401/403 errors.
 
@@ -160,7 +159,7 @@ Anonymous users receive empty result sets for read operations rather than 401/40
 
 | gRPC Method | When Called | Returns |
 |-------------|------------|---------|
-| `GetInfoForTopic(universityName, email)` | Every write + every read | `UserInfoForCourse { UserId, UniversityId, IsAllowed }` |
+| `GetInfoForTopic(universityName, email)` | Every write + every read | `UserInfoForCourse { UserId, UniversityId, IsAllowed, IsTeacher, IsDirector }` |
 | `GetUniversityName(universityId)` | Reads that start from a courseId | University name string |
 | `GetUserName(userId)` | Populating `TeacherName` in `ReadCourseDto` | Username string |
 
