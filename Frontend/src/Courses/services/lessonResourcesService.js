@@ -128,6 +128,7 @@ function getLessonResources(lesson) {
     }
 
     const content = lesson.content || lesson.Content || '';
+    const backendResources = normalizeResources(lesson.resources || lesson.Resources || []);
     const resources = extractEmbeddedResources(content);
 
     const legacyVideo = createLegacyResource(
@@ -143,6 +144,7 @@ function getLessonResources(lesson) {
     );
 
     return normalizeResources([
+        ...backendResources,
         ...resources,
         legacyVideo,
         legacyMaterial,

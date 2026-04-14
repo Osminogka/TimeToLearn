@@ -1,5 +1,7 @@
 <script setup>
 import { computed, reactive, watch } from 'vue';
+import lessonResourcesService from '@/Courses/services/lessonResourcesService';
+import MarkdownEditor from '@/Courses/components/MarkdownEditor.vue';
 
 const props = defineProps({
     mode: {
@@ -53,10 +55,19 @@ function createEmptyResource() {
 }
 
 const isEditingMode = computed(() => props.mode === 'edit');
+const isMarkdownEditorActive = computed(() => {
+    if (!isEditingMode.value) {
+        return Boolean(form.isMarkdown);
+    }
+
+    const raw = props.initialLesson?.isMarkdown ?? props.initialLesson?.IsMarkdown;
+    return Boolean(raw);
+});
 
 function applyInitialLesson() {
     form.title = props.initialLesson?.title || props.initialLesson?.Title || '';
-    form.content = props.initialLesson?.content || props.initialLesson?.Content || '';
+    const sourceContent = props.initialLesson?.content || props.initialLesson?.Content || '';
+    form.content = lessonResourcesService.removeEmbeddedResourcesFromContent(sourceContent);
 
     if (isEditingMode.value) {
         const lessonMarkdownValue = props.initialLesson?.isMarkdown ?? props.initialLesson?.IsMarkdown;
@@ -215,7 +226,15 @@ function handleCancel() {
 
         <div class="field-group">
             <label for="lesson-content" class="field-label">Content</label>
+            <MarkdownEditor
+                v-if="isMarkdownEditorActive"
+                v-model="form.content"
+                :disabled="isSubmitting"
+                :maxlength="10000"
+                placeholder="Write markdown content for this lesson."
+            />
             <textarea
+                v-else
                 id="lesson-content"
                 v-model="form.content"
                 class="input-field lesson-form-panel__textarea"

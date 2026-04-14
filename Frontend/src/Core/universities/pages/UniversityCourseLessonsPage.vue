@@ -7,6 +7,7 @@ import authUtils, { canManageUniversityContent, user } from '@/Shared/services/u
 import AppIcon from '@/Shared/components/AppIcon.vue';
 import courseApi from '@/Courses/services/courseApi';
 import lessonResourcesService from '@/Courses/services/lessonResourcesService';
+import markdownService from '@/Courses/services/markdownService';
 import LessonCard from '@/Courses/components/LessonCard.vue';
 import LessonFormPanel from '@/Courses/components/LessonFormPanel.vue';
 
@@ -180,12 +181,13 @@ function closeLessonForm() {
 }
 
 function getPreviewContent(item) {
-    const markdownHtml = item?.renderedContent || item?.RenderedContent || '';
-    if (markdownHtml && (item?.isMarkdown ?? item?.IsMarkdown)) {
-        return lessonResourcesService.removeResourceCommentFromHtml(markdownHtml);
+    const rawContent = lessonResourcesService.removeEmbeddedResourcesFromContent(item?.content || item?.Content || '');
+
+    if (item?.isMarkdown ?? item?.IsMarkdown) {
+        return markdownService.renderMarkdownToSafeHtml(rawContent);
     }
 
-    return lessonResourcesService.removeEmbeddedResourcesFromContent(item?.content || item?.Content || '');
+    return rawContent;
 }
 
 async function loadUniversityMembership() {
@@ -333,15 +335,15 @@ async function submitLessonForm(payload) {
 
     try {
         const resourceFields = lessonResourcesService.buildApiResourceFields(payload.resources);
-        const contentWithResources = lessonResourcesService.embedResourcesInContent(payload.content, resourceFields.resources);
 
         if (isEditingMode.value) {
             const response = await courseApi.updateLesson({
                 lessonId: editingLessonId.value,
                 title: payload.title,
-                content: contentWithResources,
+                content: payload.content,
                 videoLink: resourceFields.videoLink,
                 materialLink: resourceFields.materialLink,
+                resources: resourceFields.resources,
                 orderNumber: payload.orderNumber,
             });
 
@@ -354,10 +356,11 @@ async function submitLessonForm(payload) {
             const response = await courseApi.createLesson({
                 courseId: courseId.value,
                 title: payload.title,
-                content: contentWithResources,
+                content: payload.content,
                 isMarkdown: payload.isMarkdown,
                 videoLink: resourceFields.videoLink,
                 materialLink: resourceFields.materialLink,
+                resources: resourceFields.resources,
                 orderNumber: payload.orderNumber,
             });
 
@@ -534,8 +537,12 @@ onMounted(async () => {
                         <span class="pill pill--accent">Order {{ selectedLessonResolved.orderNumber || selectedLessonResolved.OrderNumber }}</span>
                     </div>
 
-                    <div v-if="isSelectedLessonMarkdown" class="lesson-view__content section-copy" v-html="getPreviewContent(selectedLessonResolved)" />
-                    <p v-else class="lesson-view__content section-copy">{{ getPreviewContent(selectedLessonResolved) }}</p>
+                    <div
+                        v-if="isSelectedLessonMarkdown"
+                        class="lesson-view__content lesson-view__content--markdown section-copy"
+                        v-html="getPreviewContent(selectedLessonResolved)"
+                    />
+                    <p v-else class="lesson-view__content lesson-view__content--plain section-copy">{{ getPreviewContent(selectedLessonResolved) }}</p>
 
                     <div class="lesson-view__links" v-if="selectedLessonResources.length">
                         <a
@@ -698,8 +705,15 @@ onMounted(async () => {
 
 .lesson-view__content {
     margin: 0;
-    white-space: pre-wrap;
     line-height: 1.7;
+}
+
+.lesson-view__content--plain {
+    white-space: pre-wrap;
+}
+
+.lesson-view__content--markdown {
+    white-space: normal;
 }
 
 .lesson-view__links {

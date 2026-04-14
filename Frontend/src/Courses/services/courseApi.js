@@ -40,7 +40,7 @@ const getLessonById = async (lessonId) => {
     return httpClient.getAuth(`${LESSONS_BASE_URL}/lesson/${lessonId}`);
 };
 
-const createLesson = async ({ courseId, title, content, isMarkdown, videoLink, materialLink, orderNumber }) => {
+const createLesson = async ({ courseId, title, content, isMarkdown, videoLink, materialLink, resources, orderNumber }) => {
     return httpClient.postAuth(`${LESSONS_BASE_URL}/create`, {
         courseId,
         title,
@@ -48,17 +48,19 @@ const createLesson = async ({ courseId, title, content, isMarkdown, videoLink, m
         isMarkdown,
         videoLink,
         materialLink,
+        resources,
         orderNumber,
     });
 };
 
-const updateLesson = async ({ lessonId, title, content, videoLink, materialLink, orderNumber }) => {
+const updateLesson = async ({ lessonId, title, content, videoLink, materialLink, resources, orderNumber }) => {
     return httpClient.putAuth(`${LESSONS_BASE_URL}/update`, {
         lessonId,
         title,
         content,
         videoLink,
         materialLink,
+        resources,
         orderNumber,
     });
 };
