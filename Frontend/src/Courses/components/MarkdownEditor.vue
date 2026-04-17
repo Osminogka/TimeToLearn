@@ -117,70 +117,193 @@ function applyWrap(prefix, suffix = '', placeholder = '') {
 .markdown-editor {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #fff;
 }
 
 .markdown-editor__tabs {
     display: flex;
-    gap: 0.5rem;
+    border-bottom: 1px solid #ddd;
+    background: #f6f8fa;
 }
 
 .markdown-editor__tab {
-    min-height: 2.2rem;
-    min-width: 6.5rem;
+    flex: 1;
+    min-height: 2.4rem;
+    border: none;
+    background: #f6f8fa;
+    border-bottom: 2px solid transparent;
+    color: #666;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.markdown-editor__tab:hover {
+    color: #333;
+    background: #fff;
 }
 
 .markdown-editor__tab--active {
-    border-color: rgba(143, 44, 226, 0.32);
-    background: rgba(143, 44, 226, 0.12);
+    color: #0366d6;
+    border-bottom-color: #0366d6;
+    background: #fff;
+}
+
+.markdown-editor__tab:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .markdown-editor__write {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
 }
 
 .markdown-editor__toolbar {
     display: flex;
+    gap: 2px;
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
+    background: #f6f8fa;
     flex-wrap: wrap;
-    gap: 0.45rem;
 }
 
 .markdown-editor__tool {
-    min-height: 2rem;
-    min-width: 3.1rem;
-    font-size: 0.8rem;
-    padding: 0.4rem 0.55rem;
+    height: 28px;
+    padding: 4px 8px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    color: #333;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.markdown-editor__tool:hover:not(:disabled) {
+    background: #f3f3f3;
+    border-color: #999;
+    color: #000;
+}
+
+.markdown-editor__tool:active:not(:disabled) {
+    background: #e0e0e0;
+}
+
+.markdown-editor__tool:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .markdown-editor__textarea {
-    min-height: 11rem;
+    flex: 1;
+    min-height: 300px;
+    padding: 10px;
+    border: none;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    line-height: 1.5;
     resize: vertical;
+    background: #fff;
+    color: #333;
+}
+
+.markdown-editor__textarea:focus {
+    outline: none;
+    background: #fafbfc;
 }
 
 .markdown-editor__preview {
-    padding: 0.9rem;
-    min-height: 11rem;
-    line-height: 1.65;
+    padding: 15px;
+    min-height: 300px;
+    line-height: 1.7;
+    background: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    color: #333;
 }
 
 .markdown-editor__preview :deep(h1),
 .markdown-editor__preview :deep(h2),
-.markdown-editor__preview :deep(h3) {
-    color: var(--ttl-text-primary);
-    margin: 0.3rem 0 0.5rem;
+.markdown-editor__preview :deep(h3),
+.markdown-editor__preview :deep(h4),
+.markdown-editor__preview :deep(h5),
+.markdown-editor__preview :deep(h6) {
+    color: #000;
+    margin: 16px 0 8px 0;
+    font-weight: 600;
 }
 
-.markdown-editor__preview :deep(p),
+.markdown-editor__preview :deep(h1) {
+    font-size: 28px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+}
+
+.markdown-editor__preview :deep(h2) {
+    font-size: 24px;
+}
+
+.markdown-editor__preview :deep(h3) {
+    font-size: 20px;
+}
+
+.markdown-editor__preview :deep(p) {
+    margin: 8px 0;
+}
+
 .markdown-editor__preview :deep(ul),
 .markdown-editor__preview :deep(ol) {
-    margin: 0.45rem 0;
+    margin: 8px 0;
+    padding-left: 20px;
+}
+
+.markdown-editor__preview :deep(li) {
+    margin: 4px 0;
 }
 
 .markdown-editor__preview :deep(code) {
-    background: rgba(143, 44, 226, 0.12);
-    border-radius: 0.35rem;
-    padding: 0.05rem 0.32rem;
+    background: #f3f3f3;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12px;
+    color: #c7254e;
+}
+
+.markdown-editor__preview :deep(pre) {
+    background: #f6f8fa;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    padding: 12px;
+    overflow: auto;
+    margin: 8px 0;
+}
+
+.markdown-editor__preview :deep(pre code) {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #333;
+}
+
+.markdown-editor__preview :deep(blockquote) {
+    border-left: 4px solid #ddd;
+    padding-left: 12px;
+    margin: 8px 0;
+    color: #666;
+}
+
+.markdown-editor__preview :deep(a) {
+    color: #0366d6;
+    text-decoration: none;
+}
+
+.markdown-editor__preview :deep(a:hover) {
+    text-decoration: underline;
 }
 </style>
