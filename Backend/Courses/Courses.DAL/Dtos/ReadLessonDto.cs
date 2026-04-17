@@ -25,6 +25,10 @@ namespace Courses.DAL.Dtos
         public DateTime CreatedAt { get; set; }
 
         public DateTime? UpdatedAt { get; set; }
+
+        public bool IsCompletedByCurrentUser { get; set; }
+
+        public DateTime? CompletedAt { get; set; }
     }
 }
 

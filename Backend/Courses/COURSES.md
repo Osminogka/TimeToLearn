@@ -135,6 +135,9 @@ LessonResource
 | POST | `/create` | Required | Create course (teacher only) |
 | PUT | `/update` | Required | Update title/description (owner teacher only) |
 | DELETE | `/delete/{courseId}` | Required | Delete course + all lessons (owner teacher only) |
+| GET | `/{courseId}/progress` | Required | Current user progress for this course |
+| GET | `/{courseId}/student-progress` | Required | Teacher view of tracked students progress + marks |
+| POST | `/{courseId}/grade-student` | Required | Teacher assigns or updates student mark (1-10) |
 
 ### `LessonController` — `api/c/lessons`
 
@@ -145,6 +148,8 @@ LessonResource
 | POST | `/create` | Required | Create lesson (owner teacher only) |
 | PUT | `/update` | Required | Partial update (owner teacher only); `IsMarkdown` cannot be changed |
 | DELETE | `/delete/{lessonId}` | Required | Delete lesson (owner teacher only) |
+| POST | `/{lessonId}/complete` | Required | Student marks lesson as completed |
+| GET | `/{lessonId}/progress` | Required | Current user completion status for lesson |
 
 ---
 
@@ -224,3 +229,26 @@ RabbitMQ:    localhost:5672
 - **Partial updates** — all `Update*Dto` fields are nullable; service only applies non-null values
 - **`UpdatedAt`** is set in the service layer on every update, not via EF interceptors
 - **Lesson resources support** — lessons now support a full `resources[]` collection while keeping `VideoLink` / `MaterialLink` for backward compatibility
+
+---
+
+## Progress & Grading
+
+### New Tables
+
+`StudentLessonCompletion`
+- `Id`, `StudentId`, `LessonId`, `CompletedAt`, `CreatedAt`
+- Unique index on `(StudentId, LessonId)`
+- Cascade delete when lesson is deleted
+
+`StudentCourseGrade`
+- `Id`, `StudentId`, `CourseId`, `Mark (1-10)`, `GivenByTeacherId`, `GivenAt`, `CreatedAt`
+- Unique index on `(StudentId, CourseId)`
+- Cascade delete when course is deleted
+
+### Rules
+
+- Only **students** can complete lessons (`/{lessonId}/complete`)
+- Teachers/directors can view tracked student progress for their course and assign marks
+- Mark assignment is allowed only when student has completed all lessons in the course
+- Course and lesson read DTOs now include current user completion fields to support UI progress bars and completion states

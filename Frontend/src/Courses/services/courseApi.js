@@ -76,6 +76,29 @@ const reorderLessons = async ({ courseId, items }) => {
     });
 };
 
+const completeLesson = async (lessonId) => {
+    return httpClient.postAuth(`${LESSONS_BASE_URL}/${lessonId}/complete`, {});
+};
+
+const getLessonProgress = async (lessonId) => {
+    return httpClient.getAuth(`${LESSONS_BASE_URL}/${lessonId}/progress`);
+};
+
+const getCourseProgress = async (courseId) => {
+    return httpClient.getAuth(`${BASE_URL}/${courseId}/progress`);
+};
+
+const getCourseStudentsProgress = async (courseId) => {
+    return httpClient.getAuth(`${BASE_URL}/${courseId}/student-progress`);
+};
+
+const assignCourseGrade = async ({ courseId, studentId, mark }) => {
+    return httpClient.postAuth(`${BASE_URL}/${courseId}/grade-student`, {
+        studentId,
+        mark,
+    });
+};
+
 export default {
     getUniversityCourses,
     getCourseById,
@@ -88,4 +111,9 @@ export default {
     updateLesson,
     deleteLesson,
     reorderLessons,
+    completeLesson,
+    getLessonProgress,
+    getCourseProgress,
+    getCourseStudentsProgress,
+    assignCourseGrade,
 };

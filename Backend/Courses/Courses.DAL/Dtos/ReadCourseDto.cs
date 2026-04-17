@@ -17,5 +17,15 @@ namespace Courses.DAL.Dtos
         public DateTime? UpdatedAt { get; set; }
 
         public int LessonsCount { get; set; }
+
+        public int CompletedLessonsCount { get; set; }
+
+        public int CompletionPercent { get; set; }
+
+        public bool IsCompletedByCurrentUser { get; set; }
+
+        public int? CurrentUserMark { get; set; }
+
+        public DateTime? CurrentUserMarkGivenAt { get; set; }
     }
 }

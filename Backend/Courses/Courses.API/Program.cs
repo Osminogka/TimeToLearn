@@ -26,10 +26,13 @@ builder.Services.AddScoped<IUserInfoClient, UserInfoClient>();
 builder.Services.AddTransient<IBaseRepository<Course>, BaseRepository<Course>>();
 builder.Services.AddTransient<IBaseRepository<Lesson>, BaseRepository<Lesson>>();
 builder.Services.AddTransient<IBaseRepository<LessonResource>, BaseRepository<LessonResource>>();
+builder.Services.AddTransient<IBaseRepository<StudentLessonCompletion>, BaseRepository<StudentLessonCompletion>>();
+builder.Services.AddTransient<IBaseRepository<StudentCourseGrade>, BaseRepository<StudentCourseGrade>>();
 
 builder.Services.AddTransient<IMarkdownService, MarkdownService>();
 builder.Services.AddTransient<ICourseService, CourseService>();
 builder.Services.AddTransient<ILessonService, LessonService>();
+builder.Services.AddTransient<IProgressService, ProgressService>();
 
 
 var connectionString = builder.Configuration.GetConnectionString("DataConnectionString")

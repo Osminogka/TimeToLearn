@@ -33,6 +33,25 @@ const markdownLabel = computed(() => {
     return raw ? 'Markdown' : 'Plain text';
 });
 
+const isCompleted = computed(() => {
+    const raw = props.lesson?.isCompletedByCurrentUser ?? props.lesson?.IsCompletedByCurrentUser;
+    return Boolean(raw);
+});
+
+const completionLabel = computed(() => {
+    const value = props.lesson?.completedAt ?? props.lesson?.CompletedAt;
+    if (!value) {
+        return isCompleted.value ? 'Completed' : 'Not completed yet';
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return isCompleted.value ? 'Completed' : 'Not completed yet';
+    }
+
+    return `Completed ${date.toLocaleDateString()}`;
+});
+
 function triggerOpen() {
     emit('open', props.lesson);
 }
@@ -50,10 +69,14 @@ function triggerDelete() {
     <article class="surface-card hover-lift lesson-card" :class="{ 'lesson-card--active': isActive }">
         <div class="lesson-card__top">
             <h3>{{ lesson.title || lesson.Title }}</h3>
-            <span class="pill">{{ orderLabel }}</span>
+            <div class="lesson-card__top-pills">
+                <span class="pill">{{ orderLabel }}</span>
+                <span v-if="isCompleted" class="pill pill--pink">Done</span>
+            </div>
         </div>
 
         <p class="section-copy lesson-card__meta">{{ markdownLabel }}</p>
+        <p class="section-copy lesson-card__meta">{{ completionLabel }}</p>
 
         <div class="lesson-card__actions">
             <button class="secondary-button lesson-card__button" type="button" :disabled="disableActions" @click="triggerOpen">
@@ -102,6 +125,11 @@ function triggerDelete() {
     align-items: flex-start;
     justify-content: space-between;
     gap: 0.65rem;
+}
+
+.lesson-card__top-pills {
+    display: inline-flex;
+    gap: 0.35rem;
 }
 
 .lesson-card__top h3 {

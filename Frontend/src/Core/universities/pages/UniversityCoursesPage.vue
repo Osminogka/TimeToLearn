@@ -29,6 +29,7 @@ const coursePage = ref(1);
 const hasNextCoursePage = ref(false);
 const isCourseFormOpen = ref(false);
 const editingCourseId = ref(0);
+const courseProgressMap = ref({});
 
 const universityName = computed(() => String(route.params.name || ''));
 const canManageCourses = computed(() => isMember.value && canManageUniversityContent(user.value.role));
@@ -71,6 +72,39 @@ function resetCourseForm() {
     formErrorMessage.value = '';
     editingCourseId.value = 0;
     isCourseFormOpen.value = false;
+}
+
+function getCourseId(course) {
+    return Number(course?.id || course?.Id || 0);
+}
+
+function normalizeProgress(payload) {
+    return payload?.value || payload?.Value || null;
+}
+
+async function loadCourseProgressForStudents() {
+    if (!canViewCourses.value || canManageCourses.value || !courses.value.length) {
+        courseProgressMap.value = {};
+        return;
+    }
+
+    const entries = await Promise.all(
+        courses.value.map(async (course) => {
+            const id = getCourseId(course);
+            if (!id) {
+                return null;
+            }
+
+            try {
+                const response = await courseApi.getCourseProgress(id);
+                return [id, normalizeProgress(response)];
+            } catch {
+                return [id, null];
+            }
+        })
+    );
+
+    courseProgressMap.value = Object.fromEntries(entries.filter(Boolean));
 }
 
 async function loadUniversity() {
@@ -123,10 +157,12 @@ async function loadCourses({ resetPage = false } = {}) {
         const values = normalizeItems(response);
         courses.value = values;
         hasNextCoursePage.value = values.length === COURSES_PAGE_SIZE;
+        await loadCourseProgressForStudents();
     } catch (error) {
         errorMessage.value = error?.message || 'Failed to load courses.';
         courses.value = [];
         hasNextCoursePage.value = false;
+        courseProgressMap.value = {};
     } finally {
         isLoadingCourses.value = false;
     }
@@ -361,6 +397,7 @@ onMounted(async () => {
                         v-for="course in courses"
                         :key="course.id || course.Id"
                         :course="course"
+                        :progress="courseProgressMap[Number(course.id || course.Id || 0)] || null"
                         :can-edit="canManageCourses"
                         :can-delete="canManageCourses"
                         :disable-actions="isLoadingCourses || isSubmittingCourse || isDeletingCourse"

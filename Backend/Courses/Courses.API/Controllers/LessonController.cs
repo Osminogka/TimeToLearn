@@ -10,11 +10,13 @@ namespace Courses.API.Controllers
     public class LessonController : BaseController
     {
         private readonly ILessonService _lessonService;
+        private readonly IProgressService _progressService;
         private readonly ILogger<LessonController> _logger;
 
-        public LessonController(ILessonService lessonService, ILogger<LessonController> logger)
+        public LessonController(ILessonService lessonService, IProgressService progressService, ILogger<LessonController> logger)
         {
             _lessonService = lessonService;
+            _progressService = progressService;
             _logger = logger;
         }
 
@@ -111,6 +113,40 @@ namespace Courses.API.Controllers
                 var result = await _lessonService.ReorderLessonsAsync(reorderDto, getUserEmail());
                 if (!result.Success)
                     return BadRequest(result.Message);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return HandleException(ex);
+            }
+        }
+
+        [HttpPost("{lessonId}/complete")]
+        public async Task<IActionResult> CompleteLessonAsync(long lessonId)
+        {
+            try
+            {
+                var result = await _progressService.CompleteLessonAsync(lessonId, getUserEmail());
+                if (!result.Success)
+                    return result.Message.Contains("doesn't exist") ? NotFound(result.Message) : BadRequest(result.Message);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return HandleException(ex);
+            }
+        }
+
+        [HttpGet("{lessonId}/progress")]
+        public async Task<IActionResult> GetLessonProgressAsync(long lessonId)
+        {
+            try
+            {
+                var result = await _progressService.GetLessonProgressAsync(lessonId, getUserEmail());
+                if (!result.Success)
+                    return result.Message.Contains("doesn't exist") ? NotFound(result.Message) : Forbid();
                 return Ok(result);
             }
             catch (Exception ex)

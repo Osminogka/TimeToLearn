@@ -32,7 +32,11 @@ const isLessonFormOpen = ref(false);
 const editingLessonId = ref(0);
 const selectedLessonId = ref(0);
 const selectedLesson = ref(null);
-const visitedLessonIds = ref([]);
+const isCompletingLesson = ref(false);
+const isSavingGrade = ref(false);
+const courseProgress = ref(null);
+const studentsProgress = ref([]);
+const gradeDraftByStudent = ref({});
 
 const universityName = computed(() => String(route.params.name || ''));
 const courseId = computed(() => Number(route.params.courseId || 0));
@@ -44,14 +48,35 @@ const joinVisible = computed(() => !isMember.value && !!university.value?.isOpen
 
 const hasLessons = computed(() => lessons.value.length > 0);
 const isEditingMode = computed(() => Boolean(editingLessonId.value));
-const progressCompletedCount = computed(() => visitedLessonIds.value.length);
-const progressTotalCount = computed(() => lessons.value.length);
+const progressCompletedCount = computed(() => Number(courseProgress.value?.completedLessons || courseProgress.value?.CompletedLessons || 0));
+const progressTotalCount = computed(() => Number(courseProgress.value?.totalLessons || courseProgress.value?.TotalLessons || lessons.value.length));
 const progressPercent = computed(() => {
     if (!progressTotalCount.value) {
         return 0;
     }
 
-    return Math.round((progressCompletedCount.value / progressTotalCount.value) * 100);
+    const rawPercent = Number(courseProgress.value?.percentComplete || courseProgress.value?.PercentComplete || 0);
+    return Number.isFinite(rawPercent)
+        ? Math.max(0, Math.min(100, rawPercent))
+        : Math.round((progressCompletedCount.value / progressTotalCount.value) * 100);
+});
+
+const studentMark = computed(() => {
+    const raw = Number(courseProgress.value?.mark || courseProgress.value?.Mark);
+    return Number.isInteger(raw) && raw >= 1 && raw <= 10 ? raw : null;
+});
+
+const selectedLessonCompleted = computed(() => {
+    const raw = selectedLessonResolved.value?.isCompletedByCurrentUser ?? selectedLessonResolved.value?.IsCompletedByCurrentUser;
+    return Boolean(raw);
+});
+
+const canCompleteSelectedLesson = computed(() => {
+    if (!selectedLessonResolved.value || canManage.value || isCompletingLesson.value) {
+        return false;
+    }
+
+    return !selectedLessonCompleted.value;
 });
 
 const editingLesson = computed(() => {
@@ -103,49 +128,65 @@ function getCourseTitle() {
     return course.value?.title || course.value?.Title || 'Course';
 }
 
-function getProgressStorageKey() {
-    return `ttl-progress:${String(user.value.email || '').toLowerCase()}:${universityName.value}:${courseId.value}`;
+function normalizeStudentsProgress(payload) {
+    return payload?.values || payload?.Values || payload?.items || payload?.Items || [];
 }
 
-function loadProgress() {
-    const key = getProgressStorageKey();
-    const raw = localStorage.getItem(key);
-    if (!raw) {
-        visitedLessonIds.value = [];
+function getStudentId(item) {
+    return Number(item?.studentId || item?.StudentId || 0);
+}
+
+function getDraftMark(student) {
+    const studentId = getStudentId(student);
+    const rawFromDraft = gradeDraftByStudent.value[studentId];
+    if (rawFromDraft !== undefined) {
+        return Number(rawFromDraft) || 1;
+    }
+
+    const existingMark = Number(student?.mark || student?.Mark);
+    return Number.isInteger(existingMark) && existingMark >= 1 && existingMark <= 10 ? existingMark : 1;
+}
+
+async function loadCourseProgress() {
+    if (!canView.value || !courseId.value || canManage.value) {
+        courseProgress.value = null;
         return;
     }
 
     try {
-        const parsed = JSON.parse(raw);
-        visitedLessonIds.value = Array.isArray(parsed)
-            ? parsed.map((item) => Number(item)).filter((item) => Number.isInteger(item) && item > 0)
-            : [];
+        const response = await courseApi.getCourseProgress(courseId.value);
+        courseProgress.value = normalizeValue(response);
     } catch {
-        visitedLessonIds.value = [];
+        courseProgress.value = null;
     }
 }
 
-function saveProgress() {
-    localStorage.setItem(getProgressStorageKey(), JSON.stringify(visitedLessonIds.value));
-}
-
-function syncProgressWithLessons() {
-    const lessonIds = new Set(lessons.value.map((item) => getLessonId(item)).filter((item) => item > 0));
-    visitedLessonIds.value = visitedLessonIds.value.filter((item) => lessonIds.has(item));
-    saveProgress();
-}
-
-function markLessonVisited(lessonId) {
-    if (!lessonId) {
+async function loadStudentsProgress() {
+    if (!canManage.value || !courseId.value) {
+        studentsProgress.value = [];
+        gradeDraftByStudent.value = {};
         return;
     }
 
-    if (visitedLessonIds.value.includes(lessonId)) {
-        return;
-    }
+    try {
+        const response = await courseApi.getCourseStudentsProgress(courseId.value);
+        const rows = normalizeStudentsProgress(response);
+        studentsProgress.value = rows;
 
-    visitedLessonIds.value = [...visitedLessonIds.value, lessonId];
-    saveProgress();
+        gradeDraftByStudent.value = rows.reduce((acc, item) => {
+            const studentId = getStudentId(item);
+            if (!studentId) {
+                return acc;
+            }
+
+            acc[studentId] = getDraftMark(item);
+            return acc;
+        }, {});
+    } catch (error) {
+        studentsProgress.value = [];
+        gradeDraftByStudent.value = {};
+        errorMessage.value = error?.message || 'Failed to load students progress.';
+    }
 }
 
 function clearMessages() {
@@ -244,7 +285,6 @@ async function loadLessons() {
     try {
         const response = await courseApi.getCourseLessons(courseId.value);
         lessons.value = normalizeItems(response);
-        syncProgressWithLessons();
 
         if (!lessons.value.length) {
             selectedLessonId.value = 0;
@@ -256,7 +296,11 @@ async function loadLessons() {
         if (!selectedLessonId.value || !lessons.value.some((item) => getLessonId(item) === selectedLessonId.value)) {
             selectedLessonId.value = firstId;
             await loadLessonDetails(firstId);
-            markLessonVisited(firstId);
+            return;
+        }
+
+        if (selectedLessonId.value) {
+            await loadLessonDetails(selectedLessonId.value);
         }
     } catch (error) {
         lessons.value = [];
@@ -288,6 +332,8 @@ async function refreshWorkspace() {
     if (canView.value) {
         await loadCourse();
         await loadLessons();
+        await loadCourseProgress();
+        await loadStudentsProgress();
     }
 }
 
@@ -305,6 +351,7 @@ async function joinUniversity() {
         isMember.value = true;
         await loadCourse();
         await loadLessons();
+        await loadCourseProgress();
     } catch (error) {
         errorMessage.value = error?.message || 'Could not process university access action.';
     } finally {
@@ -321,7 +368,59 @@ async function selectLesson(lesson) {
     selectedLessonId.value = lessonId;
     selectedLesson.value = null;
     await loadLessonDetails(lessonId);
-    markLessonVisited(lessonId);
+}
+
+async function completeSelectedLesson() {
+    if (!selectedLessonId.value || !canCompleteSelectedLesson.value) {
+        return;
+    }
+
+    clearMessages();
+    isCompletingLesson.value = true;
+
+    try {
+        const response = await courseApi.completeLesson(selectedLessonId.value);
+        actionMessage.value = readMessage(response) || 'Lesson marked as completed.';
+
+        await loadLessons();
+        await loadCourseProgress();
+    } catch (error) {
+        errorMessage.value = error?.message || 'Could not complete lesson.';
+    } finally {
+        isCompletingLesson.value = false;
+    }
+}
+
+async function saveStudentGrade(student) {
+    if (!canManage.value || isSavingGrade.value) {
+        return;
+    }
+
+    const studentId = getStudentId(student);
+    const mark = Number(gradeDraftByStudent.value[studentId]);
+
+    if (!studentId || !Number.isInteger(mark) || mark < 1 || mark > 10) {
+        errorMessage.value = 'Select a valid mark between 1 and 10.';
+        return;
+    }
+
+    clearMessages();
+    isSavingGrade.value = true;
+
+    try {
+        const response = await courseApi.assignCourseGrade({
+            courseId: courseId.value,
+            studentId,
+            mark,
+        });
+
+        actionMessage.value = readMessage(response) || 'Student mark saved successfully.';
+        await loadStudentsProgress();
+    } catch (error) {
+        errorMessage.value = error?.message || 'Could not save student mark.';
+    } finally {
+        isSavingGrade.value = false;
+    }
 }
 
 async function submitLessonForm(payload) {
@@ -349,6 +448,8 @@ async function submitLessonForm(payload) {
 
             actionMessage.value = readMessage(response) || 'Lesson updated successfully.';
             await loadLessons();
+            await loadCourseProgress();
+            await loadStudentsProgress();
             if (selectedLessonId.value) {
                 await loadLessonDetails(selectedLessonId.value);
             }
@@ -366,6 +467,8 @@ async function submitLessonForm(payload) {
 
             actionMessage.value = readMessage(response) || 'Lesson created successfully.';
             await loadLessons();
+            await loadCourseProgress();
+            await loadStudentsProgress();
 
             if (lessons.value.length) {
                 const newestLessonId = getLessonId(lessons.value[lessons.value.length - 1]);
@@ -403,6 +506,8 @@ async function removeLesson(lesson) {
 
         const deletedWasSelected = selectedLessonId.value === lessonId;
         await loadLessons();
+        await loadCourseProgress();
+        await loadStudentsProgress();
 
         if (deletedWasSelected && lessons.value.length) {
             const fallbackId = getLessonId(lessons.value[0]);
@@ -422,7 +527,6 @@ function openCoursesWorkspace() {
 
 onMounted(async () => {
     authUtils.getCurrentUser();
-    loadProgress();
     await refreshWorkspace();
 });
 </script>
@@ -491,7 +595,10 @@ onMounted(async () => {
                 <div class="progress-card__track" role="progressbar" :aria-valuenow="progressPercent" aria-valuemin="0" aria-valuemax="100">
                     <div class="progress-card__fill" :style="{ width: `${progressPercent}%` }" />
                 </div>
-                <p class="section-copy progress-card__percent">{{ progressPercent }}% complete</p>
+                <div class="progress-card__row">
+                    <p class="section-copy progress-card__percent">{{ progressPercent }}% complete</p>
+                    <span v-if="studentMark" class="pill pill--pink">Current mark {{ studentMark }}/10</span>
+                </div>
             </article>
 
             <LessonFormPanel
@@ -544,6 +651,20 @@ onMounted(async () => {
                     />
                     <p v-else class="lesson-view__content lesson-view__content--plain section-copy">{{ getPreviewContent(selectedLessonResolved) }}</p>
 
+                    <div v-if="!canManage" class="lesson-view__completion">
+                        <p class="section-copy">
+                            {{ selectedLessonCompleted ? 'You have completed this lesson.' : 'Mark this lesson as complete when you finish studying it.' }}
+                        </p>
+                        <button
+                            class="submit-button"
+                            type="button"
+                            :disabled="!canCompleteSelectedLesson"
+                            @click="completeSelectedLesson"
+                        >
+                            {{ isCompletingLesson ? 'Saving...' : selectedLessonCompleted ? 'Completed' : 'Mark as complete' }}
+                        </button>
+                    </div>
+
                     <div class="lesson-view__links" v-if="selectedLessonResources.length">
                         <a
                             v-for="resource in selectedLessonResources"
@@ -563,7 +684,54 @@ onMounted(async () => {
                 </article>
             </div>
 
-            <p v-else class="state-message">Membership is required to view lessons in this course.</p>
+            <article v-if="canManage" class="surface-card grading-panel">
+                <div class="grading-panel__head">
+                    <div>
+                        <p class="section-kicker">Teacher panel</p>
+                        <h3>Course grading</h3>
+                    </div>
+                    <p class="section-copy">Assign marks from 1 to 10 only for students with completed courses.</p>
+                </div>
+
+                <div v-if="studentsProgress.length" class="grading-table">
+                    <div class="grading-table__row grading-table__row--head">
+                        <p>Student</p>
+                        <p>Progress</p>
+                        <p>Mark</p>
+                        <p>Action</p>
+                    </div>
+
+                    <div v-for="student in studentsProgress" :key="getStudentId(student)" class="grading-table__row">
+                        <p class="grading-table__student">{{ student.studentName || student.StudentName || 'Unknown' }}</p>
+                        <p class="grading-table__progress">
+                            {{ student.completedLessons || student.CompletedLessons || 0 }} / {{ student.totalLessons || student.TotalLessons || 0 }}
+                            <span v-if="student.isCompleted || student.IsCompleted" class="pill pill--accent grading-table__done">Completed</span>
+                        </p>
+                        <div>
+                            <select
+                                class="input-field grading-table__mark"
+                                :value="gradeDraftByStudent[getStudentId(student)]"
+                                :disabled="isSavingGrade || !(student.isCompleted || student.IsCompleted)"
+                                @change="gradeDraftByStudent[getStudentId(student)] = Number($event.target.value)"
+                            >
+                                <option v-for="value in 10" :key="value" :value="value">{{ value }}</option>
+                            </select>
+                        </div>
+                        <button
+                            class="secondary-button"
+                            type="button"
+                            :disabled="isSavingGrade || !(student.isCompleted || student.IsCompleted)"
+                            @click="saveStudentGrade(student)"
+                        >
+                            {{ isSavingGrade ? 'Saving...' : 'Save mark' }}
+                        </button>
+                    </div>
+                </div>
+
+                <p v-else class="state-message">Student activity will appear here after lesson completion starts.</p>
+            </article>
+
+            <p v-if="!canView" class="state-message">Membership is required to view lessons in this course.</p>
         </section>
     </main>
 </template>
@@ -670,6 +838,13 @@ onMounted(async () => {
     margin: 0;
 }
 
+.progress-card__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+}
+
 .lesson-layout {
     display: grid;
     grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr);
@@ -722,13 +897,101 @@ onMounted(async () => {
     gap: 0.55rem;
 }
 
+.lesson-view__completion {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    padding: 0.7rem;
+    border-radius: var(--ttl-radius-md);
+    background: var(--ttl-bg-surface-soft);
+    border: 1px solid var(--ttl-border-subtle);
+}
+
+.lesson-view__completion .section-copy {
+    margin: 0;
+}
+
 .lesson-view__link {
     text-decoration: none;
     min-height: 2.25rem;
 }
 
+.grading-panel {
+    padding: 0.95rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.grading-panel__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.8rem;
+}
+
+.grading-panel__head h3 {
+    margin: 0;
+    color: var(--ttl-text-primary);
+    letter-spacing: -0.02em;
+}
+
+.grading-table {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.grading-table__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.1fr) minmax(0, 0.6fr) auto;
+    gap: 0.6rem;
+    align-items: center;
+    padding: 0.6rem;
+    border: 1px solid var(--ttl-border-subtle);
+    border-radius: var(--ttl-radius-sm);
+}
+
+.grading-table__row p {
+    margin: 0;
+}
+
+.grading-table__row--head {
+    background: var(--ttl-bg-muted);
+    color: var(--ttl-text-secondary);
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.grading-table__student {
+    color: var(--ttl-text-primary);
+    font-weight: 700;
+}
+
+.grading-table__progress {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--ttl-text-secondary);
+}
+
+.grading-table__done {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+
+.grading-table__mark {
+    min-height: 2.2rem;
+    width: 100%;
+}
+
 @media (max-width: 960px) {
     .lesson-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .grading-table__row {
         grid-template-columns: 1fr;
     }
 }
@@ -745,6 +1008,17 @@ onMounted(async () => {
 
     .workspace-content__actions .secondary-button,
     .workspace-content__actions .submit-button {
+        width: 100%;
+    }
+
+    .progress-card__row,
+    .lesson-view__completion,
+    .grading-panel__head {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .lesson-view__completion .submit-button {
         width: 100%;
     }
 }

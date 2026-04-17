@@ -10,11 +10,22 @@ namespace Courses.DL.Services
     public class CourseService : ICourseService
     {
         private readonly IBaseRepository<Course> _courseRepository;
+        private readonly IBaseRepository<Lesson> _lessonRepository;
+        private readonly IBaseRepository<StudentLessonCompletion> _completionRepository;
+        private readonly IBaseRepository<StudentCourseGrade> _gradeRepository;
         private readonly IUserInfoClient _grpcClient;
 
-        public CourseService(IBaseRepository<Course> courseRepository, IUserInfoClient grpcClient)
+        public CourseService(
+            IBaseRepository<Course> courseRepository,
+            IBaseRepository<Lesson> lessonRepository,
+            IBaseRepository<StudentLessonCompletion> completionRepository,
+            IBaseRepository<StudentCourseGrade> gradeRepository,
+            IUserInfoClient grpcClient)
         {
             _courseRepository = courseRepository;
+            _lessonRepository = lessonRepository;
+            _completionRepository = completionRepository;
+            _gradeRepository = gradeRepository;
             _grpcClient = grpcClient;
         }
 
@@ -40,6 +51,24 @@ namespace Courses.DL.Services
                 .Take(courseNumbers)
                 .ToListAsync();
 
+            var currentCourseIds = courses.Select(c => c.Id).ToList();
+            var lessonIdsByCourse = courses.ToDictionary(
+                c => c.Id,
+                c => (c.Lessons ?? new List<Lesson>()).Select(l => l.Id).ToList());
+
+            var allLessonIds = lessonIdsByCourse.Values.SelectMany(v => v).Distinct().ToList();
+            var completedLessonIds = await _completionRepository.Where(obj =>
+                    obj.StudentId == reply.UserId && allLessonIds.Contains(obj.LessonId))
+                .Select(obj => obj.LessonId)
+                .ToListAsync();
+
+            var grades = await _gradeRepository.Where(obj =>
+                    obj.StudentId == reply.UserId && currentCourseIds.Contains(obj.CourseId))
+                .ToListAsync();
+
+            var completedSet = completedLessonIds.ToHashSet();
+            var gradeMap = grades.ToDictionary(g => g.CourseId, g => g);
+
             var teacherIds = courses.Select(c => c.TeacherId).Distinct().ToList();
             var nameEntries = await Task.WhenAll(
                 teacherIds.Select(async id => (id, name: await _grpcClient.GetUserName(id))));
@@ -54,7 +83,15 @@ namespace Courses.DL.Services
                 TeacherName = teacherNames[course.TeacherId],
                 CreatedAt = course.CreatedAt,
                 UpdatedAt = course.UpdatedAt,
-                LessonsCount = course.Lessons?.Count ?? 0
+                LessonsCount = course.Lessons?.Count ?? 0,
+                CompletedLessonsCount = (course.Lessons ?? new List<Lesson>()).Count(l => completedSet.Contains(l.Id)),
+                CompletionPercent = (course.Lessons?.Count ?? 0) == 0
+                    ? 0
+                    : (int)Math.Round((double)(course.Lessons ?? new List<Lesson>()).Count(l => completedSet.Contains(l.Id)) / (course.Lessons?.Count ?? 1) * 100),
+                IsCompletedByCurrentUser = (course.Lessons?.Count ?? 0) > 0
+                    && (course.Lessons ?? new List<Lesson>()).All(l => completedSet.Contains(l.Id)),
+                CurrentUserMark = gradeMap.TryGetValue(course.Id, out var currentGrade) ? currentGrade.Mark : null,
+                CurrentUserMarkGivenAt = gradeMap.TryGetValue(course.Id, out var gradeDate) ? gradeDate.GivenAt : null
             }).ToList();
 
             response.Success = true;
@@ -92,6 +129,22 @@ namespace Courses.DL.Services
 
             var teacherName = await _grpcClient.GetUserName(course.TeacherId);
 
+            var lessonIds = await _lessonRepository.Where(obj => obj.CourseId == courseId)
+                .Select(obj => obj.Id)
+                .ToListAsync();
+
+            var completedLessonCount = await _completionRepository.Where(obj =>
+                    obj.StudentId == reply.UserId && lessonIds.Contains(obj.LessonId))
+                .Select(obj => obj.LessonId)
+                .Distinct()
+                .CountAsync();
+
+            var grade = await _gradeRepository.SingleOrDefaultAsync(obj =>
+                obj.CourseId == courseId && obj.StudentId == reply.UserId);
+
+            var lessonsCount = course.Lessons?.Count ?? 0;
+            var completionPercent = lessonsCount == 0 ? 0 : (int)Math.Round((double)completedLessonCount / lessonsCount * 100);
+
             response.Success = true;
             response.Message = "Course retrieved successfully";
             response.Value = new ReadCourseDto
@@ -103,7 +156,12 @@ namespace Courses.DL.Services
                 TeacherName = teacherName ?? "Unknown",
                 CreatedAt = course.CreatedAt,
                 UpdatedAt = course.UpdatedAt,
-                LessonsCount = course.Lessons?.Count ?? 0
+                LessonsCount = lessonsCount,
+                CompletedLessonsCount = completedLessonCount,
+                CompletionPercent = completionPercent,
+                IsCompletedByCurrentUser = lessonsCount > 0 && completedLessonCount >= lessonsCount,
+                CurrentUserMark = grade?.Mark,
+                CurrentUserMarkGivenAt = grade?.GivenAt
             };
 
             return response;

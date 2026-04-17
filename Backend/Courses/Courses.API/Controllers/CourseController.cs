@@ -10,11 +10,13 @@ namespace Courses.API.Controllers
     public class CourseController : BaseController
     {
         private readonly ICourseService _courseService;
+        private readonly IProgressService _progressService;
         private readonly ILogger<CourseController> _logger;
 
-        public CourseController(ICourseService courseService, ILogger<CourseController> logger)
+        public CourseController(ICourseService courseService, IProgressService progressService, ILogger<CourseController> logger)
         {
             _courseService = courseService;
+            _progressService = progressService;
             _logger = logger;
         }
 
@@ -92,6 +94,57 @@ namespace Courses.API.Controllers
             try
             {
                 var result = await _courseService.DeleteCourseAsync(courseId, getUserEmail());
+                if (!result.Success)
+                    return BadRequest(result.Message);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return HandleException(ex);
+            }
+        }
+
+        [HttpGet("{courseId}/progress")]
+        public async Task<IActionResult> GetCourseProgressAsync(long courseId)
+        {
+            try
+            {
+                var result = await _progressService.GetCourseProgressAsync(courseId, getUserEmail());
+                if (!result.Success)
+                    return result.Message.Contains("doesn't exist") ? NotFound(result.Message) : Forbid();
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return HandleException(ex);
+            }
+        }
+
+        [HttpGet("{courseId}/student-progress")]
+        public async Task<IActionResult> GetCourseStudentsProgressAsync(long courseId)
+        {
+            try
+            {
+                var result = await _progressService.GetCourseStudentsProgressAsync(courseId, getUserEmail());
+                if (!result.Success)
+                    return result.Message.Contains("doesn't exist") ? NotFound(result.Message) : Forbid();
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return HandleException(ex);
+            }
+        }
+
+        [HttpPost("{courseId}/grade-student")]
+        public async Task<IActionResult> AssignCourseGradeAsync(long courseId, AssignCourseGradeDto gradeDto)
+        {
+            try
+            {
+                var result = await _progressService.AssignCourseGradeAsync(courseId, gradeDto, getUserEmail());
                 if (!result.Success)
                     return BadRequest(result.Message);
                 return Ok(result);

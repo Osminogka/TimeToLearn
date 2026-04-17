@@ -12,6 +12,7 @@ namespace Courses.DL.Services
         private readonly IBaseRepository<Lesson> _lessonRepository;
         private readonly IBaseRepository<LessonResource> _lessonResourceRepository;
         private readonly IBaseRepository<Course> _courseRepository;
+        private readonly IBaseRepository<StudentLessonCompletion> _completionRepository;
         private readonly IUserInfoClient _grpcClient;
         private readonly IMarkdownService _markdownService;
 
@@ -19,12 +20,14 @@ namespace Courses.DL.Services
             IBaseRepository<Lesson> lessonRepository,
             IBaseRepository<LessonResource> lessonResourceRepository,
             IBaseRepository<Course> courseRepository,
+            IBaseRepository<StudentLessonCompletion> completionRepository,
             IUserInfoClient grpcClient,
             IMarkdownService markdownService)
         {
             _lessonRepository = lessonRepository;
             _lessonResourceRepository = lessonResourceRepository;
             _courseRepository = courseRepository;
+            _completionRepository = completionRepository;
             _grpcClient = grpcClient;
             _markdownService = markdownService;
         }
@@ -159,6 +162,12 @@ namespace Courses.DL.Services
                 .OrderBy(obj => obj.OrderNumber)
                 .ToListAsync();
 
+            var lessonIds = lessons.Select(obj => obj.Id).ToList();
+            var completions = await _completionRepository.Where(obj =>
+                    obj.StudentId == reply.UserId && lessonIds.Contains(obj.LessonId))
+                .ToListAsync();
+            var completionMap = completions.ToDictionary(obj => obj.LessonId, obj => obj.CompletedAt);
+
             var lessonDtos = lessons.Select(lesson => new ReadLessonDto
             {
                 Id = lesson.Id,
@@ -171,7 +180,9 @@ namespace Courses.DL.Services
                 Resources = MapResourcesForRead(lesson),
                 OrderNumber = lesson.OrderNumber,
                 CreatedAt = lesson.CreatedAt,
-                UpdatedAt = lesson.UpdatedAt
+                UpdatedAt = lesson.UpdatedAt,
+                IsCompletedByCurrentUser = completionMap.ContainsKey(lesson.Id),
+                CompletedAt = completionMap.TryGetValue(lesson.Id, out var completedAt) ? completedAt : null
             }).ToList();
 
 
@@ -209,6 +220,9 @@ namespace Courses.DL.Services
             if (reply == null || !reply.IsAllowed)
                 return response;
 
+            var completion = await _completionRepository.SingleOrDefaultAsync(obj =>
+                obj.StudentId == reply.UserId && obj.LessonId == lessonId);
+
             response.Success = true;
             response.Message = "Lesson retrieved successfully";
             response.Value = new ReadLessonDto
@@ -224,7 +238,9 @@ namespace Courses.DL.Services
                 Resources = MapResourcesForRead(lesson),
                 OrderNumber = lesson.OrderNumber,
                 CreatedAt = lesson.CreatedAt,
-                UpdatedAt = lesson.UpdatedAt
+                UpdatedAt = lesson.UpdatedAt,
+                IsCompletedByCurrentUser = completion != null,
+                CompletedAt = completion?.CompletedAt
             };
 
             return response;

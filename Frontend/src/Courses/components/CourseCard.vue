@@ -18,6 +18,10 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    progress: {
+        type: Object,
+        default: null,
+    },
 });
 
 const emit = defineEmits(['edit', 'delete', 'open-lessons']);
@@ -56,6 +60,36 @@ const lessonsCount = computed(() => {
     return Number.isFinite(value) ? value : 0;
 });
 
+const completedLessonsCount = computed(() => {
+    const raw = props.progress?.completedLessons
+        ?? props.progress?.CompletedLessons
+        ?? props.course?.completedLessonsCount
+        ?? props.course?.CompletedLessonsCount
+        ?? 0;
+    const value = Number(raw);
+    return Number.isFinite(value) ? value : 0;
+});
+
+const completionPercent = computed(() => {
+    const raw = props.progress?.percentComplete
+        ?? props.progress?.PercentComplete
+        ?? props.course?.completionPercent
+        ?? props.course?.CompletionPercent
+        ?? 0;
+    const value = Number(raw);
+    return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
+});
+
+const markLabel = computed(() => {
+    const raw = props.progress?.mark ?? props.progress?.Mark ?? props.course?.currentUserMark ?? props.course?.CurrentUserMark;
+    const value = Number(raw);
+    if (!Number.isInteger(value) || value < 1 || value > 10) {
+        return '';
+    }
+
+    return `${value}/10`;
+});
+
 function triggerEdit() {
     emit('edit', props.course);
 }
@@ -86,6 +120,17 @@ function triggerDelete() {
         <div class="course-card__meta-grid">
             <p class="section-kicker">Timeline</p>
             <p class="course-card__meta-value">{{ createdLabel }} · {{ updatedLabel }}</p>
+        </div>
+
+        <div v-if="progress" class="course-card__meta-grid">
+            <div class="course-card__progress-head">
+                <p class="section-kicker">Your progress</p>
+                <span v-if="markLabel" class="pill pill--pink">Mark {{ markLabel }}</span>
+            </div>
+            <p class="course-card__meta-value">{{ completedLessonsCount }} / {{ lessonsCount }} lessons completed</p>
+            <div class="course-card__track" role="progressbar" :aria-valuenow="completionPercent" aria-valuemin="0" aria-valuemax="100">
+                <div class="course-card__fill" :style="{ width: `${completionPercent}%` }" />
+            </div>
         </div>
 
         <div class="course-card__actions">
@@ -148,11 +193,32 @@ function triggerDelete() {
     gap: 0.3rem;
 }
 
+.course-card__progress-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+}
+
 .course-card__meta-value {
     margin: 0;
     color: var(--ttl-text-secondary);
     font-size: 0.88rem;
     line-height: 1.5;
+}
+
+.course-card__track {
+    height: 0.56rem;
+    border-radius: 0.6rem;
+    background: rgba(143, 44, 226, 0.12);
+    overflow: hidden;
+}
+
+.course-card__fill {
+    height: 100%;
+    border-radius: 0.6rem;
+    background: linear-gradient(90deg, rgba(143, 44, 226, 0.85), rgba(255, 95, 162, 0.85));
+    transition: width var(--ttl-transition-base);
 }
 
 .course-card__actions {
