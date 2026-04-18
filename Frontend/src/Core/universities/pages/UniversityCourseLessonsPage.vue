@@ -37,6 +37,7 @@ const isSavingGrade = ref(false);
 const courseProgress = ref(null);
 const studentsProgress = ref([]);
 const gradeDraftByStudent = ref({});
+const selectedTeacherStudentId = ref(0);
 
 const isLoadingLessonQuiz = ref(false);
 const isLoadingCourseQuiz = ref(false);
@@ -107,6 +108,42 @@ const myCourseQuizCorrectCount = computed(() => myCourseQuizAnswers.value.filter
 const myLessonQuizScoreLabel = computed(() => `${myLessonQuizCorrectCount.value}/${myLessonQuizAnswers.value.length}`);
 const myCourseQuizScoreLabel = computed(() => `${myCourseQuizCorrectCount.value}/${myCourseQuizAnswers.value.length}`);
 
+const selectedTeacherStudent = computed(() => {
+    if (!canManage.value || !studentsProgress.value.length) {
+        return null;
+    }
+
+    const selected = studentsProgress.value.find((item) => getStudentId(item) === selectedTeacherStudentId.value);
+    return selected || studentsProgress.value[0] || null;
+});
+
+const selectedTeacherStudentLessonQuizAnswers = computed(() => {
+    const studentId = getStudentId(selectedTeacherStudent.value);
+    if (!studentId) {
+        return [];
+    }
+
+    return teacherLessonQuizAnswers.value.filter((item) => Number(item?.studentId || item?.StudentId || 0) === studentId);
+});
+
+const selectedTeacherStudentCourseQuizAnswers = computed(() => {
+    const studentId = getStudentId(selectedTeacherStudent.value);
+    if (!studentId) {
+        return [];
+    }
+
+    return teacherCourseQuizAnswers.value.filter((item) => Number(item?.studentId || item?.StudentId || 0) === studentId);
+});
+
+const selectedTeacherStudentCanBeMarked = computed(() => {
+    const student = selectedTeacherStudent.value;
+    if (!student) {
+        return false;
+    }
+
+    return getStudentCanBeMarked(student);
+});
+
 const selectedLessonCompleted = computed(() => {
     const raw = selectedLessonResolved.value?.isCompletedByCurrentUser ?? selectedLessonResolved.value?.IsCompletedByCurrentUser;
     return Boolean(raw);
@@ -175,6 +212,23 @@ function normalizeStudentsProgress(payload) {
 
 function getStudentId(item) {
     return Number(item?.studentId || item?.StudentId || 0);
+}
+
+function getStudentLessonsCompleted(item) {
+    return Boolean(item?.isCompleted ?? item?.IsCompleted);
+}
+
+function getStudentQuizzesCompleted(item) {
+    return Boolean(item?.areAllQuizzesCompleted ?? item?.AreAllQuizzesCompleted);
+}
+
+function getStudentCanBeMarked(item) {
+    const explicit = item?.canBeMarked ?? item?.CanBeMarked;
+    if (explicit !== undefined && explicit !== null) {
+        return Boolean(explicit);
+    }
+
+    return getStudentLessonsCompleted(item) && getStudentQuizzesCompleted(item);
 }
 
 function getDraftMark(student) {
@@ -535,6 +589,11 @@ async function loadStudentsProgress() {
         const rows = normalizeStudentsProgress(response);
         studentsProgress.value = rows;
 
+        const hasSelected = rows.some((item) => getStudentId(item) === selectedTeacherStudentId.value);
+        selectedTeacherStudentId.value = hasSelected
+            ? selectedTeacherStudentId.value
+            : getStudentId(rows[0]);
+
         gradeDraftByStudent.value = rows.reduce((acc, item) => {
             const studentId = getStudentId(item);
             if (!studentId) {
@@ -546,6 +605,7 @@ async function loadStudentsProgress() {
         }, {});
     } catch (error) {
         studentsProgress.value = [];
+        selectedTeacherStudentId.value = 0;
         gradeDraftByStudent.value = {};
         errorMessage.value = error?.message || 'Failed to load students progress.';
     }
@@ -757,12 +817,23 @@ async function completeSelectedLesson() {
     }
 }
 
-async function saveStudentGrade(student) {
+async function saveStudentGrade(student = null) {
     if (!canManage.value || isSavingGrade.value) {
         return;
     }
 
-    const studentId = getStudentId(student);
+    const targetStudent = student || selectedTeacherStudent.value;
+    if (!targetStudent) {
+        errorMessage.value = 'Select a student first.';
+        return;
+    }
+
+    if (!getStudentCanBeMarked(targetStudent)) {
+        errorMessage.value = 'Mark can be assigned only after the student completes all lessons and quizzes.';
+        return;
+    }
+
+    const studentId = getStudentId(targetStudent);
     const mark = Number(gradeDraftByStudent.value[studentId]);
 
     if (!studentId || !Number.isInteger(mark) || mark < 1 || mark > 10) {
@@ -1034,7 +1105,7 @@ onMounted(async () => {
                         </button>
                     </div>
 
-                    <section class="quiz-panel surface-card">
+                    <section v-if="canManage || hasLessonQuizQuestions" class="quiz-panel surface-card">
                         <div class="quiz-panel__head">
                             <div>
                                 <p class="section-kicker">Lesson mini quiz</p>
@@ -1106,7 +1177,7 @@ onMounted(async () => {
                             </article>
                         </div>
 
-                        <p v-else-if="!isLoadingLessonQuiz" class="state-message">No lesson mini quiz questions published yet.</p>
+                        <p v-else-if="!isLoadingLessonQuiz && canManage" class="state-message">No lesson mini quiz questions published yet.</p>
 
                         <div v-if="!canManage && myLessonQuizAnswers.length" class="quiz-score-card">
                             <p class="section-kicker">Your lesson mini quiz score</p>
@@ -1222,80 +1293,103 @@ onMounted(async () => {
                     <p class="section-copy">Assign marks from 1 to 10 only for students with completed courses.</p>
                 </div>
 
-                <div v-if="studentsProgress.length" class="grading-table">
-                    <div class="grading-table__row grading-table__row--head">
-                        <p>Student</p>
-                        <p>Progress</p>
-                        <p>Mark</p>
-                        <p>Action</p>
-                    </div>
-
-                    <div v-for="student in studentsProgress" :key="getStudentId(student)" class="grading-table__row">
-                        <p class="grading-table__student">{{ student.studentName || student.StudentName || 'Unknown' }}</p>
-                        <p class="grading-table__progress">
-                            {{ student.completedLessons || student.CompletedLessons || 0 }} / {{ student.totalLessons || student.TotalLessons || 0 }}
-                            <span v-if="student.isCompleted || student.IsCompleted" class="pill pill--accent grading-table__done">Completed</span>
-                        </p>
-                        <div>
-                            <select
-                                class="input-field grading-table__mark"
-                                :value="gradeDraftByStudent[getStudentId(student)]"
-                                :disabled="isSavingGrade || !(student.isCompleted || student.IsCompleted)"
-                                @change="gradeDraftByStudent[getStudentId(student)] = Number($event.target.value)"
-                            >
-                                <option v-for="value in 10" :key="value" :value="value">{{ value }}</option>
-                            </select>
-                        </div>
+                <div v-if="studentsProgress.length" class="teacher-panel">
+                    <aside class="teacher-student-list">
+                        <p class="section-kicker">Students</p>
                         <button
-                            class="secondary-button"
+                            v-for="student in studentsProgress"
+                            :key="getStudentId(student)"
+                            class="teacher-student-list__item"
+                            :class="{ 'teacher-student-list__item--active': selectedTeacherStudentId === getStudentId(student) }"
                             type="button"
-                            :disabled="isSavingGrade || !(student.isCompleted || student.IsCompleted)"
-                            @click="saveStudentGrade(student)"
+                            @click="selectedTeacherStudentId = getStudentId(student)"
                         >
-                            {{ isSavingGrade ? 'Saving...' : 'Save mark' }}
+                            <p class="teacher-student-list__name">{{ student.studentName || student.StudentName || 'Unknown' }}</p>
+                            <p class="teacher-student-list__meta">
+                                Lessons: {{ student.completedLessons || student.CompletedLessons || 0 }} / {{ student.totalLessons || student.TotalLessons || 0 }}
+                            </p>
+                            <p class="teacher-student-list__meta">
+                                Quizzes: {{ student.completedQuizQuestions || student.CompletedQuizQuestions || 0 }} / {{ student.totalQuizQuestions || student.TotalQuizQuestions || 0 }}
+                            </p>
                         </button>
-                    </div>
+                    </aside>
+
+                    <section v-if="selectedTeacherStudent" class="teacher-student-details">
+                        <div class="teacher-student-details__head">
+                            <h4>{{ selectedTeacherStudent.studentName || selectedTeacherStudent.StudentName || 'Unknown' }}</h4>
+                            <div class="teacher-student-details__badges">
+                                <span class="pill" :class="getStudentLessonsCompleted(selectedTeacherStudent) ? 'pill--accent' : 'pill--pink'">
+                                    {{ getStudentLessonsCompleted(selectedTeacherStudent) ? 'Lessons completed' : 'Lessons incomplete' }}
+                                </span>
+                                <span class="pill" :class="getStudentQuizzesCompleted(selectedTeacherStudent) ? 'pill--accent' : 'pill--pink'">
+                                    {{ getStudentQuizzesCompleted(selectedTeacherStudent) ? 'Quizzes completed' : 'Quizzes incomplete' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="teacher-student-details__marking surface-card">
+                            <p class="section-kicker">Marking</p>
+                            <p class="section-copy">Marking is available only after all lessons and all quizzes are completed.</p>
+                            <div class="teacher-student-details__marking-row">
+                                <select
+                                    class="input-field grading-table__mark"
+                                    :value="gradeDraftByStudent[getStudentId(selectedTeacherStudent)]"
+                                    :disabled="isSavingGrade || !selectedTeacherStudentCanBeMarked"
+                                    @change="gradeDraftByStudent[getStudentId(selectedTeacherStudent)] = Number($event.target.value)"
+                                >
+                                    <option v-for="value in 10" :key="value" :value="value">{{ value }}</option>
+                                </select>
+                                <button
+                                    class="secondary-button"
+                                    type="button"
+                                    :disabled="isSavingGrade || !selectedTeacherStudentCanBeMarked"
+                                    @click="saveStudentGrade(selectedTeacherStudent)"
+                                >
+                                    {{ isSavingGrade ? 'Saving...' : 'Save mark' }}
+                                </button>
+                            </div>
+                            <p v-if="!selectedTeacherStudentCanBeMarked" class="state-message">Student must complete all lessons and quizzes before marking.</p>
+                        </div>
+
+                        <div class="quiz-review">
+                            <p class="section-kicker">Quiz answers review</p>
+
+                            <div class="quiz-review__tables">
+                                <div class="quiz-review__table">
+                                    <p class="quiz-review__title">Selected lesson mini quiz answers</p>
+                                    <div v-if="selectedTeacherStudentLessonQuizAnswers.length" class="quiz-review__rows">
+                                        <div v-for="(answer, index) in selectedTeacherStudentLessonQuizAnswers" :key="`lesson-answer-${index}`" class="quiz-review__row">
+                                            <p>{{ answer.questionText || answer.QuestionText }}</p>
+                                            <p>Selected: {{ answer.selectedOptionText || answer.SelectedOptionText }}</p>
+                                            <p>Correct: {{ answer.correctOptionText || answer.CorrectOptionText }}</p>
+                                            <span class="pill" :class="(answer.isCorrect || answer.IsCorrect) ? 'pill--accent' : 'pill--pink'">
+                                                {{ (answer.isCorrect || answer.IsCorrect) ? 'Correct' : 'Incorrect' }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <p v-else class="state-message">No lesson mini quiz answers for this student yet.</p>
+                                </div>
+
+                                <div class="quiz-review__table">
+                                    <p class="quiz-review__title">Course quiz answers</p>
+                                    <div v-if="selectedTeacherStudentCourseQuizAnswers.length" class="quiz-review__rows">
+                                        <div v-for="(answer, index) in selectedTeacherStudentCourseQuizAnswers" :key="`course-answer-${index}`" class="quiz-review__row">
+                                            <p>{{ answer.questionText || answer.QuestionText }}</p>
+                                            <p>Selected: {{ answer.selectedOptionText || answer.SelectedOptionText }}</p>
+                                            <p>Correct: {{ answer.correctOptionText || answer.CorrectOptionText }}</p>
+                                            <span class="pill" :class="(answer.isCorrect || answer.IsCorrect) ? 'pill--accent' : 'pill--pink'">
+                                                {{ (answer.isCorrect || answer.IsCorrect) ? 'Correct' : 'Incorrect' }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <p v-else class="state-message">No course quiz answers for this student yet.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
                 </div>
 
                 <p v-else class="state-message">Student activity will appear here after lesson completion starts.</p>
-
-                <div class="quiz-review">
-                    <p class="section-kicker">Quiz answers review</p>
-
-                    <div class="quiz-review__tables">
-                        <div class="quiz-review__table">
-                            <p class="quiz-review__title">Selected lesson mini quiz answers</p>
-                            <div v-if="teacherLessonQuizAnswers.length" class="quiz-review__rows">
-                                <div v-for="(answer, index) in teacherLessonQuizAnswers" :key="`lesson-answer-${index}`" class="quiz-review__row">
-                                    <p><strong>{{ answer.studentName || answer.StudentName || 'Unknown' }}</strong></p>
-                                    <p>{{ answer.questionText || answer.QuestionText }}</p>
-                                    <p>Selected: {{ answer.selectedOptionText || answer.SelectedOptionText }}</p>
-                                    <p>Correct: {{ answer.correctOptionText || answer.CorrectOptionText }}</p>
-                                    <span class="pill" :class="(answer.isCorrect || answer.IsCorrect) ? 'pill--accent' : 'pill--pink'">
-                                        {{ (answer.isCorrect || answer.IsCorrect) ? 'Correct' : 'Incorrect' }}
-                                    </span>
-                                </div>
-                            </div>
-                            <p v-else class="state-message">No lesson mini quiz answers yet.</p>
-                        </div>
-
-                        <div class="quiz-review__table">
-                            <p class="quiz-review__title">Course quiz answers</p>
-                            <div v-if="teacherCourseQuizAnswers.length" class="quiz-review__rows">
-                                <div v-for="(answer, index) in teacherCourseQuizAnswers" :key="`course-answer-${index}`" class="quiz-review__row">
-                                    <p><strong>{{ answer.studentName || answer.StudentName || 'Unknown' }}</strong></p>
-                                    <p>{{ answer.questionText || answer.QuestionText }}</p>
-                                    <p>Selected: {{ answer.selectedOptionText || answer.SelectedOptionText }}</p>
-                                    <p>Correct: {{ answer.correctOptionText || answer.CorrectOptionText }}</p>
-                                    <span class="pill" :class="(answer.isCorrect || answer.IsCorrect) ? 'pill--accent' : 'pill--pink'">
-                                        {{ (answer.isCorrect || answer.IsCorrect) ? 'Correct' : 'Incorrect' }}
-                                    </span>
-                                </div>
-                            </div>
-                            <p v-else class="state-message">No course quiz answers yet.</p>
-                        </div>
-                    </div>
-                </div>
             </article>
 
             <p v-if="!canView" class="state-message">Membership is required to view lessons in this course.</p>
@@ -1665,6 +1759,79 @@ onMounted(async () => {
     width: 100%;
 }
 
+.teacher-panel {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.4fr);
+    gap: 0.7rem;
+}
+
+.teacher-student-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding: 0.55rem;
+    border: 1px solid var(--ttl-border-subtle);
+    border-radius: var(--ttl-radius-sm);
+}
+
+.teacher-student-list__item {
+    text-align: left;
+    padding: 0.55rem;
+    border: 1px solid var(--ttl-border-subtle);
+    border-radius: var(--ttl-radius-sm);
+    background: var(--ttl-bg-surface-soft);
+    cursor: pointer;
+}
+
+.teacher-student-list__item--active {
+    border-color: rgba(143, 44, 226, 0.35);
+    background: rgba(143, 44, 226, 0.08);
+}
+
+.teacher-student-list__name {
+    margin: 0;
+    color: var(--ttl-text-primary);
+    font-weight: 700;
+}
+
+.teacher-student-list__meta {
+    margin: 0.2rem 0 0;
+    color: var(--ttl-text-secondary);
+    font-size: 0.82rem;
+}
+
+.teacher-student-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.teacher-student-details__head h4 {
+    margin: 0;
+    color: var(--ttl-text-primary);
+}
+
+.teacher-student-details__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: 0.4rem;
+}
+
+.teacher-student-details__marking {
+    padding: 0.65rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.teacher-student-details__marking-row {
+    display: grid;
+    grid-template-columns: minmax(0, 130px) auto;
+    gap: 0.55rem;
+    align-items: center;
+}
+
 .quiz-review {
     margin-top: 0.35rem;
     padding-top: 0.35rem;
@@ -1721,6 +1888,10 @@ onMounted(async () => {
         grid-template-columns: 1fr;
     }
 
+    .teacher-panel {
+        grid-template-columns: 1fr;
+    }
+
     .quiz-review__tables {
         grid-template-columns: 1fr;
     }
@@ -1754,6 +1925,10 @@ onMounted(async () => {
     }
 
     .quiz-creator__option-row {
+        grid-template-columns: 1fr;
+    }
+
+    .teacher-student-details__marking-row {
         grid-template-columns: 1fr;
     }
 }

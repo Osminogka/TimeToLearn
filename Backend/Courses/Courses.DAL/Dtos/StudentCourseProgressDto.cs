@@ -14,6 +14,14 @@ namespace Courses.DAL.Dtos
 
         public bool IsCompleted { get; set; }
 
+        public int TotalQuizQuestions { get; set; }
+
+        public int CompletedQuizQuestions { get; set; }
+
+        public bool AreAllQuizzesCompleted { get; set; }
+
+        public bool CanBeMarked { get; set; }
+
         public int? Mark { get; set; }
 
         public DateTime? MarkGivenAt { get; set; }

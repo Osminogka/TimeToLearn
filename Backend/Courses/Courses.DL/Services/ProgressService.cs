@@ -13,6 +13,8 @@ namespace Courses.DL.Services
         private readonly IBaseRepository<Lesson> _lessonRepository;
         private readonly IBaseRepository<StudentLessonCompletion> _completionRepository;
         private readonly IBaseRepository<StudentCourseGrade> _gradeRepository;
+        private readonly IBaseRepository<QuizQuestion> _quizQuestionRepository;
+        private readonly IBaseRepository<QuizAnswer> _quizAnswerRepository;
         private readonly IUserInfoClient _grpcClient;
 
         public ProgressService(
@@ -20,12 +22,16 @@ namespace Courses.DL.Services
             IBaseRepository<Lesson> lessonRepository,
             IBaseRepository<StudentLessonCompletion> completionRepository,
             IBaseRepository<StudentCourseGrade> gradeRepository,
+            IBaseRepository<QuizQuestion> quizQuestionRepository,
+            IBaseRepository<QuizAnswer> quizAnswerRepository,
             IUserInfoClient grpcClient)
         {
             _courseRepository = courseRepository;
             _lessonRepository = lessonRepository;
             _completionRepository = completionRepository;
             _gradeRepository = gradeRepository;
+            _quizQuestionRepository = quizQuestionRepository;
+            _quizAnswerRepository = quizAnswerRepository;
             _grpcClient = grpcClient;
         }
 
@@ -223,13 +229,25 @@ namespace Courses.DL.Services
 
             var totalLessons = lessonIds.Count;
 
+            var quizQuestionIds = await _quizQuestionRepository.Where(obj => obj.CourseId == courseId)
+                .Select(obj => obj.Id)
+                .ToListAsync();
+
+            var totalQuizQuestions = quizQuestionIds.Count;
+
             var completions = await _completionRepository.Where(obj => lessonIds.Contains(obj.LessonId))
                 .ToListAsync();
+
+            var quizAnswers = totalQuizQuestions == 0
+                ? new List<QuizAnswer>()
+                : await _quizAnswerRepository.Where(obj => quizQuestionIds.Contains(obj.QuizQuestionId))
+                    .ToListAsync();
 
             var grades = await _gradeRepository.Where(obj => obj.CourseId == courseId)
                 .ToListAsync();
 
             var studentIds = completions.Select(obj => obj.StudentId)
+                .Concat(quizAnswers.Select(obj => obj.StudentId))
                 .Concat(grades.Select(obj => obj.StudentId))
                 .Distinct()
                 .ToList();
@@ -244,9 +262,17 @@ namespace Courses.DL.Services
                     .Distinct()
                     .Count();
 
+                var studentCompletedQuizzes = quizAnswers
+                    .Where(obj => obj.StudentId == studentId)
+                    .Select(obj => obj.QuizQuestionId)
+                    .Distinct()
+                    .Count();
+
                 var percent = totalLessons == 0 ? 0 : (int)Math.Round((double)studentCompletedLessons / totalLessons * 100);
                 var mark = grades.FirstOrDefault(obj => obj.StudentId == studentId);
                 var studentName = await _grpcClient.GetUserName(studentId) ?? "Unknown";
+                var allLessonsCompleted = totalLessons > 0 && studentCompletedLessons >= totalLessons;
+                var allQuizzesCompleted = totalQuizQuestions == 0 || studentCompletedQuizzes >= totalQuizQuestions;
 
                 progressRows.Add(new StudentCourseProgressDto
                 {
@@ -255,7 +281,11 @@ namespace Courses.DL.Services
                     TotalLessons = totalLessons,
                     CompletedLessons = studentCompletedLessons,
                     PercentComplete = percent,
-                    IsCompleted = totalLessons > 0 && studentCompletedLessons >= totalLessons,
+                    IsCompleted = allLessonsCompleted,
+                    TotalQuizQuestions = totalQuizQuestions,
+                    CompletedQuizQuestions = studentCompletedQuizzes,
+                    AreAllQuizzesCompleted = allQuizzesCompleted,
+                    CanBeMarked = allLessonsCompleted && allQuizzesCompleted,
                     Mark = mark?.Mark,
                     MarkGivenAt = mark?.GivenAt
                 });
@@ -326,6 +356,25 @@ namespace Courses.DL.Services
             {
                 response.Message = "Student has not completed all lessons in this course";
                 return response;
+            }
+
+            var quizQuestionIds = await _quizQuestionRepository.Where(obj => obj.CourseId == courseId)
+                .Select(obj => obj.Id)
+                .ToListAsync();
+
+            if (quizQuestionIds.Any())
+            {
+                var completedQuizQuestions = await _quizAnswerRepository.Where(obj =>
+                        obj.StudentId == gradeDto.StudentId && quizQuestionIds.Contains(obj.QuizQuestionId))
+                    .Select(obj => obj.QuizQuestionId)
+                    .Distinct()
+                    .CountAsync();
+
+                if (completedQuizQuestions < quizQuestionIds.Count)
+                {
+                    response.Message = "Student has not completed all quizzes in this course";
+                    return response;
+                }
             }
 
             var existingGrade = await _gradeRepository.SingleOrDefaultAsync(obj =>
