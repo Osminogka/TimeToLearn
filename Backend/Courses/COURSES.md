@@ -12,7 +12,8 @@ Courses/
 │   ├── Controllers/
 │   │   ├── BaseController.cs         # JWT claim helpers, exception → HTTP mapping
 │   │   ├── CourseController.cs       # CRUD courses (api/c/courses)
-│   │   └── LessonController.cs       # CRUD lessons (api/c/lessons)
+│   │   ├── LessonController.cs       # CRUD lessons (api/c/lessons)
+│   │   └── QuizController.cs         # Lesson mini quizzes + course quizzes (api/c/quizzes)
 │   ├── Infrastructure/
 │   │   └── Mapper.cs                 # AutoMapper: gRPC response types → domain models
 │   ├── appsettings.json              # Production config (K8S cluster endpoints)
@@ -30,7 +31,9 @@ Courses/
 │   └── Services/
 │       ├── ICourseService.cs / CourseService.cs
 │       ├── ILessonService.cs / LessonService.cs
-│       └── IMarkdownService.cs / MarkdownService.cs  # Markdig HTML renderer
+│       ├── IMarkdownService.cs / MarkdownService.cs  # Markdig HTML renderer
+│       ├── IProgressService.cs / ProgressService.cs  # Lesson completion + course progress + grading
+│       └── IQuizService.cs / QuizService.cs          # Quiz question lifecycle + answer checks
 ├── Courses.DAL/
 │   ├── Context/
 │   │   └── DataContext.cs            # EF Core DbContext; Course→Lesson cascade delete
@@ -38,7 +41,12 @@ Courses/
 │   │   ├── BaseEntity.cs             # Abstract base: long Id
 │   │   ├── Course.cs                 # Title, Description, TeacherId, UniversityId, timestamps
 │   │   ├── Lesson.cs                 # Title, Content, IsMarkdown, links, OrderNumber, timestamps
-│   │   └── LessonResource.cs         # LessonId, Title, Url, Type, timestamps
+│   │   ├── LessonResource.cs         # LessonId, Title, Url, Type, timestamps
+│   │   ├── StudentLessonCompletion.cs
+│   │   ├── StudentCourseGrade.cs
+│   │   ├── QuizQuestion.cs           # Question for lesson mini quiz or course quiz mode
+│   │   ├── QuizOption.cs             # Single-choice answer option (one correct)
+│   │   └── QuizAnswer.cs             # Student selected option + correctness snapshot
 │   ├── Dtos/
 │   │   ├── CreateCourseDto.cs        # Title, Description, UniversityName
 │   │   ├── ReadCourseDto.cs          # Includes TeacherName (resolved via gRPC), LessonsCount
@@ -46,7 +54,12 @@ Courses/
 │   │   ├── LessonResourceDto.cs      # Resource item: Title, Url, Type
 │   │   ├── CreateLessonDto.cs        # CourseId, Title, Content, IsMarkdown, legacy links, resources[], OrderNumber
 │   │   ├── ReadLessonDto.cs          # Includes RenderedContent and resources[]
-│   │   └── UpdateLessonDto.cs        # LessonId + nullable fields + optional resources[] replacement
+│   │   ├── UpdateLessonDto.cs        # LessonId + nullable fields + optional resources[] replacement
+│   │   ├── CreateQuizQuestionDto.cs / CreateQuizOptionDto.cs
+│   │   ├── QuizQuestionDto.cs / QuizOptionDto.cs
+│   │   ├── SubmitQuizAnswerDto.cs
+│   │   ├── StudentQuizAnswerDto.cs
+│   │   └── QuizAnswerReviewDto.cs
 │   └── SideModels/
 │       ├── ResponseMessage.cs        # Success + Message
 │       ├── ResponseArray.cs          # Success + Message + IEnumerable<T>
@@ -151,6 +164,21 @@ LessonResource
 | POST | `/{lessonId}/complete` | Required | Student marks lesson as completed |
 | GET | `/{lessonId}/progress` | Required | Current user completion status for lesson |
 
+### `QuizController` — `api/c/quizzes`
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/lesson/{lessonId}` | Required | Get lesson mini quiz questions (students do not receive correct-answer flags) |
+| POST | `/lesson/{lessonId}/questions` | Required | Teacher/director creates lesson mini quiz question |
+| POST | `/lesson/{lessonId}/questions/{questionId}/answer` | Required | Student submits or updates answer for lesson mini quiz question |
+| GET | `/lesson/{lessonId}/my-answers` | Required | Student retrieves own lesson mini quiz answers + correctness |
+| GET | `/lesson/{lessonId}/answers` | Required | Teacher/director reviews all student answers for lesson mini quiz |
+| GET | `/course/{courseId}` | Required | Get course-level quiz questions (quiz mode without lesson content) |
+| POST | `/course/{courseId}/questions` | Required | Teacher/director creates course-level quiz question |
+| POST | `/course/{courseId}/questions/{questionId}/answer` | Required | Student submits or updates answer for course-level quiz question |
+| GET | `/course/{courseId}/my-answers` | Required | Student retrieves own course quiz answers + correctness |
+| GET | `/course/{courseId}/answers` | Required | Teacher/director reviews all student answers for course-level quiz |
+
 ---
 
 ## Authorization Model
@@ -252,3 +280,39 @@ RabbitMQ:    localhost:5672
 - Teachers/directors can view tracked student progress for their course and assign marks
 - Mark assignment is allowed only when student has completed all lessons in the course
 - Course and lesson read DTOs now include current user completion fields to support UI progress bars and completion states
+
+---
+
+## Quiz Mechanics
+
+### Supported Modes
+
+1. **Lesson mini quiz**
+- Teacher attaches optional single-choice questions to a specific lesson.
+- Student answers are stored per question and can be updated.
+
+2. **Course quiz mode**
+- Teacher creates quiz questions directly under course (no lesson content required).
+- Useful for quiz-only courses or assessment-first flows.
+
+### Validation Rules
+
+- A quiz question must have at least two non-empty options.
+- Exactly one option must be marked correct.
+- Only students can submit quiz answers.
+- Teachers/directors can create questions and review all submissions.
+
+### Teacher Review Surface
+
+- Teacher review APIs return per-answer rows containing:
+  - Student identity (`StudentId`, resolved `StudentName`)
+  - Question text
+  - Selected option text
+  - Correct option text
+  - Correct/incorrect status
+  - Answer timestamp
+
+### Student Visibility
+
+- Students can only fetch **their own** answer history and correctness status.
+- Students cannot access other students answers through quiz endpoints.

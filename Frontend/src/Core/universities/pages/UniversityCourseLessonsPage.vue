@@ -38,6 +38,39 @@ const courseProgress = ref(null);
 const studentsProgress = ref([]);
 const gradeDraftByStudent = ref({});
 
+const isLoadingLessonQuiz = ref(false);
+const isLoadingCourseQuiz = ref(false);
+const isLoadingStudentQuizAnswers = ref(false);
+const isLoadingTeacherQuizAnswers = ref(false);
+const isCreatingLessonQuizQuestion = ref(false);
+const isCreatingCourseQuizQuestion = ref(false);
+const isSubmittingLessonQuizAnswer = ref(false);
+const isSubmittingCourseQuizAnswer = ref(false);
+
+const lessonQuizQuestions = ref([]);
+const courseQuizQuestions = ref([]);
+const myLessonQuizAnswers = ref([]);
+const myCourseQuizAnswers = ref([]);
+const teacherLessonQuizAnswers = ref([]);
+const teacherCourseQuizAnswers = ref([]);
+
+const lessonQuizAnswerDraftByQuestion = ref({});
+const courseQuizAnswerDraftByQuestion = ref({});
+
+const lessonQuizQuestionDraft = ref({
+    questionText: '',
+    optionTexts: ['', '', '', ''],
+    correctOptionIndex: 0,
+    attemptPolicy: 'reattempt',
+});
+
+const courseQuizQuestionDraft = ref({
+    questionText: '',
+    optionTexts: ['', '', '', ''],
+    correctOptionIndex: 0,
+    attemptPolicy: 'reattempt',
+});
+
 const universityName = computed(() => String(route.params.name || ''));
 const courseId = computed(() => Number(route.params.courseId || 0));
 const canManage = computed(() => isMember.value && canManageUniversityContent(user.value.role));
@@ -47,6 +80,8 @@ const joinLabel = computed(() => canManageUniversityContent(user.value.role) ? '
 const joinVisible = computed(() => !isMember.value && !!university.value?.isOpened);
 
 const hasLessons = computed(() => lessons.value.length > 0);
+const hasLessonQuizQuestions = computed(() => lessonQuizQuestions.value.length > 0);
+const hasCourseQuizQuestions = computed(() => courseQuizQuestions.value.length > 0);
 const isEditingMode = computed(() => Boolean(editingLessonId.value));
 const progressCompletedCount = computed(() => Number(courseProgress.value?.completedLessons || courseProgress.value?.CompletedLessons || 0));
 const progressTotalCount = computed(() => Number(courseProgress.value?.totalLessons || courseProgress.value?.TotalLessons || lessons.value.length));
@@ -65,6 +100,12 @@ const studentMark = computed(() => {
     const raw = Number(courseProgress.value?.mark || courseProgress.value?.Mark);
     return Number.isInteger(raw) && raw >= 1 && raw <= 10 ? raw : null;
 });
+
+const myLessonQuizCorrectCount = computed(() => myLessonQuizAnswers.value.filter(item => item.isCorrect || item.IsCorrect).length);
+const myCourseQuizCorrectCount = computed(() => myCourseQuizAnswers.value.filter(item => item.isCorrect || item.IsCorrect).length);
+
+const myLessonQuizScoreLabel = computed(() => `${myLessonQuizCorrectCount.value}/${myLessonQuizAnswers.value.length}`);
+const myCourseQuizScoreLabel = computed(() => `${myCourseQuizCorrectCount.value}/${myCourseQuizAnswers.value.length}`);
 
 const selectedLessonCompleted = computed(() => {
     const raw = selectedLessonResolved.value?.isCompletedByCurrentUser ?? selectedLessonResolved.value?.IsCompletedByCurrentUser;
@@ -145,6 +186,327 @@ function getDraftMark(student) {
 
     const existingMark = Number(student?.mark || student?.Mark);
     return Number.isInteger(existingMark) && existingMark >= 1 && existingMark <= 10 ? existingMark : 1;
+}
+
+function normalizeQuestionRows(payload) {
+    return payload?.values || payload?.Values || payload?.items || payload?.Items || [];
+}
+
+function normalizeAnswerRows(payload) {
+    return payload?.values || payload?.Values || payload?.items || payload?.Items || [];
+}
+
+function getQuestionId(item) {
+    return Number(item?.id || item?.Id || 0);
+}
+
+function getOptionId(item) {
+    return Number(item?.id || item?.Id || 0);
+}
+
+function resetLessonQuizQuestionDraft() {
+    lessonQuizQuestionDraft.value = {
+        questionText: '',
+        optionTexts: ['', '', '', ''],
+        correctOptionIndex: 0,
+        attemptPolicy: 'reattempt',
+    };
+}
+
+function resetCourseQuizQuestionDraft() {
+    courseQuizQuestionDraft.value = {
+        questionText: '',
+        optionTexts: ['', '', '', ''],
+        correctOptionIndex: 0,
+        attemptPolicy: 'reattempt',
+    };
+}
+
+function buildQuizQuestionPayload(draft) {
+    const questionText = String(draft?.questionText || '').trim();
+    const optionTexts = Array.isArray(draft?.optionTexts) ? draft.optionTexts : [];
+    const correctIndex = Number(draft?.correctOptionIndex || 0);
+    const attemptPolicy = String(draft?.attemptPolicy || 'reattempt').trim().toLowerCase() === 'single' ? 'single' : 'reattempt';
+
+    const options = optionTexts
+        .map((text, index) => ({
+            optionText: String(text || '').trim(),
+            isCorrect: index === correctIndex,
+        }))
+        .filter((opt) => opt.optionText.length > 0);
+
+    return { questionText, options, attemptPolicy };
+}
+
+function getQuestionAttemptPolicy(question) {
+    const raw = String(question?.attemptPolicy || question?.AttemptPolicy || 'reattempt').trim().toLowerCase();
+    return raw === 'single' ? 'single' : 'reattempt';
+}
+
+function isSingleAttemptQuestion(question) {
+    return getQuestionAttemptPolicy(question) === 'single';
+}
+
+function hasAnsweredLessonQuestion(questionId) {
+    return myLessonQuizAnswers.value.some(item => Number(item?.questionId || item?.QuestionId) === questionId);
+}
+
+function hasAnsweredCourseQuestion(questionId) {
+    return myCourseQuizAnswers.value.some(item => Number(item?.questionId || item?.QuestionId) === questionId);
+}
+
+function canEditLessonAnswer(question) {
+    if (canManage.value) {
+        return false;
+    }
+
+    const questionId = getQuestionId(question);
+    if (!questionId) {
+        return false;
+    }
+
+    return !(isSingleAttemptQuestion(question) && hasAnsweredLessonQuestion(questionId));
+}
+
+function canEditCourseAnswer(question) {
+    if (canManage.value) {
+        return false;
+    }
+
+    const questionId = getQuestionId(question);
+    if (!questionId) {
+        return false;
+    }
+
+    return !(isSingleAttemptQuestion(question) && hasAnsweredCourseQuestion(questionId));
+}
+
+function getExistingAnswerOptionId(questionId, answers) {
+    const row = answers.find(item => Number(item?.questionId || item?.QuestionId) === questionId);
+    if (!row) {
+        return 0;
+    }
+
+    return Number(row?.selectedOptionId || row?.SelectedOptionId || 0);
+}
+
+async function loadSelectedLessonQuiz() {
+    if (!canView.value || !selectedLessonId.value) {
+        lessonQuizQuestions.value = [];
+        return;
+    }
+
+    isLoadingLessonQuiz.value = true;
+    try {
+        const response = await courseApi.getLessonQuizQuestions(selectedLessonId.value);
+        lessonQuizQuestions.value = normalizeQuestionRows(response);
+    } catch {
+        lessonQuizQuestions.value = [];
+    } finally {
+        isLoadingLessonQuiz.value = false;
+    }
+}
+
+async function loadCourseQuiz() {
+    if (!canView.value || !courseId.value) {
+        courseQuizQuestions.value = [];
+        return;
+    }
+
+    isLoadingCourseQuiz.value = true;
+    try {
+        const response = await courseApi.getCourseQuizQuestions(courseId.value);
+        courseQuizQuestions.value = normalizeQuestionRows(response);
+    } catch {
+        courseQuizQuestions.value = [];
+    } finally {
+        isLoadingCourseQuiz.value = false;
+    }
+}
+
+async function loadMyQuizAnswers() {
+    if (!canView.value || canManage.value) {
+        myLessonQuizAnswers.value = [];
+        myCourseQuizAnswers.value = [];
+        lessonQuizAnswerDraftByQuestion.value = {};
+        courseQuizAnswerDraftByQuestion.value = {};
+        return;
+    }
+
+    isLoadingStudentQuizAnswers.value = true;
+    try {
+        const lessonResponse = selectedLessonId.value
+            ? await courseApi.getMyLessonQuizAnswers(selectedLessonId.value)
+            : { values: [] };
+        const courseResponse = await courseApi.getMyCourseQuizAnswers(courseId.value);
+
+        myLessonQuizAnswers.value = normalizeAnswerRows(lessonResponse);
+        myCourseQuizAnswers.value = normalizeAnswerRows(courseResponse);
+
+        lessonQuizAnswerDraftByQuestion.value = lessonQuizQuestions.value.reduce((acc, item) => {
+            const questionId = getQuestionId(item);
+            acc[questionId] = getExistingAnswerOptionId(questionId, myLessonQuizAnswers.value);
+            return acc;
+        }, {});
+
+        courseQuizAnswerDraftByQuestion.value = courseQuizQuestions.value.reduce((acc, item) => {
+            const questionId = getQuestionId(item);
+            acc[questionId] = getExistingAnswerOptionId(questionId, myCourseQuizAnswers.value);
+            return acc;
+        }, {});
+    } catch {
+        myLessonQuizAnswers.value = [];
+        myCourseQuizAnswers.value = [];
+        lessonQuizAnswerDraftByQuestion.value = {};
+        courseQuizAnswerDraftByQuestion.value = {};
+    } finally {
+        isLoadingStudentQuizAnswers.value = false;
+    }
+}
+
+async function loadTeacherQuizAnswers() {
+    if (!canManage.value || !courseId.value) {
+        teacherLessonQuizAnswers.value = [];
+        teacherCourseQuizAnswers.value = [];
+        return;
+    }
+
+    isLoadingTeacherQuizAnswers.value = true;
+    try {
+        const lessonResponse = selectedLessonId.value
+            ? await courseApi.getLessonQuizAnswersForTeacher(selectedLessonId.value)
+            : { values: [] };
+        const courseResponse = await courseApi.getCourseQuizAnswersForTeacher(courseId.value);
+
+        teacherLessonQuizAnswers.value = normalizeAnswerRows(lessonResponse);
+        teacherCourseQuizAnswers.value = normalizeAnswerRows(courseResponse);
+    } catch {
+        teacherLessonQuizAnswers.value = [];
+        teacherCourseQuizAnswers.value = [];
+    } finally {
+        isLoadingTeacherQuizAnswers.value = false;
+    }
+}
+
+async function loadQuizWorkspace() {
+    await loadSelectedLessonQuiz();
+    await loadCourseQuiz();
+    await loadMyQuizAnswers();
+    await loadTeacherQuizAnswers();
+}
+
+async function createLessonQuizQuestion() {
+    if (!canManage.value || !selectedLessonId.value || isCreatingLessonQuizQuestion.value) {
+        return;
+    }
+
+    const payload = buildQuizQuestionPayload(lessonQuizQuestionDraft.value);
+    if (!payload.questionText || payload.options.length < 2 || payload.options.filter(opt => opt.isCorrect).length !== 1) {
+        errorMessage.value = 'Provide question text, at least two options, and one correct answer.';
+        return;
+    }
+
+    clearMessages();
+    isCreatingLessonQuizQuestion.value = true;
+    try {
+        const response = await courseApi.createLessonQuizQuestion({
+            lessonId: selectedLessonId.value,
+            questionText: payload.questionText,
+            options: payload.options,
+            attemptPolicy: payload.attemptPolicy,
+        });
+
+        actionMessage.value = readMessage(response) || 'Lesson mini quiz question created.';
+        resetLessonQuizQuestionDraft();
+        await loadQuizWorkspace();
+    } catch (error) {
+        errorMessage.value = error?.message || 'Could not create lesson mini quiz question.';
+    } finally {
+        isCreatingLessonQuizQuestion.value = false;
+    }
+}
+
+async function createCourseQuizQuestion() {
+    if (!canManage.value || !courseId.value || isCreatingCourseQuizQuestion.value) {
+        return;
+    }
+
+    const payload = buildQuizQuestionPayload(courseQuizQuestionDraft.value);
+    if (!payload.questionText || payload.options.length < 2 || payload.options.filter(opt => opt.isCorrect).length !== 1) {
+        errorMessage.value = 'Provide question text, at least two options, and one correct answer.';
+        return;
+    }
+
+    clearMessages();
+    isCreatingCourseQuizQuestion.value = true;
+    try {
+        const response = await courseApi.createCourseQuizQuestion({
+            courseId: courseId.value,
+            questionText: payload.questionText,
+            options: payload.options,
+            attemptPolicy: payload.attemptPolicy,
+        });
+
+        actionMessage.value = readMessage(response) || 'Course quiz question created.';
+        resetCourseQuizQuestionDraft();
+        await loadQuizWorkspace();
+    } catch (error) {
+        errorMessage.value = error?.message || 'Could not create course quiz question.';
+    } finally {
+        isCreatingCourseQuizQuestion.value = false;
+    }
+}
+
+async function submitLessonQuizAnswer(question) {
+    const questionId = getQuestionId(question);
+    const selectedOptionId = Number(lessonQuizAnswerDraftByQuestion.value[questionId] || 0);
+
+    if (!selectedLessonId.value || !questionId || !selectedOptionId || isSubmittingLessonQuizAnswer.value) {
+        return;
+    }
+
+    clearMessages();
+    isSubmittingLessonQuizAnswer.value = true;
+    try {
+        const response = await courseApi.submitLessonQuizAnswer({
+            lessonId: selectedLessonId.value,
+            questionId,
+            selectedOptionId,
+        });
+
+        actionMessage.value = readMessage(response) || 'Lesson mini quiz answer submitted.';
+        await loadMyQuizAnswers();
+    } catch (error) {
+        errorMessage.value = error?.message || 'Could not submit lesson mini quiz answer.';
+    } finally {
+        isSubmittingLessonQuizAnswer.value = false;
+    }
+}
+
+async function submitCourseQuizAnswer(question) {
+    const questionId = getQuestionId(question);
+    const selectedOptionId = Number(courseQuizAnswerDraftByQuestion.value[questionId] || 0);
+
+    if (!courseId.value || !questionId || !selectedOptionId || isSubmittingCourseQuizAnswer.value) {
+        return;
+    }
+
+    clearMessages();
+    isSubmittingCourseQuizAnswer.value = true;
+    try {
+        const response = await courseApi.submitCourseQuizAnswer({
+            courseId: courseId.value,
+            questionId,
+            selectedOptionId,
+        });
+
+        actionMessage.value = readMessage(response) || 'Course quiz answer submitted.';
+        await loadMyQuizAnswers();
+    } catch (error) {
+        errorMessage.value = error?.message || 'Could not submit course quiz answer.';
+    } finally {
+        isSubmittingCourseQuizAnswer.value = false;
+    }
 }
 
 async function loadCourseProgress() {
@@ -334,6 +696,7 @@ async function refreshWorkspace() {
         await loadLessons();
         await loadCourseProgress();
         await loadStudentsProgress();
+        await loadQuizWorkspace();
     }
 }
 
@@ -352,6 +715,7 @@ async function joinUniversity() {
         await loadCourse();
         await loadLessons();
         await loadCourseProgress();
+        await loadQuizWorkspace();
     } catch (error) {
         errorMessage.value = error?.message || 'Could not process university access action.';
     } finally {
@@ -368,6 +732,7 @@ async function selectLesson(lesson) {
     selectedLessonId.value = lessonId;
     selectedLesson.value = null;
     await loadLessonDetails(lessonId);
+    await loadQuizWorkspace();
 }
 
 async function completeSelectedLesson() {
@@ -384,6 +749,7 @@ async function completeSelectedLesson() {
 
         await loadLessons();
         await loadCourseProgress();
+        await loadQuizWorkspace();
     } catch (error) {
         errorMessage.value = error?.message || 'Could not complete lesson.';
     } finally {
@@ -450,6 +816,7 @@ async function submitLessonForm(payload) {
             await loadLessons();
             await loadCourseProgress();
             await loadStudentsProgress();
+            await loadQuizWorkspace();
             if (selectedLessonId.value) {
                 await loadLessonDetails(selectedLessonId.value);
             }
@@ -469,6 +836,7 @@ async function submitLessonForm(payload) {
             await loadLessons();
             await loadCourseProgress();
             await loadStudentsProgress();
+            await loadQuizWorkspace();
 
             if (lessons.value.length) {
                 const newestLessonId = getLessonId(lessons.value[lessons.value.length - 1]);
@@ -508,6 +876,7 @@ async function removeLesson(lesson) {
         await loadLessons();
         await loadCourseProgress();
         await loadStudentsProgress();
+        await loadQuizWorkspace();
 
         if (deletedWasSelected && lessons.value.length) {
             const fallbackId = getLessonId(lessons.value[0]);
@@ -665,6 +1034,86 @@ onMounted(async () => {
                         </button>
                     </div>
 
+                    <section class="quiz-panel surface-card">
+                        <div class="quiz-panel__head">
+                            <div>
+                                <p class="section-kicker">Lesson mini quiz</p>
+                                <h4>Check understanding at lesson end</h4>
+                            </div>
+                            <p class="section-copy">{{ hasLessonQuizQuestions ? `${lessonQuizQuestions.length} question(s)` : 'No lesson mini quiz questions yet.' }}</p>
+                        </div>
+
+                        <div v-if="canManage" class="quiz-creator">
+                            <div class="field-group">
+                                <label class="field-label">Question</label>
+                                <input v-model="lessonQuizQuestionDraft.questionText" class="input-field" type="text" maxlength="400" placeholder="What is the time complexity of binary search?" />
+                            </div>
+
+                            <div class="field-group">
+                                <label class="field-label">Attempt policy</label>
+                                <select v-model="lessonQuizQuestionDraft.attemptPolicy" class="input-field">
+                                    <option value="reattempt">Reattempt allowed</option>
+                                    <option value="single">Single attempt (lock after first answer)</option>
+                                </select>
+                            </div>
+
+                            <div class="quiz-creator__options">
+                                <div v-for="(optionText, index) in lessonQuizQuestionDraft.optionTexts" :key="`lesson-opt-${index}`" class="quiz-creator__option-row">
+                                    <input v-model="lessonQuizQuestionDraft.optionTexts[index]" class="input-field" type="text" maxlength="300" :placeholder="`Option ${index + 1}`" />
+                                    <label class="quiz-creator__correct">
+                                        <input v-model.number="lessonQuizQuestionDraft.correctOptionIndex" type="radio" name="lesson-quiz-correct" :value="index" />
+                                        Correct
+                                    </label>
+                                </div>
+                            </div>
+
+                            <button class="submit-button" type="button" :disabled="isCreatingLessonQuizQuestion || !selectedLessonId" @click="createLessonQuizQuestion">
+                                {{ isCreatingLessonQuizQuestion ? 'Creating...' : 'Add lesson mini quiz question' }}
+                            </button>
+                        </div>
+
+                        <div v-if="hasLessonQuizQuestions" class="quiz-questions-list">
+                            <article v-for="question in lessonQuizQuestions" :key="getQuestionId(question)" class="quiz-question-card">
+                                <p class="quiz-question-card__question">{{ question.questionText || question.QuestionText }}</p>
+                                <p class="quiz-question-card__policy">Policy: {{ isSingleAttemptQuestion(question) ? 'Single attempt' : 'Reattempt allowed' }}</p>
+
+                                <div class="quiz-question-card__options">
+                                    <label v-for="option in question.options || question.Options || []" :key="getOptionId(option)" class="quiz-question-card__option">
+                                        <input
+                                            v-model.number="lessonQuizAnswerDraftByQuestion[getQuestionId(question)]"
+                                            :disabled="!canEditLessonAnswer(question)"
+                                            type="radio"
+                                            :name="`lesson-question-${getQuestionId(question)}`"
+                                            :value="getOptionId(option)"
+                                        />
+                                        <span>{{ option.optionText || option.OptionText }}</span>
+                                        <span v-if="canManage && (option.isCorrect ?? option.IsCorrect)" class="pill pill--accent">Correct</span>
+                                    </label>
+                                </div>
+
+                                <button
+                                    v-if="!canManage"
+                                    class="secondary-button"
+                                    type="button"
+                                    :disabled="isSubmittingLessonQuizAnswer || !lessonQuizAnswerDraftByQuestion[getQuestionId(question)] || !canEditLessonAnswer(question)"
+                                    @click="submitLessonQuizAnswer(question)"
+                                >
+                                    {{ isSubmittingLessonQuizAnswer ? 'Submitting...' : 'Submit answer' }}
+                                </button>
+                                <p v-if="!canManage && isSingleAttemptQuestion(question) && hasAnsweredLessonQuestion(getQuestionId(question))" class="quiz-question-card__lock">
+                                    This question is locked after your first attempt.
+                                </p>
+                            </article>
+                        </div>
+
+                        <p v-else-if="!isLoadingLessonQuiz" class="state-message">No lesson mini quiz questions published yet.</p>
+
+                        <div v-if="!canManage && myLessonQuizAnswers.length" class="quiz-score-card">
+                            <p class="section-kicker">Your lesson mini quiz score</p>
+                            <p class="quiz-score-card__value">{{ myLessonQuizScoreLabel }}</p>
+                        </div>
+                    </section>
+
                     <div class="lesson-view__links" v-if="selectedLessonResources.length">
                         <a
                             v-for="resource in selectedLessonResources"
@@ -683,6 +1132,86 @@ onMounted(async () => {
                     <p class="section-copy">Select a lesson to view full content.</p>
                 </article>
             </div>
+
+            <section v-if="canView" class="quiz-panel surface-card">
+                <div class="quiz-panel__head">
+                    <div>
+                        <p class="section-kicker">Course quiz mode</p>
+                        <h4>Optional quizzes instead of lesson content</h4>
+                    </div>
+                    <p class="section-copy">{{ hasCourseQuizQuestions ? `${courseQuizQuestions.length} question(s)` : 'No course-level quiz questions yet.' }}</p>
+                </div>
+
+                <div v-if="canManage" class="quiz-creator">
+                    <div class="field-group">
+                        <label class="field-label">Question</label>
+                        <input v-model="courseQuizQuestionDraft.questionText" class="input-field" type="text" maxlength="400" placeholder="What does HTTP status 404 mean?" />
+                    </div>
+
+                    <div class="field-group">
+                        <label class="field-label">Attempt policy</label>
+                        <select v-model="courseQuizQuestionDraft.attemptPolicy" class="input-field">
+                            <option value="reattempt">Reattempt allowed</option>
+                            <option value="single">Single attempt (lock after first answer)</option>
+                        </select>
+                    </div>
+
+                    <div class="quiz-creator__options">
+                        <div v-for="(optionText, index) in courseQuizQuestionDraft.optionTexts" :key="`course-opt-${index}`" class="quiz-creator__option-row">
+                            <input v-model="courseQuizQuestionDraft.optionTexts[index]" class="input-field" type="text" maxlength="300" :placeholder="`Option ${index + 1}`" />
+                            <label class="quiz-creator__correct">
+                                <input v-model.number="courseQuizQuestionDraft.correctOptionIndex" type="radio" name="course-quiz-correct" :value="index" />
+                                Correct
+                            </label>
+                        </div>
+                    </div>
+
+                    <button class="submit-button" type="button" :disabled="isCreatingCourseQuizQuestion" @click="createCourseQuizQuestion">
+                        {{ isCreatingCourseQuizQuestion ? 'Creating...' : 'Add course quiz question' }}
+                    </button>
+                </div>
+
+                <div v-if="hasCourseQuizQuestions" class="quiz-questions-list">
+                    <article v-for="question in courseQuizQuestions" :key="getQuestionId(question)" class="quiz-question-card">
+                        <p class="quiz-question-card__question">{{ question.questionText || question.QuestionText }}</p>
+                        <p class="quiz-question-card__policy">Policy: {{ isSingleAttemptQuestion(question) ? 'Single attempt' : 'Reattempt allowed' }}</p>
+
+                        <div class="quiz-question-card__options">
+                            <label v-for="option in question.options || question.Options || []" :key="getOptionId(option)" class="quiz-question-card__option">
+                                <input
+                                    v-model.number="courseQuizAnswerDraftByQuestion[getQuestionId(question)]"
+                                    :disabled="!canEditCourseAnswer(question)"
+                                    type="radio"
+                                    :name="`course-question-${getQuestionId(question)}`"
+                                    :value="getOptionId(option)"
+                                />
+                                <span>{{ option.optionText || option.OptionText }}</span>
+                                <span v-if="canManage && (option.isCorrect ?? option.IsCorrect)" class="pill pill--accent">Correct</span>
+                            </label>
+                        </div>
+
+                        <button
+                            v-if="!canManage"
+                            class="secondary-button"
+                            type="button"
+                            :disabled="isSubmittingCourseQuizAnswer || !courseQuizAnswerDraftByQuestion[getQuestionId(question)] || !canEditCourseAnswer(question)"
+                            @click="submitCourseQuizAnswer(question)"
+                        >
+                            {{ isSubmittingCourseQuizAnswer ? 'Submitting...' : 'Submit answer' }}
+                        </button>
+                        <p v-if="!canManage && isSingleAttemptQuestion(question) && hasAnsweredCourseQuestion(getQuestionId(question))" class="quiz-question-card__lock">
+                            This question is locked after your first attempt.
+                        </p>
+                    </article>
+                </div>
+
+                <p v-else-if="!isLoadingCourseQuiz" class="state-message">No course-level quiz questions published yet.</p>
+
+                <div v-if="!canManage && myCourseQuizAnswers.length" class="quiz-score-card">
+                    <p class="section-kicker">Your course quiz score</p>
+                    <p class="quiz-score-card__value">{{ myCourseQuizScoreLabel }}</p>
+                </div>
+            </section>
 
             <article v-if="canManage" class="surface-card grading-panel">
                 <div class="grading-panel__head">
@@ -729,6 +1258,44 @@ onMounted(async () => {
                 </div>
 
                 <p v-else class="state-message">Student activity will appear here after lesson completion starts.</p>
+
+                <div class="quiz-review">
+                    <p class="section-kicker">Quiz answers review</p>
+
+                    <div class="quiz-review__tables">
+                        <div class="quiz-review__table">
+                            <p class="quiz-review__title">Selected lesson mini quiz answers</p>
+                            <div v-if="teacherLessonQuizAnswers.length" class="quiz-review__rows">
+                                <div v-for="(answer, index) in teacherLessonQuizAnswers" :key="`lesson-answer-${index}`" class="quiz-review__row">
+                                    <p><strong>{{ answer.studentName || answer.StudentName || 'Unknown' }}</strong></p>
+                                    <p>{{ answer.questionText || answer.QuestionText }}</p>
+                                    <p>Selected: {{ answer.selectedOptionText || answer.SelectedOptionText }}</p>
+                                    <p>Correct: {{ answer.correctOptionText || answer.CorrectOptionText }}</p>
+                                    <span class="pill" :class="(answer.isCorrect || answer.IsCorrect) ? 'pill--accent' : 'pill--pink'">
+                                        {{ (answer.isCorrect || answer.IsCorrect) ? 'Correct' : 'Incorrect' }}
+                                    </span>
+                                </div>
+                            </div>
+                            <p v-else class="state-message">No lesson mini quiz answers yet.</p>
+                        </div>
+
+                        <div class="quiz-review__table">
+                            <p class="quiz-review__title">Course quiz answers</p>
+                            <div v-if="teacherCourseQuizAnswers.length" class="quiz-review__rows">
+                                <div v-for="(answer, index) in teacherCourseQuizAnswers" :key="`course-answer-${index}`" class="quiz-review__row">
+                                    <p><strong>{{ answer.studentName || answer.StudentName || 'Unknown' }}</strong></p>
+                                    <p>{{ answer.questionText || answer.QuestionText }}</p>
+                                    <p>Selected: {{ answer.selectedOptionText || answer.SelectedOptionText }}</p>
+                                    <p>Correct: {{ answer.correctOptionText || answer.CorrectOptionText }}</p>
+                                    <span class="pill" :class="(answer.isCorrect || answer.IsCorrect) ? 'pill--accent' : 'pill--pink'">
+                                        {{ (answer.isCorrect || answer.IsCorrect) ? 'Correct' : 'Incorrect' }}
+                                    </span>
+                                </div>
+                            </div>
+                            <p v-else class="state-message">No course quiz answers yet.</p>
+                        </div>
+                    </div>
+                </div>
             </article>
 
             <p v-if="!canView" class="state-message">Membership is required to view lessons in this course.</p>
@@ -917,6 +1484,118 @@ onMounted(async () => {
     min-height: 2.25rem;
 }
 
+.quiz-panel {
+    padding: 0.95rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.quiz-panel__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.7rem;
+}
+
+.quiz-panel__head h4 {
+    margin: 0;
+    color: var(--ttl-text-primary);
+    letter-spacing: -0.02em;
+}
+
+.quiz-creator {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.75rem;
+    border-radius: var(--ttl-radius-md);
+    border: 1px solid var(--ttl-border-subtle);
+    background: var(--ttl-bg-surface-soft);
+}
+
+.quiz-creator__options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.quiz-creator__option-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.quiz-creator__correct {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--ttl-text-secondary);
+    font-size: 0.85rem;
+}
+
+.quiz-questions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.quiz-question-card {
+    padding: 0.7rem;
+    border-radius: var(--ttl-radius-sm);
+    border: 1px solid var(--ttl-border-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.quiz-question-card__question {
+    margin: 0;
+    color: var(--ttl-text-primary);
+    font-weight: 700;
+}
+
+.quiz-question-card__policy {
+    margin: 0;
+    color: var(--ttl-text-secondary);
+    font-size: 0.82rem;
+}
+
+.quiz-question-card__options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.quiz-question-card__option {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--ttl-text-secondary);
+    font-size: 0.9rem;
+}
+
+.quiz-question-card__lock {
+    margin: 0;
+    color: var(--ttl-warning);
+    font-size: 0.82rem;
+}
+
+.quiz-score-card {
+    padding: 0.65rem;
+    border-radius: var(--ttl-radius-sm);
+    background: var(--ttl-bg-muted);
+    border: 1px solid var(--ttl-border-subtle);
+}
+
+.quiz-score-card__value {
+    margin: 0;
+    color: var(--ttl-text-primary);
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+
 .grading-panel {
     padding: 0.95rem;
     display: flex;
@@ -986,12 +1665,63 @@ onMounted(async () => {
     width: 100%;
 }
 
+.quiz-review {
+    margin-top: 0.35rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--ttl-border-subtle);
+}
+
+.quiz-review__tables {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+}
+
+.quiz-review__table {
+    padding: 0.55rem;
+    border-radius: var(--ttl-radius-sm);
+    border: 1px solid var(--ttl-border-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.quiz-review__title {
+    margin: 0;
+    color: var(--ttl-text-primary);
+    font-size: 0.92rem;
+    font-weight: 800;
+}
+
+.quiz-review__rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.quiz-review__row {
+    padding: 0.45rem;
+    border-radius: var(--ttl-radius-sm);
+    background: var(--ttl-bg-surface-soft);
+    border: 1px solid var(--ttl-border-subtle);
+}
+
+.quiz-review__row p {
+    margin: 0;
+    color: var(--ttl-text-secondary);
+    font-size: 0.84rem;
+}
+
 @media (max-width: 960px) {
     .lesson-layout {
         grid-template-columns: 1fr;
     }
 
     .grading-table__row {
+        grid-template-columns: 1fr;
+    }
+
+    .quiz-review__tables {
         grid-template-columns: 1fr;
     }
 }
@@ -1013,13 +1743,18 @@ onMounted(async () => {
 
     .progress-card__row,
     .lesson-view__completion,
-    .grading-panel__head {
+    .grading-panel__head,
+    .quiz-panel__head {
         flex-direction: column;
         align-items: flex-start;
     }
 
     .lesson-view__completion .submit-button {
         width: 100%;
+    }
+
+    .quiz-creator__option-row {
+        grid-template-columns: 1fr;
     }
 }
 </style>

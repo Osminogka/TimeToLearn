@@ -114,6 +114,7 @@ export const SERVICE_BASE_PATHS = {
 - Authentication APIs: `src/Authentication/services/authApi.js`
 - Core role APIs: `src/Core/roles/services/roleApi.js`
 - University APIs: `src/Core/universities/services/universityApi.js` (placeholder for upcoming endpoints)
+- Courses APIs: `src/Courses/services/courseApi.js` (courses, lessons, progress, grading, lesson mini quizzes, course quizzes)
 
 ### Dev proxy
 
@@ -141,6 +142,44 @@ JWT/auth state utility: `src/Shared/services/utils.js`
 
 - Maintains reactive `user` object
 - Clears user state when token is missing/invalid/removed
+
+---
+
+## Quiz Experience (Courses Domain)
+
+Quiz features are implemented in the existing course lessons workspace page:
+
+- `src/Core/universities/pages/UniversityCourseLessonsPage.vue`
+
+### Supported quiz flows
+
+1. **Lesson mini quizzes**
+- Each lesson can optionally contain teacher-authored single-choice quiz questions.
+- Students can submit/update one answer per question.
+
+2. **Course-level quiz mode**
+- A course can optionally use quiz questions directly (without lesson content requirements).
+- Students answer the same single-choice format as lesson mini quizzes.
+
+### Teacher UI responsibilities
+
+- Create lesson mini quiz questions (question + options + one correct option).
+- Create course-level quiz questions.
+- Review submitted answers for:
+  - selected lesson mini quiz
+  - course-level quiz
+
+### Student UI responsibilities
+
+- Answer lesson mini quiz questions.
+- Answer course-level quiz questions.
+- View only their own submitted answers and correctness-based score summaries.
+
+### Design-system constraints followed
+
+- Uses existing shared classes/tokens (`surface-card`, `submit-button`, `secondary-button`, `input-field`, pills).
+- Light theme and purple/pink palette preserved.
+- Subtle transitions only; no separate visual subsystem introduced.
 
 ---
 

@@ -28,11 +28,15 @@ builder.Services.AddTransient<IBaseRepository<Lesson>, BaseRepository<Lesson>>()
 builder.Services.AddTransient<IBaseRepository<LessonResource>, BaseRepository<LessonResource>>();
 builder.Services.AddTransient<IBaseRepository<StudentLessonCompletion>, BaseRepository<StudentLessonCompletion>>();
 builder.Services.AddTransient<IBaseRepository<StudentCourseGrade>, BaseRepository<StudentCourseGrade>>();
+builder.Services.AddTransient<IBaseRepository<QuizQuestion>, BaseRepository<QuizQuestion>>();
+builder.Services.AddTransient<IBaseRepository<QuizOption>, BaseRepository<QuizOption>>();
+builder.Services.AddTransient<IBaseRepository<QuizAnswer>, BaseRepository<QuizAnswer>>();
 
 builder.Services.AddTransient<IMarkdownService, MarkdownService>();
 builder.Services.AddTransient<ICourseService, CourseService>();
 builder.Services.AddTransient<ILessonService, LessonService>();
 builder.Services.AddTransient<IProgressService, ProgressService>();
+builder.Services.AddTransient<IQuizService, QuizService>();
 
 
 var connectionString = builder.Configuration.GetConnectionString("DataConnectionString")
