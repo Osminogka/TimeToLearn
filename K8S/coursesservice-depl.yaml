@@ -15,6 +15,7 @@ spec:
       containers:
         - name: coursesservice
           image: ghcr.io/osminogka/coursesservice:latest
+          imagePullPolicy: Always
 
 ---
 

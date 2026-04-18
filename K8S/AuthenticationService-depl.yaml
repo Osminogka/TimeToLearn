@@ -15,6 +15,7 @@ spec:
       containers:
         - name: authservice
           image: ghcr.io/osminogka/authservice:latest
+          imagePullPolicy: Always
 
 ---
 

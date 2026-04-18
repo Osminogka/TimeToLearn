@@ -15,6 +15,7 @@ spec:
       containers:
         - name: coreservice
           image: ghcr.io/osminogka/coreservice:latest
+          imagePullPolicy: Always
 
 ---
 

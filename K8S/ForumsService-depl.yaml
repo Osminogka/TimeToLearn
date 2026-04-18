@@ -15,6 +15,7 @@ spec:
       containers:
         - name: forumsservice
           image: ghcr.io/osminogka/forumsservice:latest
+          imagePullPolicy: Always
 
 ---
 

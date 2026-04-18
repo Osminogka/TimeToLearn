@@ -15,6 +15,7 @@ spec:
       containers:
         - name: frontend
           image: ghcr.io/osminogka/frontend:latest
+          imagePullPolicy: Always
 
 ---
 

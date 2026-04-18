@@ -20,12 +20,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify GHCR reachability
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            echo "Checking ghcr.io connectivity (attempt ${attempt}/5)"
+            if curl --silent --show-error --fail --max-time 20 https://ghcr.io/v2/ >/dev/null; then
+              echo "GHCR is reachable"
+              exit 0
+            fi
+            echo "GHCR check failed"
+            if [ "${attempt}" -lt 5 ]; then
+              sleep $((attempt * 5))
+            fi
+          done
+          echo "Failed to reach GHCR after retries"
+          nslookup ghcr.io || true
+          exit 1
+
+      - name: Log in to GitHub Container Registry with retry
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            echo "Docker login to GHCR (attempt ${attempt}/5)"
+            if echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin; then
+              echo "Successfully logged in to GHCR"
+              exit 0
+            fi
+            echo "Docker login failed"
+            if [ "${attempt}" -lt 5 ]; then
+              sleep $((attempt * 5))
+            fi
+          done
+          echo "Could not log in to GHCR after retries"
+          docker info || true
+          exit 1
 
       - name: Build and push Authentication service
         uses: docker/build-push-action@v5
@@ -83,3 +112,8 @@ jobs:
           kubectl rollout restart deployment/courses-depl
           kubectl rollout restart deployment/forums-depl
           kubectl rollout restart deployment/frontend-depl
+          kubectl rollout status deployment/auth-depl --timeout=180s
+          kubectl rollout status deployment/core-depl --timeout=180s
+          kubectl rollout status deployment/courses-depl --timeout=180s
+          kubectl rollout status deployment/forums-depl --timeout=180s
+          kubectl rollout status deployment/frontend-depl --timeout=180s
