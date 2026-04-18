@@ -74,7 +74,7 @@ namespace Courses.DAL.Context
                 .HasOne(e => e.Lesson)
                 .WithMany()
                 .HasForeignKey(e => e.LessonId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<QuizQuestion>()
                 .HasMany(e => e.Options)

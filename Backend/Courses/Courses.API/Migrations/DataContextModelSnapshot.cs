@@ -384,7 +384,7 @@ namespace Courses.API.Migrations
                     b.HasOne("Courses.DAL.Models.Lesson", "Lesson")
                         .WithMany()
                         .HasForeignKey("LessonId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("Course");
 
