@@ -336,14 +336,6 @@ namespace Courses.DL.Services
 
             if (existingQuestions.Any())
             {
-                var existingQuestionIds = existingQuestions.Select(obj => obj.Id).ToList();
-                var hasSubmittedAnswers = await _quizAnswerRepository.Where(obj => existingQuestionIds.Contains(obj.QuizQuestionId)).AnyAsync();
-                if (hasSubmittedAnswers)
-                {
-                    response.Message = "Cannot edit this quiz after students submitted answers";
-                    return response;
-                }
-
                 await _quizQuestionRepository.DeleteRangeAsync(existingQuestions);
             }
 
@@ -449,13 +441,6 @@ namespace Courses.DL.Services
             if (question.CourseId != expectedCourseId || question.LessonId != expectedLessonId)
             {
                 response.Message = "Question does not belong to this quiz scope";
-                return response;
-            }
-
-            var hasSubmittedAnswers = await _quizAnswerRepository.Where(obj => obj.QuizQuestionId == questionId).AnyAsync();
-            if (hasSubmittedAnswers)
-            {
-                response.Message = "Cannot edit this quiz question after students submitted answers";
                 return response;
             }
 
