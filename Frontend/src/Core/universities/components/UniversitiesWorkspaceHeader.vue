@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import AppIcon from '@/Shared/components/AppIcon.vue';
 import { isTeacherRole, user } from '@/Shared/services/utils';
 
-const props = defineProps({
+defineProps({
     title: {
         type: String,
         required: true,

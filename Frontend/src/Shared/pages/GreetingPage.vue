@@ -1,9 +1,8 @@
 <script setup>
 import { computed } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
+import { useRoute } from 'vue-router';
 import InfoCardGrid from '../components/InfoCardGrid.vue';
 
-const router = useRouter();
 const route = useRoute();
 
 const isAuthFormVisible = computed(() => {

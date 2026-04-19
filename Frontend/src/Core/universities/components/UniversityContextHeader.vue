@@ -1,9 +1,8 @@
 <script setup>
 import { computed } from 'vue';
-import { isTeacherRole, user } from '@/Shared/services/utils';
 import AppIcon from '@/Shared/components/AppIcon.vue';
 
-const props = defineProps({
+defineProps({
     universityName: {
         type: String,
         required: true,
@@ -47,9 +46,6 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['join']);
-
-const isTeacher = computed(() => isTeacherRole(user.value.role));
-const currentRoleLabel = computed(() => isTeacher.value ? 'Teacher' : 'Student');
 
 const tabs = computed(() => [
     { key: 'courses', label: 'Courses', icon: 'courses', routeName: 'UniversityCourses' },

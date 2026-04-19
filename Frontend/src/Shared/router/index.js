@@ -89,6 +89,36 @@ const routes = [
         }
     },
     {
+        path: '/universities/:name/courses/:courseId/lessons/create',
+        name: 'UniversityCourseLessonCreate',
+        component: () => import('@/Core/universities/pages/UniversityCourseLessonEditPage.vue'),
+        meta: {
+            title: 'Create Lesson',
+            requiresAuth: true,
+            hidePrimaryNavigation: true
+        }
+    },
+    {
+        path: '/universities/:name/courses/:courseId/lessons/:lessonId(\\d+)/edit',
+        name: 'UniversityCourseLessonEdit',
+        component: () => import('@/Core/universities/pages/UniversityCourseLessonEditPage.vue'),
+        meta: {
+            title: 'Edit Lesson',
+            requiresAuth: true,
+            hidePrimaryNavigation: true
+        }
+    },
+    {
+        path: '/universities/:name/courses/:courseId/lessons/:lessonId(\\d+)',
+        name: 'UniversityCourseLessonDetail',
+        component: () => import('@/Core/universities/pages/UniversityCourseLessonDetailPage.vue'),
+        meta: {
+            title: 'Lesson Details',
+            requiresAuth: true,
+            hidePrimaryNavigation: true
+        }
+    },
+    {
         path: '/universities/:name/info',
         name: 'UniversityInfo',
         component: () => import('@/Core/universities/pages/UniversityInfoPage.vue'),
