@@ -22,6 +22,9 @@ const selectedLessonReviewId = ref(0);
 const teacherLessonQuizAnswers = ref([]);
 const teacherCourseQuizAnswers = ref([]);
 const gradeDraftByStudent = ref({});
+const courseQuizQuestions = ref([]);
+const myCourseQuizAnswers = ref([]);
+const courseQuizAnswerDraftByQuestion = ref({});
 
 const isLoadingWorkspace = ref(false);
 const isLoadingLessons = ref(false);
@@ -29,6 +32,13 @@ const isJoining = ref(false);
 const isSavingGrade = ref(false);
 const isLoadingTeacherInsights = ref(false);
 const isLoadingLessonAnswers = ref(false);
+const isLoadingCourseQuiz = ref(false);
+const isLoadingMyCourseQuizAnswers = ref(false);
+const isSubmittingCourseQuiz = ref(false);
+const isSavingCourseQuiz = ref(false);
+const isCourseQuizEditorOpen = ref(false);
+const courseQuizEditorQuestions = ref([]);
+const courseQuizEditorAttemptPolicy = ref('reattempt');
 
 const isMember = ref(false);
 const actionMessage = ref('');
@@ -95,6 +105,10 @@ const selectedTeacherStudentCourseQuizAnswers = computed(() => {
     return teacherCourseQuizAnswers.value.filter((item) => Number(item?.studentId || item?.StudentId || 0) === studentId);
 });
 
+const hasCourseQuizQuestions = computed(() => courseQuizQuestions.value.length > 0);
+const myCourseQuizCorrectCount = computed(() => myCourseQuizAnswers.value.filter(item => item.isCorrect || item.IsCorrect).length);
+const myCourseQuizScoreLabel = computed(() => `${myCourseQuizCorrectCount.value}/${myCourseQuizAnswers.value.length}`);
+
 function normalizeItems(payload) {
     return payload?.items || payload?.Items || payload?.values || payload?.Values || [];
 }
@@ -140,6 +154,168 @@ function getStudentCanBeMarked(item) {
 
 function normalizeAnswerRows(payload) {
     return payload?.values || payload?.Values || payload?.items || payload?.Items || [];
+}
+
+function normalizeQuestionRows(payload) {
+    return payload?.values || payload?.Values || payload?.items || payload?.Items || [];
+}
+
+function getQuestionId(item) {
+    return Number(item?.id || item?.Id || 0);
+}
+
+function getOptionId(item) {
+    return Number(item?.id || item?.Id || 0);
+}
+
+function normalizeAttemptPolicy(rawValue) {
+    const raw = String(rawValue || 'reattempt').trim().toLowerCase();
+    return raw === 'single' ? 'single' : 'reattempt';
+}
+
+function getQuizAttemptPolicy(questions) {
+    const rows = Array.isArray(questions) ? questions : [];
+    if (!rows.length) {
+        return 'reattempt';
+    }
+
+    return normalizeAttemptPolicy(rows[0]?.attemptPolicy || rows[0]?.AttemptPolicy || 'reattempt');
+}
+
+function isSingleAttemptCourseQuiz() {
+    return getQuizAttemptPolicy(courseQuizQuestions.value) === 'single';
+}
+
+function canEditCourseQuizAnswers() {
+    if (canManage.value) {
+        return false;
+    }
+
+    return !(isSingleAttemptCourseQuiz() && myCourseQuizAnswers.value.length > 0);
+}
+
+function getExistingAnswerOptionId(questionIdValue, answers) {
+    const row = answers.find(item => Number(item?.questionId || item?.QuestionId) === questionIdValue);
+    if (!row) {
+        return 0;
+    }
+
+    return Number(row?.selectedOptionId || row?.SelectedOptionId || 0);
+}
+
+function hasSelectedAnswersForAllQuestions(questions, drafts) {
+    const rows = Array.isArray(questions) ? questions : [];
+    if (!rows.length) {
+        return false;
+    }
+
+    return rows.every((question) => {
+        const questionId = getQuestionId(question);
+        return questionId > 0 && Number(drafts?.[questionId] || 0) > 0;
+    });
+}
+
+function buildSubmitAnswersPayload(questions, drafts) {
+    return (Array.isArray(questions) ? questions : []).map((question) => ({
+        questionId: getQuestionId(question),
+        selectedOptionId: Number(drafts?.[getQuestionId(question)] || 0),
+    }));
+}
+
+function createEmptyQuestionDraft() {
+    return {
+        questionText: '',
+        optionTexts: ['', ''],
+        correctOptionIndex: 0,
+    };
+}
+
+function mapQuestionToDraft(question) {
+    const options = (question?.options || question?.Options || [])
+        .map((item) => String(item?.optionText || item?.OptionText || '').trim())
+        .filter((item) => item.length > 0);
+
+    const correctOptionIndex = (question?.options || question?.Options || []).findIndex((item) => Boolean(item?.isCorrect ?? item?.IsCorrect));
+
+    return {
+        questionText: String(question?.questionText || question?.QuestionText || ''),
+        optionTexts: options.length >= 2 ? options : ['', ''],
+        correctOptionIndex: correctOptionIndex >= 0 ? correctOptionIndex : 0,
+    };
+}
+
+function mapQuestionsToDraft(questions) {
+    const rows = Array.isArray(questions) ? questions : [];
+    if (!rows.length) {
+        return [createEmptyQuestionDraft()];
+    }
+
+    return rows.map((item) => mapQuestionToDraft(item));
+}
+
+function buildQuizQuestionPayload(draft) {
+    const questionText = String(draft?.questionText || '').trim();
+    const optionTexts = Array.isArray(draft?.optionTexts) ? draft.optionTexts : [];
+    const correctIndex = Number(draft?.correctOptionIndex || 0);
+
+    const options = optionTexts
+        .map((text, index) => ({
+            optionText: String(text || '').trim(),
+            isCorrect: index === correctIndex,
+        }))
+        .filter((opt) => opt.optionText.length > 0);
+
+    return { questionText, options };
+}
+
+function addQuestionDraftRow() {
+    courseQuizEditorQuestions.value.push(createEmptyQuestionDraft());
+}
+
+function removeQuestionDraftRow(questionIndex) {
+    if (courseQuizEditorQuestions.value.length <= 1) {
+        return;
+    }
+
+    courseQuizEditorQuestions.value.splice(questionIndex, 1);
+}
+
+function addOptionToQuestion(questionIndex) {
+    if (!courseQuizEditorQuestions.value[questionIndex]) {
+        return;
+    }
+
+    courseQuizEditorQuestions.value[questionIndex].optionTexts.push('');
+}
+
+function removeOptionFromQuestion(questionIndex, optionIndex) {
+    const question = courseQuizEditorQuestions.value[questionIndex];
+    if (!question || question.optionTexts.length <= 2) {
+        return;
+    }
+
+    question.optionTexts.splice(optionIndex, 1);
+    if (question.correctOptionIndex >= question.optionTexts.length) {
+        question.correctOptionIndex = 0;
+    }
+}
+
+function openCreateCourseQuizEditor() {
+    courseQuizEditorQuestions.value = mapQuestionsToDraft([]);
+    courseQuizEditorAttemptPolicy.value = 'reattempt';
+    isCourseQuizEditorOpen.value = true;
+}
+
+function openEditCourseQuizEditor() {
+    courseQuizEditorQuestions.value = mapQuestionsToDraft(courseQuizQuestions.value);
+    courseQuizEditorAttemptPolicy.value = getQuizAttemptPolicy(courseQuizQuestions.value);
+    isCourseQuizEditorOpen.value = true;
+}
+
+function closeCourseQuizEditor() {
+    isCourseQuizEditorOpen.value = false;
+    courseQuizEditorQuestions.value = [];
+    courseQuizEditorAttemptPolicy.value = 'reattempt';
 }
 
 function getDraftMark(student) {
@@ -247,6 +423,86 @@ async function loadCourseProgress() {
     }
 }
 
+async function loadCourseQuiz() {
+    if (!canView.value || !courseId.value) {
+        courseQuizQuestions.value = [];
+        return;
+    }
+
+    isLoadingCourseQuiz.value = true;
+    try {
+        const response = await courseApi.getCourseQuizQuestions(courseId.value);
+        courseQuizQuestions.value = normalizeQuestionRows(response);
+    } catch {
+        courseQuizQuestions.value = [];
+    } finally {
+        isLoadingCourseQuiz.value = false;
+    }
+}
+
+async function saveCourseQuizEditor() {
+    if (!canManage.value || !courseId.value || isSavingCourseQuiz.value) {
+        return;
+    }
+
+    const questionsPayload = courseQuizEditorQuestions.value.map((draft) => buildQuizQuestionPayload(draft));
+
+    if (!questionsPayload.length) {
+        errorMessage.value = 'Final quiz must contain at least one question.';
+        return;
+    }
+
+    if (questionsPayload.some((item) => !item.questionText || item.options.length < 2 || item.options.filter((opt) => opt.isCorrect).length !== 1)) {
+        errorMessage.value = 'Each question must include text, at least two variants, and exactly one correct answer.';
+        return;
+    }
+
+    clearMessages();
+    isSavingCourseQuiz.value = true;
+
+    try {
+        const response = await courseApi.upsertCourseQuiz({
+            courseId: courseId.value,
+            questions: questionsPayload,
+            attemptPolicy: normalizeAttemptPolicy(courseQuizEditorAttemptPolicy.value),
+        });
+
+        actionMessage.value = readMessage(response) || 'Final quiz saved successfully.';
+        closeCourseQuizEditor();
+        await loadCourseQuiz();
+    } catch (error) {
+        errorMessage.value = error?.message || 'Could not save final quiz.';
+    } finally {
+        isSavingCourseQuiz.value = false;
+    }
+}
+
+async function loadMyCourseQuizAnswers() {
+    if (!canView.value || canManage.value || !courseId.value) {
+        myCourseQuizAnswers.value = [];
+        courseQuizAnswerDraftByQuestion.value = {};
+        return;
+    }
+
+    isLoadingMyCourseQuizAnswers.value = true;
+
+    try {
+        const response = await courseApi.getMyCourseQuizAnswers(courseId.value);
+        myCourseQuizAnswers.value = normalizeAnswerRows(response);
+
+        courseQuizAnswerDraftByQuestion.value = courseQuizQuestions.value.reduce((acc, item) => {
+            const questionIdValue = getQuestionId(item);
+            acc[questionIdValue] = getExistingAnswerOptionId(questionIdValue, myCourseQuizAnswers.value);
+            return acc;
+        }, {});
+    } catch {
+        myCourseQuizAnswers.value = [];
+        courseQuizAnswerDraftByQuestion.value = {};
+    } finally {
+        isLoadingMyCourseQuizAnswers.value = false;
+    }
+}
+
 async function loadTeacherInsights() {
     if (!canView.value || !canManage.value || !courseId.value) {
         studentsProgress.value = [];
@@ -313,6 +569,8 @@ async function refreshWorkspace() {
         await loadCourse();
         await loadLessons();
         await loadCourseProgress();
+        await loadCourseQuiz();
+        await loadMyCourseQuizAnswers();
         await loadTeacherInsights();
         await loadSelectedLessonTeacherAnswers();
     }
@@ -333,12 +591,45 @@ async function joinUniversity() {
         await loadCourse();
         await loadLessons();
         await loadCourseProgress();
+        await loadCourseQuiz();
+        await loadMyCourseQuizAnswers();
         await loadTeacherInsights();
         await loadSelectedLessonTeacherAnswers();
     } catch (error) {
         errorMessage.value = error?.message || 'Could not process university access action.';
     } finally {
         isJoining.value = false;
+    }
+}
+
+async function submitCourseQuiz() {
+    if (!courseId.value || isSubmittingCourseQuiz.value || !canEditCourseQuizAnswers()) {
+        return;
+    }
+
+    if (!hasSelectedAnswersForAllQuestions(courseQuizQuestions.value, courseQuizAnswerDraftByQuestion.value)) {
+        errorMessage.value = 'Please select answers for all final quiz questions before submitting.';
+        return;
+    }
+
+    const answers = buildSubmitAnswersPayload(courseQuizQuestions.value, courseQuizAnswerDraftByQuestion.value);
+
+    clearMessages();
+    isSubmittingCourseQuiz.value = true;
+
+    try {
+        const response = await courseApi.submitCourseQuiz({
+            courseId: courseId.value,
+            answers,
+        });
+
+        actionMessage.value = readMessage(response) || 'Final quiz submitted.';
+        await loadMyCourseQuizAnswers();
+        await loadCourseProgress();
+    } catch (error) {
+        errorMessage.value = error?.message || 'Could not submit final quiz.';
+    } finally {
+        isSubmittingCourseQuiz.value = false;
     }
 }
 
@@ -493,6 +784,55 @@ onMounted(async () => {
                 </div>
             </article>
 
+            <section v-if="canView && !canManage" class="surface-card final-quiz-panel">
+                <div class="final-quiz-panel__head">
+                    <p class="section-kicker">Final quiz</p>
+                    <p v-if="hasCourseQuizQuestions" class="final-quiz-panel__policy">
+                        Policy: {{ isSingleAttemptCourseQuiz() ? 'Single attempt' : 'Reattempt allowed' }}
+                    </p>
+                </div>
+
+                <p v-if="isLoadingCourseQuiz || isLoadingMyCourseQuizAnswers" class="state-message">Loading final quiz...</p>
+
+                <div v-else-if="hasCourseQuizQuestions" class="final-quiz-questions">
+                    <article v-for="question in courseQuizQuestions" :key="getQuestionId(question)" class="final-quiz-question">
+                        <p class="final-quiz-question__text">{{ question.questionText || question.QuestionText }}</p>
+
+                        <label
+                            v-for="option in question.options || question.Options || []"
+                            :key="getOptionId(option)"
+                            class="final-quiz-question__option"
+                        >
+                            <input
+                                v-model.number="courseQuizAnswerDraftByQuestion[getQuestionId(question)]"
+                                :disabled="!canEditCourseQuizAnswers() || isSubmittingCourseQuiz"
+                                type="radio"
+                                :name="`course-question-${getQuestionId(question)}`"
+                                :value="getOptionId(option)"
+                            />
+                            <span>{{ option.optionText || option.OptionText }}</span>
+                        </label>
+                    </article>
+
+                    <button
+                        class="submit-button"
+                        type="button"
+                        :disabled="isSubmittingCourseQuiz || !hasSelectedAnswersForAllQuestions(courseQuizQuestions, courseQuizAnswerDraftByQuestion) || !canEditCourseQuizAnswers()"
+                        @click="submitCourseQuiz"
+                    >
+                        {{ isSubmittingCourseQuiz ? 'Submitting...' : 'Submit final quiz' }}
+                    </button>
+
+                    <p v-if="isSingleAttemptCourseQuiz() && myCourseQuizAnswers.length" class="state-message final-quiz-panel__lock">
+                        Final quiz is locked after your first submit.
+                    </p>
+
+                    <p v-if="myCourseQuizAnswers.length" class="final-quiz-panel__score">Your score: {{ myCourseQuizScoreLabel }}</p>
+                </div>
+
+                <p v-else class="state-message">No final quiz questions published yet.</p>
+            </section>
+
             <div v-if="canView" class="lessons-list">
                 <LessonListMobileItem
                     v-for="lesson in lessons"
@@ -538,6 +878,104 @@ onMounted(async () => {
                     </div>
 
                     <div v-if="selectedTeacherStudent" class="teacher-panel__details">
+                        <section class="surface-card teacher-box">
+                            <div class="teacher-box__head">
+                                <p class="section-kicker">Final quiz editor</p>
+                                <div class="teacher-box__actions">
+                                    <button
+                                        class="secondary-button"
+                                        type="button"
+                                        :disabled="isSavingCourseQuiz"
+                                        @click="hasCourseQuizQuestions ? openEditCourseQuizEditor() : openCreateCourseQuizEditor()"
+                                    >
+                                        {{ hasCourseQuizQuestions ? 'Edit final quiz' : 'Create final quiz' }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div v-if="isCourseQuizEditorOpen" class="quiz-editor">
+                                <div class="field-group">
+                                    <label class="field-label">Attempt policy for whole final quiz</label>
+                                    <select v-model="courseQuizEditorAttemptPolicy" class="input-field">
+                                        <option value="reattempt">Reattempt allowed</option>
+                                        <option value="single">Single attempt (lock after first submit)</option>
+                                    </select>
+                                </div>
+
+                                <div class="quiz-editor__questions">
+                                    <article
+                                        v-for="(questionDraft, questionIndex) in courseQuizEditorQuestions"
+                                        :key="`teacher-course-question-draft-${questionIndex}`"
+                                        class="quiz-editor__question-card"
+                                    >
+                                        <div class="field-group">
+                                            <label class="field-label">Question {{ questionIndex + 1 }}</label>
+                                            <input
+                                                v-model="questionDraft.questionText"
+                                                class="input-field"
+                                                type="text"
+                                                maxlength="400"
+                                                placeholder="What does HTTP status 404 mean?"
+                                            />
+                                        </div>
+
+                                        <div class="quiz-editor__options">
+                                            <div
+                                                v-for="(optionText, optionIndex) in questionDraft.optionTexts"
+                                                :key="`teacher-course-opt-${questionIndex}-${optionIndex}`"
+                                                class="quiz-editor__option-row"
+                                            >
+                                                <input
+                                                    v-model="questionDraft.optionTexts[optionIndex]"
+                                                    class="input-field"
+                                                    type="text"
+                                                    maxlength="300"
+                                                    :placeholder="`Variant ${optionIndex + 1}`"
+                                                />
+                                                <label class="quiz-editor__correct">
+                                                    <input
+                                                        v-model.number="questionDraft.correctOptionIndex"
+                                                        type="radio"
+                                                        :name="`teacher-course-quiz-correct-${questionIndex}`"
+                                                        :value="optionIndex"
+                                                    />
+                                                    Correct
+                                                </label>
+                                                <button
+                                                    class="secondary-button"
+                                                    type="button"
+                                                    :disabled="questionDraft.optionTexts.length <= 2"
+                                                    @click="removeOptionFromQuestion(questionIndex, optionIndex)"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div class="teacher-box__actions">
+                                            <button class="secondary-button" type="button" @click="addOptionToQuestion(questionIndex)">Add variant</button>
+                                            <button
+                                                class="secondary-button"
+                                                type="button"
+                                                :disabled="courseQuizEditorQuestions.length <= 1"
+                                                @click="removeQuestionDraftRow(questionIndex)"
+                                            >
+                                                Remove question
+                                            </button>
+                                        </div>
+                                    </article>
+                                </div>
+
+                                <div class="teacher-box__actions">
+                                    <button class="secondary-button" type="button" @click="addQuestionDraftRow">Add question</button>
+                                    <button class="submit-button" type="button" :disabled="isSavingCourseQuiz" @click="saveCourseQuizEditor">
+                                        {{ isSavingCourseQuiz ? 'Saving...' : 'Save final quiz' }}
+                                    </button>
+                                    <button class="secondary-button" type="button" :disabled="isSavingCourseQuiz" @click="closeCourseQuizEditor">Cancel</button>
+                                </div>
+                            </div>
+                        </section>
+
                         <section class="surface-card teacher-box">
                             <p class="section-kicker">Marking</p>
                             <div class="teacher-box__row">
@@ -704,6 +1142,64 @@ onMounted(async () => {
     transition: width var(--ttl-transition-base);
 }
 
+.final-quiz-panel {
+    padding: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.final-quiz-panel__head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.final-quiz-panel__policy {
+    margin: 0;
+    color: var(--ttl-text-secondary);
+    font-size: 0.84rem;
+}
+
+.final-quiz-questions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.final-quiz-question {
+    padding: 0.55rem;
+    border: 1px solid var(--ttl-border-subtle);
+    border-radius: var(--ttl-radius-sm);
+    background: var(--ttl-bg-surface-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.final-quiz-question__text {
+    margin: 0;
+    color: var(--ttl-text-primary);
+    font-weight: 700;
+}
+
+.final-quiz-question__option {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--ttl-text-secondary);
+}
+
+.final-quiz-panel__lock {
+    color: var(--ttl-warning);
+}
+
+.final-quiz-panel__score {
+    margin: 0;
+    color: var(--ttl-text-primary);
+    font-weight: 800;
+}
+
 .teacher-panel {
     padding: 0.85rem;
     display: flex;
@@ -781,6 +1277,12 @@ onMounted(async () => {
     gap: 0.4rem;
 }
 
+.teacher-box__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
 .teacher-box__select {
     min-height: 2.5rem;
 }
@@ -805,6 +1307,53 @@ onMounted(async () => {
     margin: 0;
     color: var(--ttl-text-secondary);
     font-size: 0.83rem;
+}
+
+.quiz-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: 0.6rem;
+    border-radius: var(--ttl-radius-sm);
+    border: 1px solid var(--ttl-border-subtle);
+    background: var(--ttl-bg-surface-soft);
+}
+
+.quiz-editor__questions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.quiz-editor__question-card {
+    padding: 0.55rem;
+    border-radius: var(--ttl-radius-sm);
+    border: 1px solid var(--ttl-border-subtle);
+    background: var(--ttl-bg-page);
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.quiz-editor__options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.quiz-editor__option-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.quiz-editor__correct {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--ttl-text-secondary);
+    font-size: 0.84rem;
 }
 
 .state-message {
@@ -835,6 +1384,10 @@ onMounted(async () => {
     }
 
     .teacher-box__row {
+        grid-template-columns: 1fr;
+    }
+
+    .quiz-editor__option-row {
         grid-template-columns: 1fr;
     }
 }
