@@ -6,5 +6,8 @@ namespace Courses.DAL.Dtos
     {
         [Required]
         public IEnumerable<CreateQuizQuestionDto> Questions { get; set; } = new List<CreateQuizQuestionDto>();
+
+        [MaxLength(32)]
+        public string AttemptPolicy { get; set; } = "reattempt";
     }
 }

@@ -154,12 +154,12 @@ namespace Courses.API.Controllers
             }
         }
 
-        [HttpPost("lesson/{lessonId}/questions/{questionId}/answer")]
-        public async Task<IActionResult> SubmitLessonQuizAnswerAsync(long lessonId, long questionId, SubmitQuizAnswerDto dto)
+        [HttpPost("lesson/{lessonId}/submit")]
+        public async Task<IActionResult> SubmitLessonQuizAsync(long lessonId, SubmitQuizDto dto)
         {
             try
             {
-                var result = await _quizService.SubmitLessonQuizAnswerAsync(lessonId, questionId, dto, getUserEmail());
+                var result = await _quizService.SubmitLessonQuizAsync(lessonId, dto, getUserEmail());
                 if (!result.Success)
                     return BadRequest(result.Message);
                 return Ok(result);
@@ -171,12 +171,12 @@ namespace Courses.API.Controllers
             }
         }
 
-        [HttpPost("course/{courseId}/questions/{questionId}/answer")]
-        public async Task<IActionResult> SubmitCourseQuizAnswerAsync(long courseId, long questionId, SubmitQuizAnswerDto dto)
+        [HttpPost("course/{courseId}/submit")]
+        public async Task<IActionResult> SubmitCourseQuizAsync(long courseId, SubmitQuizDto dto)
         {
             try
             {
-                var result = await _quizService.SubmitCourseQuizAnswerAsync(courseId, questionId, dto, getUserEmail());
+                var result = await _quizService.SubmitCourseQuizAsync(courseId, dto, getUserEmail());
                 if (!result.Success)
                     return BadRequest(result.Message);
                 return Ok(result);

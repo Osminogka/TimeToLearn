@@ -44,8 +44,8 @@ const isLoadingCourseQuiz = ref(false);
 const isLoadingStudentQuizAnswers = ref(false);
 const isLoadingTeacherQuizAnswers = ref(false);
 const isSavingCourseQuiz = ref(false);
-const isSubmittingLessonQuizAnswer = ref(false);
-const isSubmittingCourseQuizAnswer = ref(false);
+const isSubmittingLessonQuiz = ref(false);
+const isSubmittingCourseQuiz = ref(false);
 
 const lessonQuizQuestions = ref([]);
 const courseQuizQuestions = ref([]);
@@ -57,8 +57,10 @@ const teacherCourseQuizAnswers = ref([]);
 const lessonQuizAnswerDraftByQuestion = ref({});
 const courseQuizAnswerDraftByQuestion = ref({});
 const editingLessonQuizQuestions = ref([]);
+const editingLessonQuizAttemptPolicy = ref('reattempt');
 const isCourseQuizEditorOpen = ref(false);
 const courseQuizEditorQuestions = ref([]);
+const courseQuizEditorAttemptPolicy = ref('reattempt');
 
 const universityName = computed(() => String(route.params.name || ''));
 const courseId = computed(() => Number(route.params.courseId || 0));
@@ -251,7 +253,6 @@ function createEmptyQuestionDraft() {
         questionText: '',
         optionTexts: ['', ''],
         correctOptionIndex: 0,
-        attemptPolicy: 'reattempt',
     };
 }
 
@@ -266,7 +267,6 @@ function mapQuestionToDraft(question) {
         questionText: String(question?.questionText || question?.QuestionText || ''),
         optionTexts: options.length >= 2 ? options : ['', ''],
         correctOptionIndex: correctOptionIndex >= 0 ? correctOptionIndex : 0,
-        attemptPolicy: getQuestionAttemptPolicy(question),
     };
 }
 
@@ -291,7 +291,6 @@ function buildQuizQuestionPayload(draft) {
     const questionText = String(draft?.questionText || '').trim();
     const optionTexts = Array.isArray(draft?.optionTexts) ? draft.optionTexts : [];
     const correctIndex = Number(draft?.correctOptionIndex || 0);
-    const attemptPolicy = String(draft?.attemptPolicy || 'reattempt').trim().toLowerCase() === 'single' ? 'single' : 'reattempt';
 
     const options = optionTexts
         .map((text, index) => ({
@@ -300,12 +299,21 @@ function buildQuizQuestionPayload(draft) {
         }))
         .filter((opt) => opt.optionText.length > 0);
 
-    return { questionText, options, attemptPolicy };
+    return { questionText, options };
 }
 
-function getQuestionAttemptPolicy(question) {
-    const raw = String(question?.attemptPolicy || question?.AttemptPolicy || 'reattempt').trim().toLowerCase();
+function normalizeAttemptPolicy(rawValue) {
+    const raw = String(rawValue || 'reattempt').trim().toLowerCase();
     return raw === 'single' ? 'single' : 'reattempt';
+}
+
+function getQuizAttemptPolicy(questions) {
+    const rows = Array.isArray(questions) ? questions : [];
+    if (!rows.length) {
+        return 'reattempt';
+    }
+
+    return normalizeAttemptPolicy(rows[0]?.attemptPolicy || rows[0]?.AttemptPolicy || 'reattempt');
 }
 
 function addQuestionDraftRow(targetRef) {
@@ -352,42 +360,50 @@ function removeOptionFromQuestion(targetRef, questionIndex, optionIndex) {
     }
 }
 
-function isSingleAttemptQuestion(question) {
-    return getQuestionAttemptPolicy(question) === 'single';
+function isSingleAttemptLessonQuiz() {
+    return getQuizAttemptPolicy(lessonQuizQuestions.value) === 'single';
 }
 
-function hasAnsweredLessonQuestion(questionId) {
-    return myLessonQuizAnswers.value.some(item => Number(item?.questionId || item?.QuestionId) === questionId);
+function isSingleAttemptCourseQuiz() {
+    return getQuizAttemptPolicy(courseQuizQuestions.value) === 'single';
 }
 
-function hasAnsweredCourseQuestion(questionId) {
-    return myCourseQuizAnswers.value.some(item => Number(item?.questionId || item?.QuestionId) === questionId);
-}
-
-function canEditLessonAnswer(question) {
+function canEditLessonQuizAnswers() {
     if (canManage.value) {
         return false;
     }
 
-    const questionId = getQuestionId(question);
-    if (!questionId) {
-        return false;
-    }
-
-    return !(isSingleAttemptQuestion(question) && hasAnsweredLessonQuestion(questionId));
+    return !(isSingleAttemptLessonQuiz() && myLessonQuizAnswers.value.length > 0);
 }
 
-function canEditCourseAnswer(question) {
+function canEditCourseQuizAnswers() {
     if (canManage.value) {
         return false;
     }
 
-    const questionId = getQuestionId(question);
-    if (!questionId) {
+    return !(isSingleAttemptCourseQuiz() && myCourseQuizAnswers.value.length > 0);
+}
+
+function hasSelectedAnswersForAllQuestions(questions, drafts) {
+    const rows = Array.isArray(questions) ? questions : [];
+    if (!rows.length) {
         return false;
     }
 
-    return !(isSingleAttemptQuestion(question) && hasAnsweredCourseQuestion(questionId));
+    return rows.every((question) => {
+        const questionId = getQuestionId(question);
+        return questionId > 0 && Number(drafts?.[questionId] || 0) > 0;
+    });
+}
+
+function buildSubmitAnswersPayload(questions, drafts) {
+    return (Array.isArray(questions) ? questions : []).map((question) => {
+        const questionId = getQuestionId(question);
+        return {
+            questionId,
+            selectedOptionId: Number(drafts?.[questionId] || 0),
+        };
+    });
 }
 
 function getExistingAnswerOptionId(questionId, answers) {
@@ -506,17 +522,20 @@ async function loadQuizWorkspace() {
 
 function openCreateCourseQuizEditor() {
     courseQuizEditorQuestions.value = mapQuestionsToDraft([]);
+    courseQuizEditorAttemptPolicy.value = 'reattempt';
     isCourseQuizEditorOpen.value = true;
 }
 
 function openEditCourseQuizEditor() {
     courseQuizEditorQuestions.value = mapQuestionsToDraft(courseQuizQuestions.value);
+    courseQuizEditorAttemptPolicy.value = getQuizAttemptPolicy(courseQuizQuestions.value);
     isCourseQuizEditorOpen.value = true;
 }
 
 function closeCourseQuizEditor() {
     isCourseQuizEditorOpen.value = false;
     courseQuizEditorQuestions.value = [];
+    courseQuizEditorAttemptPolicy.value = 'reattempt';
 }
 
 async function saveCourseQuizEditor() {
@@ -542,6 +561,7 @@ async function saveCourseQuizEditor() {
         const response = await courseApi.upsertCourseQuiz({
             courseId: courseId.value,
             questions: questionsPayload,
+            attemptPolicy: normalizeAttemptPolicy(courseQuizEditorAttemptPolicy.value),
         });
 
         actionMessage.value = readMessage(response) || 'Course quiz saved successfully.';
@@ -554,55 +574,61 @@ async function saveCourseQuizEditor() {
     }
 }
 
-async function submitLessonQuizAnswer(question) {
-    const questionId = getQuestionId(question);
-    const selectedOptionId = Number(lessonQuizAnswerDraftByQuestion.value[questionId] || 0);
-
-    if (!selectedLessonId.value || !questionId || !selectedOptionId || isSubmittingLessonQuizAnswer.value) {
+async function submitLessonQuiz() {
+    if (!selectedLessonId.value || isSubmittingLessonQuiz.value || !canEditLessonQuizAnswers()) {
         return;
     }
 
+    if (!hasSelectedAnswersForAllQuestions(lessonQuizQuestions.value, lessonQuizAnswerDraftByQuestion.value)) {
+        errorMessage.value = 'Please select answers for all lesson quiz questions before submitting.';
+        return;
+    }
+
+    const answers = buildSubmitAnswersPayload(lessonQuizQuestions.value, lessonQuizAnswerDraftByQuestion.value);
+
     clearMessages();
-    isSubmittingLessonQuizAnswer.value = true;
+    isSubmittingLessonQuiz.value = true;
     try {
-        const response = await courseApi.submitLessonQuizAnswer({
+        const response = await courseApi.submitLessonQuiz({
             lessonId: selectedLessonId.value,
-            questionId,
-            selectedOptionId,
+            answers,
         });
 
-        actionMessage.value = readMessage(response) || 'Lesson mini quiz answer submitted.';
+        actionMessage.value = readMessage(response) || 'Lesson mini quiz submitted.';
         await loadMyQuizAnswers();
     } catch (error) {
-        errorMessage.value = error?.message || 'Could not submit lesson mini quiz answer.';
+        errorMessage.value = error?.message || 'Could not submit lesson mini quiz.';
     } finally {
-        isSubmittingLessonQuizAnswer.value = false;
+        isSubmittingLessonQuiz.value = false;
     }
 }
 
-async function submitCourseQuizAnswer(question) {
-    const questionId = getQuestionId(question);
-    const selectedOptionId = Number(courseQuizAnswerDraftByQuestion.value[questionId] || 0);
-
-    if (!courseId.value || !questionId || !selectedOptionId || isSubmittingCourseQuizAnswer.value) {
+async function submitCourseQuiz() {
+    if (!courseId.value || isSubmittingCourseQuiz.value || !canEditCourseQuizAnswers()) {
         return;
     }
 
+    if (!hasSelectedAnswersForAllQuestions(courseQuizQuestions.value, courseQuizAnswerDraftByQuestion.value)) {
+        errorMessage.value = 'Please select answers for all course quiz questions before submitting.';
+        return;
+    }
+
+    const answers = buildSubmitAnswersPayload(courseQuizQuestions.value, courseQuizAnswerDraftByQuestion.value);
+
     clearMessages();
-    isSubmittingCourseQuizAnswer.value = true;
+    isSubmittingCourseQuiz.value = true;
     try {
-        const response = await courseApi.submitCourseQuizAnswer({
+        const response = await courseApi.submitCourseQuiz({
             courseId: courseId.value,
-            questionId,
-            selectedOptionId,
+            answers,
         });
 
-        actionMessage.value = readMessage(response) || 'Course quiz answer submitted.';
+        actionMessage.value = readMessage(response) || 'Course quiz submitted.';
         await loadMyQuizAnswers();
     } catch (error) {
-        errorMessage.value = error?.message || 'Could not submit course quiz answer.';
+        errorMessage.value = error?.message || 'Could not submit course quiz.';
     } finally {
-        isSubmittingCourseQuizAnswer.value = false;
+        isSubmittingCourseQuiz.value = false;
     }
 }
 
@@ -662,6 +688,7 @@ function clearMessages() {
 function resetLessonForm() {
     editingLessonId.value = 0;
     editingLessonQuizQuestions.value = [];
+    editingLessonQuizAttemptPolicy.value = 'reattempt';
     formErrorMessage.value = '';
     isLessonFormOpen.value = false;
 }
@@ -669,6 +696,7 @@ function resetLessonForm() {
 function openCreateLessonForm() {
     editingLessonId.value = 0;
     editingLessonQuizQuestions.value = mapQuestionsToDraft([]);
+    editingLessonQuizAttemptPolicy.value = 'reattempt';
     formErrorMessage.value = '';
     isLessonFormOpen.value = true;
 }
@@ -687,8 +715,10 @@ async function openEditLessonForm(lesson) {
         const response = await courseApi.getLessonQuizQuestions(id);
         const questions = normalizeQuestionRows(response);
         editingLessonQuizQuestions.value = questions.length ? questions : [];
+        editingLessonQuizAttemptPolicy.value = getQuizAttemptPolicy(questions);
     } catch {
         editingLessonQuizQuestions.value = [];
+        editingLessonQuizAttemptPolicy.value = 'reattempt';
     }
 
     isLessonFormOpen.value = true;
@@ -915,7 +945,7 @@ async function saveStudentGrade(student = null) {
     }
 }
 
-async function upsertLessonQuizForLesson(lessonId, quizPayload) {
+async function upsertLessonQuizForLesson(lessonId, quizPayload, attemptPolicy) {
     if (!lessonId) {
         return;
     }
@@ -923,6 +953,7 @@ async function upsertLessonQuizForLesson(lessonId, quizPayload) {
     await courseApi.upsertLessonQuiz({
         lessonId,
         questions: Array.isArray(quizPayload) ? quizPayload : [],
+        attemptPolicy: normalizeAttemptPolicy(attemptPolicy),
     });
 }
 
@@ -938,6 +969,7 @@ async function submitLessonForm(payload) {
     try {
         const resourceFields = lessonResourcesService.buildApiResourceFields(payload.resources);
         const lessonQuizPayload = payload.lessonQuizQuestions;
+        const lessonQuizAttemptPolicy = normalizeAttemptPolicy(payload.lessonQuizAttemptPolicy);
 
         if (isEditingMode.value) {
             const response = await courseApi.updateLesson({
@@ -950,7 +982,7 @@ async function submitLessonForm(payload) {
                 orderNumber: payload.orderNumber,
             });
 
-            await upsertLessonQuizForLesson(editingLessonId.value, lessonQuizPayload);
+            await upsertLessonQuizForLesson(editingLessonId.value, lessonQuizPayload, lessonQuizAttemptPolicy);
 
             actionMessage.value = readMessage(response) || 'Lesson updated successfully.';
             await loadLessons();
@@ -981,7 +1013,7 @@ async function submitLessonForm(payload) {
             if (lessons.value.length) {
                 const newestLessonId = getLessonId(lessons.value[lessons.value.length - 1]);
                 if (newestLessonId) {
-                    await upsertLessonQuizForLesson(newestLessonId, lessonQuizPayload);
+                    await upsertLessonQuizForLesson(newestLessonId, lessonQuizPayload, lessonQuizAttemptPolicy);
                     selectedLessonId.value = newestLessonId;
                     await loadLessonDetails(newestLessonId);
                     await loadQuizWorkspace();
@@ -1119,6 +1151,7 @@ onMounted(async () => {
                 :initial-lesson="editingLesson"
                 :initial-resources="editingLessonResources"
                 :initial-quiz-questions="editingLessonQuizQuestions"
+                :initial-quiz-attempt-policy="editingLessonQuizAttemptPolicy"
                 :is-submitting="isSubmittingLesson"
                 :error-message="formErrorMessage"
                 @submit="submitLessonForm"
@@ -1188,17 +1221,17 @@ onMounted(async () => {
                         </div>
 
                         <p v-if="canManage" class="state-message">Quiz for this lesson is configured only inside lesson create/edit form.</p>
+                        <p v-if="hasLessonQuizQuestions" class="quiz-question-card__policy">Policy: {{ isSingleAttemptLessonQuiz() ? 'Single attempt for whole quiz' : 'Reattempt allowed for whole quiz' }}</p>
 
                         <div v-if="hasLessonQuizQuestions" class="quiz-questions-list">
                             <article v-for="question in lessonQuizQuestions" :key="getQuestionId(question)" class="quiz-question-card">
                                 <p class="quiz-question-card__question">{{ question.questionText || question.QuestionText }}</p>
-                                <p class="quiz-question-card__policy">Policy: {{ isSingleAttemptQuestion(question) ? 'Single attempt' : 'Reattempt allowed' }}</p>
 
                                 <div class="quiz-question-card__options">
                                     <label v-for="option in question.options || question.Options || []" :key="getOptionId(option)" class="quiz-question-card__option">
                                         <input
                                             v-model.number="lessonQuizAnswerDraftByQuestion[getQuestionId(question)]"
-                                            :disabled="!canEditLessonAnswer(question)"
+                                            :disabled="!canEditLessonQuizAnswers() || isSubmittingLessonQuiz"
                                             type="radio"
                                             :name="`lesson-question-${getQuestionId(question)}`"
                                             :value="getOptionId(option)"
@@ -1207,21 +1240,22 @@ onMounted(async () => {
                                         <span v-if="canManage && (option.isCorrect ?? option.IsCorrect)" class="pill pill--accent">Correct</span>
                                     </label>
                                 </div>
-
-                                <button
-                                    v-if="!canManage"
-                                    class="secondary-button"
-                                    type="button"
-                                    :disabled="isSubmittingLessonQuizAnswer || !lessonQuizAnswerDraftByQuestion[getQuestionId(question)] || !canEditLessonAnswer(question)"
-                                    @click="submitLessonQuizAnswer(question)"
-                                >
-                                    {{ isSubmittingLessonQuizAnswer ? 'Submitting...' : 'Submit answer' }}
-                                </button>
-                                <p v-if="!canManage && isSingleAttemptQuestion(question) && hasAnsweredLessonQuestion(getQuestionId(question))" class="quiz-question-card__lock">
-                                    This question is locked after your first attempt.
-                                </p>
                             </article>
                         </div>
+
+                        <div v-if="!canManage && hasLessonQuizQuestions" class="quiz-panel__actions">
+                            <button
+                                class="submit-button"
+                                type="button"
+                                :disabled="isSubmittingLessonQuiz || !hasSelectedAnswersForAllQuestions(lessonQuizQuestions, lessonQuizAnswerDraftByQuestion) || !canEditLessonQuizAnswers()"
+                                @click="submitLessonQuiz"
+                            >
+                                {{ isSubmittingLessonQuiz ? 'Submitting...' : 'Submit whole quiz' }}
+                            </button>
+                        </div>
+                        <p v-if="!canManage && isSingleAttemptLessonQuiz() && myLessonQuizAnswers.length" class="quiz-question-card__lock">
+                            This whole lesson quiz is locked after your first submit.
+                        </p>
 
                         <p v-else-if="!isLoadingLessonQuiz" class="state-message">No lesson mini quiz questions published yet.</p>
 
@@ -1265,20 +1299,22 @@ onMounted(async () => {
                     </button>
                 </div>
 
+                <p v-if="hasCourseQuizQuestions" class="quiz-question-card__policy">Policy: {{ isSingleAttemptCourseQuiz() ? 'Single attempt for whole quiz' : 'Reattempt allowed for whole quiz' }}</p>
+
                 <div v-if="canManage && isCourseQuizEditorOpen" class="quiz-creator">
+                    <div class="field-group">
+                        <label class="field-label">Attempt policy for whole quiz</label>
+                        <select v-model="courseQuizEditorAttemptPolicy" class="input-field">
+                            <option value="reattempt">Reattempt allowed</option>
+                            <option value="single">Single attempt (lock after first quiz submit)</option>
+                        </select>
+                    </div>
+
                     <div class="quiz-creator__questions">
                         <article v-for="(questionDraft, questionIndex) in courseQuizEditorQuestions" :key="`course-question-draft-${questionIndex}`" class="quiz-creator__question-card">
                             <div class="field-group">
                                 <label class="field-label">Question {{ questionIndex + 1 }}</label>
                                 <input v-model="questionDraft.questionText" class="input-field" type="text" maxlength="400" placeholder="What does HTTP status 404 mean?" />
-                            </div>
-
-                            <div class="field-group">
-                                <label class="field-label">Attempt policy</label>
-                                <select v-model="questionDraft.attemptPolicy" class="input-field">
-                                    <option value="reattempt">Reattempt allowed</option>
-                                    <option value="single">Single attempt (lock after first answer)</option>
-                                </select>
                             </div>
 
                             <div class="quiz-creator__options">
@@ -1315,13 +1351,12 @@ onMounted(async () => {
                 <div v-if="hasCourseQuizQuestions" class="quiz-questions-list">
                     <article v-for="question in courseQuizQuestions" :key="getQuestionId(question)" class="quiz-question-card">
                         <p class="quiz-question-card__question">{{ question.questionText || question.QuestionText }}</p>
-                        <p class="quiz-question-card__policy">Policy: {{ isSingleAttemptQuestion(question) ? 'Single attempt' : 'Reattempt allowed' }}</p>
 
                         <div class="quiz-question-card__options">
                             <label v-for="option in question.options || question.Options || []" :key="getOptionId(option)" class="quiz-question-card__option">
                                 <input
                                     v-model.number="courseQuizAnswerDraftByQuestion[getQuestionId(question)]"
-                                    :disabled="!canEditCourseAnswer(question)"
+                                    :disabled="!canEditCourseQuizAnswers() || isSubmittingCourseQuiz"
                                     type="radio"
                                     :name="`course-question-${getQuestionId(question)}`"
                                     :value="getOptionId(option)"
@@ -1330,21 +1365,22 @@ onMounted(async () => {
                                 <span v-if="canManage && (option.isCorrect ?? option.IsCorrect)" class="pill pill--accent">Correct</span>
                             </label>
                         </div>
-
-                        <button
-                            v-if="!canManage"
-                            class="secondary-button"
-                            type="button"
-                            :disabled="isSubmittingCourseQuizAnswer || !courseQuizAnswerDraftByQuestion[getQuestionId(question)] || !canEditCourseAnswer(question)"
-                            @click="submitCourseQuizAnswer(question)"
-                        >
-                            {{ isSubmittingCourseQuizAnswer ? 'Submitting...' : 'Submit answer' }}
-                        </button>
-                        <p v-if="!canManage && isSingleAttemptQuestion(question) && hasAnsweredCourseQuestion(getQuestionId(question))" class="quiz-question-card__lock">
-                            This question is locked after your first attempt.
-                        </p>
                     </article>
                 </div>
+
+                <div v-if="!canManage && hasCourseQuizQuestions" class="quiz-panel__actions">
+                    <button
+                        class="submit-button"
+                        type="button"
+                        :disabled="isSubmittingCourseQuiz || !hasSelectedAnswersForAllQuestions(courseQuizQuestions, courseQuizAnswerDraftByQuestion) || !canEditCourseQuizAnswers()"
+                        @click="submitCourseQuiz"
+                    >
+                        {{ isSubmittingCourseQuiz ? 'Submitting...' : 'Submit whole quiz' }}
+                    </button>
+                </div>
+                <p v-if="!canManage && isSingleAttemptCourseQuiz() && myCourseQuizAnswers.length" class="quiz-question-card__lock">
+                    This whole course quiz is locked after your first submit.
+                </p>
 
                 <p v-else-if="!isLoadingCourseQuiz" class="state-message">No course-level quiz questions published yet.</p>
 

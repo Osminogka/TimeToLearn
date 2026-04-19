@@ -13,8 +13,8 @@ namespace Courses.DL.Services
         Task<ResponseMessage> UpdateLessonQuizQuestionAsync(long lessonId, long questionId, CreateQuizQuestionDto dto, string teacherEmail);
         Task<ResponseMessage> CreateCourseQuizQuestionAsync(long courseId, CreateQuizQuestionDto dto, string teacherEmail);
         Task<ResponseMessage> UpdateCourseQuizQuestionAsync(long courseId, long questionId, CreateQuizQuestionDto dto, string teacherEmail);
-        Task<ResponseMessage> SubmitLessonQuizAnswerAsync(long lessonId, long questionId, SubmitQuizAnswerDto dto, string userEmail);
-        Task<ResponseMessage> SubmitCourseQuizAnswerAsync(long courseId, long questionId, SubmitQuizAnswerDto dto, string userEmail);
+        Task<ResponseMessage> SubmitLessonQuizAsync(long lessonId, SubmitQuizDto dto, string userEmail);
+        Task<ResponseMessage> SubmitCourseQuizAsync(long courseId, SubmitQuizDto dto, string userEmail);
         Task<ResponseArray<StudentQuizAnswerDto>> GetMyLessonQuizAnswersAsync(long lessonId, string userEmail);
         Task<ResponseArray<StudentQuizAnswerDto>> GetMyCourseQuizAnswersAsync(long courseId, string userEmail);
         Task<ResponseArray<QuizAnswerReviewDto>> GetLessonQuizAnswersForTeacherAsync(long lessonId, string teacherEmail);

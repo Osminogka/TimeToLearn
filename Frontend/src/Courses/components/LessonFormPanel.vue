@@ -21,6 +21,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    initialQuizAttemptPolicy: {
+        type: String,
+        default: 'reattempt',
+    },
     isSubmitting: {
         type: Boolean,
         default: false,
@@ -39,6 +43,7 @@ const form = reactive({
     isMarkdown: true,
     orderNumber: 1,
     resources: [],
+    lessonQuizAttemptPolicy: 'reattempt',
     lessonQuizQuestions: [],
 });
 
@@ -63,7 +68,6 @@ function createEmptyLessonQuizQuestion() {
     return {
         questionId: 0,
         questionText: '',
-        attemptPolicy: 'reattempt',
         optionTexts: ['', ''],
         correctOptionIndex: 0,
     };
@@ -106,6 +110,13 @@ function applyInitialLesson() {
     }
 
     const quizQuestions = Array.isArray(props.initialQuizQuestions) ? props.initialQuizQuestions : [];
+    const quizPolicyFromQuestions = quizQuestions[0]?.attemptPolicy || quizQuestions[0]?.AttemptPolicy;
+    form.lessonQuizAttemptPolicy = String((quizPolicyFromQuestions || props.initialQuizAttemptPolicy || 'reattempt'))
+        .trim()
+        .toLowerCase() === 'single'
+        ? 'single'
+        : 'reattempt';
+
     form.lessonQuizQuestions = quizQuestions.length
         ? quizQuestions.map((question) => {
             const rawOptions = question.options || question.Options || [];
@@ -118,7 +129,6 @@ function applyInitialLesson() {
             return {
                 questionId: Number(question.id || question.Id || 0),
                 questionText: String(question.questionText || question.QuestionText || ''),
-                attemptPolicy: String(question.attemptPolicy || question.AttemptPolicy || 'reattempt').trim().toLowerCase() === 'single' ? 'single' : 'reattempt',
                 optionTexts: optionTexts.length >= 2 ? optionTexts : ['', ''],
                 correctOptionIndex: correctOptionIndex >= 0 ? correctOptionIndex : 0,
             };
@@ -165,7 +175,6 @@ function normalizeLessonQuizQuestionsForSubmit() {
         return {
             questionId: Number(question.questionId || 0),
             questionText,
-            attemptPolicy: String(question.attemptPolicy || 'reattempt').trim().toLowerCase() === 'single' ? 'single' : 'reattempt',
             options,
         };
     });
@@ -286,6 +295,7 @@ function handleSubmit() {
         isMarkdown: Boolean(form.isMarkdown),
         resources: normalizeResourcesForSubmit(),
         orderNumber: Number(form.orderNumber),
+        lessonQuizAttemptPolicy: String(form.lessonQuizAttemptPolicy || 'reattempt').trim().toLowerCase() === 'single' ? 'single' : 'reattempt',
         lessonQuizQuestions: normalizeLessonQuizQuestionsForSubmit(),
     });
 }
@@ -409,6 +419,14 @@ function handleCancel() {
                 <p class="section-copy">Quiz is configured together with the lesson.</p>
             </div>
 
+            <div class="field-group">
+                <label class="field-label">Attempt policy for whole quiz</label>
+                <select v-model="form.lessonQuizAttemptPolicy" class="input-field" :disabled="isSubmitting">
+                    <option value="reattempt">Reattempt allowed</option>
+                    <option value="single">Single attempt (lock after first quiz submit)</option>
+                </select>
+            </div>
+
             <div class="lesson-form-panel__quiz-questions">
                 <article v-for="(question, questionIndex) in form.lessonQuizQuestions" :key="`lesson-form-question-${questionIndex}`" class="lesson-form-panel__quiz-question-card">
                     <div class="field-group">
@@ -421,14 +439,6 @@ function handleCancel() {
                             placeholder="What is the time complexity of binary search?"
                             :disabled="isSubmitting"
                         />
-                    </div>
-
-                    <div class="field-group">
-                        <label class="field-label">Attempt policy</label>
-                        <select v-model="question.attemptPolicy" class="input-field" :disabled="isSubmitting">
-                            <option value="reattempt">Reattempt allowed</option>
-                            <option value="single">Single attempt (lock after first answer)</option>
-                        </select>
                     </div>
 
                     <div class="lesson-form-panel__quiz-options">

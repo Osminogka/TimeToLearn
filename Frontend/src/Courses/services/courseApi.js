@@ -108,15 +108,17 @@ const getCourseQuizQuestions = async (courseId) => {
     return httpClient.getAuth(`${QUIZZES_BASE_URL}/course/${courseId}`);
 };
 
-const upsertLessonQuiz = async ({ lessonId, questions }) => {
+const upsertLessonQuiz = async ({ lessonId, questions, attemptPolicy }) => {
     return httpClient.putAuth(`${QUIZZES_BASE_URL}/lesson/${lessonId}`, {
         questions,
+        attemptPolicy,
     });
 };
 
-const upsertCourseQuiz = async ({ courseId, questions }) => {
+const upsertCourseQuiz = async ({ courseId, questions, attemptPolicy }) => {
     return httpClient.putAuth(`${QUIZZES_BASE_URL}/course/${courseId}`, {
         questions,
+        attemptPolicy,
     });
 };
 
@@ -152,15 +154,15 @@ const updateCourseQuizQuestion = async ({ courseId, questionId, questionText, op
     });
 };
 
-const submitLessonQuizAnswer = async ({ lessonId, questionId, selectedOptionId }) => {
-    return httpClient.postAuth(`${QUIZZES_BASE_URL}/lesson/${lessonId}/questions/${questionId}/answer`, {
-        selectedOptionId,
+const submitLessonQuiz = async ({ lessonId, answers }) => {
+    return httpClient.postAuth(`${QUIZZES_BASE_URL}/lesson/${lessonId}/submit`, {
+        answers,
     });
 };
 
-const submitCourseQuizAnswer = async ({ courseId, questionId, selectedOptionId }) => {
-    return httpClient.postAuth(`${QUIZZES_BASE_URL}/course/${courseId}/questions/${questionId}/answer`, {
-        selectedOptionId,
+const submitCourseQuiz = async ({ courseId, answers }) => {
+    return httpClient.postAuth(`${QUIZZES_BASE_URL}/course/${courseId}/submit`, {
+        answers,
     });
 };
 
@@ -205,8 +207,8 @@ export default {
     updateLessonQuizQuestion,
     createCourseQuizQuestion,
     updateCourseQuizQuestion,
-    submitLessonQuizAnswer,
-    submitCourseQuizAnswer,
+    submitLessonQuiz,
+    submitCourseQuiz,
     getMyLessonQuizAnswers,
     getMyCourseQuizAnswers,
     getLessonQuizAnswersForTeacher,

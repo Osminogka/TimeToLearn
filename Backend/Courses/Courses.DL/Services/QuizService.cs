@@ -103,6 +103,13 @@ namespace Courses.DL.Services
             return value == SingleAttemptPolicy ? SingleAttemptPolicy : ReattemptPolicy;
         }
 
+        private static string ResolveQuizAttemptPolicy(IEnumerable<QuizQuestion> questions)
+        {
+            return questions.Any(obj => string.Equals(obj.AttemptPolicy, SingleAttemptPolicy, StringComparison.OrdinalIgnoreCase))
+                ? SingleAttemptPolicy
+                : ReattemptPolicy;
+        }
+
         private static QuizQuestionDto MapQuestion(QuizQuestion question, bool includeCorrect)
         {
             return new QuizQuestionDto
@@ -291,7 +298,7 @@ namespace Courses.DL.Services
             return response;
         }
 
-        private async Task<ResponseMessage> UpsertQuizAsync(long expectedCourseId, long? expectedLessonId, IEnumerable<CreateQuizQuestionDto>? questions, string teacherEmail)
+        private async Task<ResponseMessage> UpsertQuizAsync(long expectedCourseId, long? expectedLessonId, IEnumerable<CreateQuizQuestionDto>? questions, string attemptPolicy, string teacherEmail)
         {
             var response = new ResponseMessage { Message = "You don't have such rights" };
 
@@ -327,7 +334,8 @@ namespace Courses.DL.Services
             }
 
             var sourceQuestions = (questions ?? Array.Empty<CreateQuizQuestionDto>()).ToList();
-            var payloadQuestions = new List<(string QuestionText, string AttemptPolicy, List<CreateQuizOptionDto> Options)>();
+            var payloadQuestions = new List<(string QuestionText, List<CreateQuizOptionDto> Options)>();
+            var normalizedQuizAttemptPolicy = NormalizeAttemptPolicy(attemptPolicy);
 
             foreach (var item in sourceQuestions)
             {
@@ -340,7 +348,6 @@ namespace Courses.DL.Services
 
                 payloadQuestions.Add((
                     QuestionText: item.QuestionText.Trim(),
-                    AttemptPolicy: NormalizeAttemptPolicy(item.AttemptPolicy),
                     Options: validated.options
                 ));
             }
@@ -364,7 +371,7 @@ namespace Courses.DL.Services
                     CourseId = expectedCourseId,
                     LessonId = expectedLessonId,
                     QuestionText = item.QuestionText,
-                    AttemptPolicy = item.AttemptPolicy,
+                    AttemptPolicy = normalizedQuizAttemptPolicy,
                     CreatedAt = DateTime.UtcNow,
                 };
 
@@ -398,11 +405,11 @@ namespace Courses.DL.Services
                 };
             }
 
-            return await UpsertQuizAsync(lesson.CourseId, lessonId, dto.Questions, teacherEmail);
+            return await UpsertQuizAsync(lesson.CourseId, lessonId, dto.Questions, dto.AttemptPolicy, teacherEmail);
         }
 
         public async Task<ResponseMessage> UpsertCourseQuizAsync(long courseId, UpsertQuizDto dto, string teacherEmail)
-            => await UpsertQuizAsync(courseId, null, dto.Questions, teacherEmail);
+            => await UpsertQuizAsync(courseId, null, dto.Questions, dto.AttemptPolicy, teacherEmail);
 
         private async Task<ResponseMessage> UpdateQuestionAsync(long expectedCourseId, long? expectedLessonId, long questionId, CreateQuizQuestionDto dto, string teacherEmail)
         {
@@ -507,15 +514,11 @@ namespace Courses.DL.Services
         public async Task<ResponseMessage> UpdateCourseQuizQuestionAsync(long courseId, long questionId, CreateQuizQuestionDto dto, string teacherEmail)
             => await UpdateQuestionAsync(courseId, null, questionId, dto, teacherEmail);
 
-        private async Task<ResponseMessage> SubmitAnswerAsync(long expectedCourseId, long? expectedLessonId, long questionId, SubmitQuizAnswerDto dto, string userEmail)
+        private async Task<ResponseMessage> SubmitQuizAsync(long expectedCourseId, long? expectedLessonId, SubmitQuizDto dto, string userEmail)
         {
             var response = new ResponseMessage { Message = "You don't have such rights" };
 
-            if (dto.SelectedOptionId <= 0)
-            {
-                response.Message = "Please select an answer option";
-                return response;
-            }
+            var submittedAnswers = (dto.Answers ?? Array.Empty<SubmitQuizQuestionAnswerDto>()).ToList();
 
             UserInfoForCourse? userInfo;
             if (expectedLessonId.HasValue)
@@ -547,64 +550,107 @@ namespace Courses.DL.Services
                 return response;
             }
 
-            var question = await _quizQuestionRepository.Where(obj => obj.Id == questionId)
+            var questions = await _quizQuestionRepository.Where(obj =>
+                    obj.CourseId == expectedCourseId && obj.LessonId == expectedLessonId)
                 .Include(obj => obj.Options)
-                .FirstOrDefaultAsync();
+                .ToListAsync();
 
-            if (question == null)
+            if (!questions.Any())
             {
-                response.Message = "Quiz question does not exist";
+                response.Message = "Quiz has no questions";
                 return response;
             }
 
-            if (question.CourseId != expectedCourseId || question.LessonId != expectedLessonId)
+            if (submittedAnswers.Count != questions.Count)
             {
-                response.Message = "Question does not belong to this quiz scope";
+                response.Message = "Please answer all quiz questions before submitting";
                 return response;
             }
 
-            var selectedOption = question.Options.FirstOrDefault(opt => opt.Id == dto.SelectedOptionId);
-            if (selectedOption == null)
+            if (submittedAnswers.Any(obj => obj.QuestionId <= 0 || obj.SelectedOptionId <= 0))
             {
-                response.Message = "Selected option is invalid";
+                response.Message = "Please select an answer for each question";
                 return response;
             }
 
-            var existingAnswer = await _quizAnswerRepository.SingleOrDefaultAsync(obj =>
-                obj.StudentId == userInfo.UserId && obj.QuizQuestionId == questionId);
+            var duplicateQuestionIds = submittedAnswers
+                .GroupBy(obj => obj.QuestionId)
+                .Where(group => group.Count() > 1)
+                .Select(group => group.Key)
+                .ToList();
 
-            if (existingAnswer == null)
+            if (duplicateQuestionIds.Any())
             {
-                await _quizAnswerRepository.AddAsync(new QuizAnswer
+                response.Message = "Each question must be answered exactly once";
+                return response;
+            }
+
+            var answersByQuestionId = submittedAnswers.ToDictionary(obj => obj.QuestionId, obj => obj.SelectedOptionId);
+            var quizQuestionIds = questions.Select(obj => obj.Id).ToHashSet();
+
+            if (answersByQuestionId.Keys.Any(questionId => !quizQuestionIds.Contains(questionId)))
+            {
+                response.Message = "Submitted answers contain invalid question ids";
+                return response;
+            }
+
+            var quizAttemptPolicy = ResolveQuizAttemptPolicy(questions);
+
+            var existingAnswers = await _quizAnswerRepository.Where(obj =>
+                    obj.StudentId == userInfo.UserId && quizQuestionIds.Contains(obj.QuizQuestionId))
+                .ToListAsync();
+
+            if (string.Equals(quizAttemptPolicy, SingleAttemptPolicy, StringComparison.OrdinalIgnoreCase) && existingAnswers.Any())
+            {
+                response.Message = "This quiz is locked to a single attempt";
+                return response;
+            }
+
+            foreach (var question in questions)
+            {
+                if (!answersByQuestionId.TryGetValue(question.Id, out var selectedOptionId))
                 {
-                    QuizQuestionId = questionId,
-                    SelectedOptionId = selectedOption.Id,
-                    StudentId = userInfo.UserId,
-                    IsCorrect = selectedOption.IsCorrect,
-                    AnsweredAt = DateTime.UtcNow,
-                    CreatedAt = DateTime.UtcNow,
-                });
-            }
-            else
-            {
-                if (string.Equals(question.AttemptPolicy, SingleAttemptPolicy, StringComparison.OrdinalIgnoreCase))
-                {
-                    response.Message = "This question is locked to a single attempt";
+                    response.Message = "Please answer all quiz questions before submitting";
                     return response;
                 }
 
-                existingAnswer.SelectedOptionId = selectedOption.Id;
-                existingAnswer.IsCorrect = selectedOption.IsCorrect;
-                existingAnswer.AnsweredAt = DateTime.UtcNow;
-                await _quizAnswerRepository.UpdateAsync(existingAnswer);
+                var selectedOption = question.Options.FirstOrDefault(opt => opt.Id == selectedOptionId);
+                if (selectedOption == null)
+                {
+                    response.Message = "Submitted answers contain invalid options";
+                    return response;
+                }
+
+                var existingAnswer = existingAnswers.FirstOrDefault(obj => obj.QuizQuestionId == question.Id);
+                if (existingAnswer == null)
+                {
+                    await _quizAnswerRepository.AddAsync(new QuizAnswer
+                    {
+                        QuizQuestionId = question.Id,
+                        SelectedOptionId = selectedOption.Id,
+                        StudentId = userInfo.UserId,
+                        IsCorrect = selectedOption.IsCorrect,
+                        AnsweredAt = DateTime.UtcNow,
+                        CreatedAt = DateTime.UtcNow,
+                    });
+                }
+                else
+                {
+                    existingAnswer.SelectedOptionId = selectedOption.Id;
+                    existingAnswer.IsCorrect = selectedOption.IsCorrect;
+                    existingAnswer.AnsweredAt = DateTime.UtcNow;
+                    await _quizAnswerRepository.UpdateAsync(existingAnswer);
+                }
             }
 
             response.Success = true;
-            response.Message = selectedOption.IsCorrect ? "Correct answer submitted" : "Answer submitted";
+            response.Message = string.Equals(quizAttemptPolicy, ReattemptPolicy, StringComparison.OrdinalIgnoreCase) && existingAnswers.Any()
+                ? "Quiz answers updated"
+                : "Quiz answers submitted";
             return response;
         }
 
-        public async Task<ResponseMessage> SubmitLessonQuizAnswerAsync(long lessonId, long questionId, SubmitQuizAnswerDto dto, string userEmail)
+        public async Task<ResponseMessage> SubmitLessonQuizAsync(long lessonId, SubmitQuizDto dto, string userEmail)
         {
             var lesson = await _lessonRepository.SingleOrDefaultAsync(obj => obj.Id == lessonId);
             if (lesson == null)
@@ -615,11 +661,11 @@ namespace Courses.DL.Services
                 };
             }
 
-            return await SubmitAnswerAsync(lesson.CourseId, lessonId, questionId, dto, userEmail);
+            return await SubmitQuizAsync(lesson.CourseId, lessonId, dto, userEmail);
         }
 
-        public async Task<ResponseMessage> SubmitCourseQuizAnswerAsync(long courseId, long questionId, SubmitQuizAnswerDto dto, string userEmail)
-            => await SubmitAnswerAsync(courseId, null, questionId, dto, userEmail);
+        public async Task<ResponseMessage> SubmitCourseQuizAsync(long courseId, SubmitQuizDto dto, string userEmail)
+            => await SubmitQuizAsync(courseId, null, dto, userEmail);
 
         public async Task<ResponseArray<StudentQuizAnswerDto>> GetMyLessonQuizAnswersAsync(long lessonId, string userEmail)
         {
