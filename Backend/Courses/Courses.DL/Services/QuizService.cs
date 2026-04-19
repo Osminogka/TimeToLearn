@@ -125,6 +125,22 @@ namespace Courses.DL.Services
             };
         }
 
+        private async Task RemoveAnswersForQuestionsAsync(List<long> questionIds)
+        {
+            if (!questionIds.Any())
+            {
+                return;
+            }
+
+            var answers = await _quizAnswerRepository.Where(obj => questionIds.Contains(obj.QuizQuestionId))
+                .ToListAsync();
+
+            if (answers.Any())
+            {
+                await _quizAnswerRepository.DeleteRangeAsync(answers);
+            }
+        }
+
         public async Task<ResponseArray<QuizQuestionDto>> GetLessonQuizQuestionsAsync(long lessonId, string userEmail)
         {
             var response = new ResponseArray<QuizQuestionDto> { Message = "You don't have such rights" };
@@ -336,6 +352,8 @@ namespace Courses.DL.Services
 
             if (existingQuestions.Any())
             {
+                var existingQuestionIds = existingQuestions.Select(obj => obj.Id).ToList();
+                await RemoveAnswersForQuestionsAsync(existingQuestionIds);
                 await _quizQuestionRepository.DeleteRangeAsync(existingQuestions);
             }
 
@@ -448,6 +466,8 @@ namespace Courses.DL.Services
             question.AttemptPolicy = NormalizeAttemptPolicy(dto.AttemptPolicy);
             question.UpdatedAt = DateTime.UtcNow;
             await _quizQuestionRepository.UpdateAsync(question);
+
+            await RemoveAnswersForQuestionsAsync(new List<long> { question.Id });
 
             if (question.Options.Any())
             {

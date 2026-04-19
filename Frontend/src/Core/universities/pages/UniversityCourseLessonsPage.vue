@@ -279,6 +279,14 @@ function mapQuestionsToDraft(questions) {
     return rows.map((item) => mapQuestionToDraft(item));
 }
 
+function resolveDraftCollection(target) {
+    if (Array.isArray(target)) {
+        return target;
+    }
+
+    return target?.value;
+}
+
 function buildQuizQuestionPayload(draft) {
     const questionText = String(draft?.questionText || '').trim();
     const optionTexts = Array.isArray(draft?.optionTexts) ? draft.optionTexts : [];
@@ -301,27 +309,39 @@ function getQuestionAttemptPolicy(question) {
 }
 
 function addQuestionDraftRow(targetRef) {
-    targetRef.value.push(createEmptyQuestionDraft());
+    const collection = resolveDraftCollection(targetRef);
+    if (!Array.isArray(collection)) {
+        return;
+    }
+
+    collection.push(createEmptyQuestionDraft());
 }
 
 function removeQuestionDraftRow(targetRef, questionIndex) {
-    if (targetRef.value.length <= 1) {
+    const collection = resolveDraftCollection(targetRef);
+    if (!Array.isArray(collection) || collection.length <= 1) {
         return;
     }
 
-    targetRef.value.splice(questionIndex, 1);
+    collection.splice(questionIndex, 1);
 }
 
 function addOptionToQuestion(targetRef, questionIndex) {
-    if (!targetRef.value[questionIndex]) {
+    const collection = resolveDraftCollection(targetRef);
+    if (!Array.isArray(collection) || !collection[questionIndex]) {
         return;
     }
 
-    targetRef.value[questionIndex].optionTexts.push('');
+    collection[questionIndex].optionTexts.push('');
 }
 
 function removeOptionFromQuestion(targetRef, questionIndex, optionIndex) {
-    const question = targetRef.value[questionIndex];
+    const collection = resolveDraftCollection(targetRef);
+    if (!Array.isArray(collection)) {
+        return;
+    }
+
+    const question = collection[questionIndex];
     if (!question || question.optionTexts.length <= 2) {
         return;
     }
