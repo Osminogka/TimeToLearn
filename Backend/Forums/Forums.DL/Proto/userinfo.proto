@@ -6,6 +6,7 @@ service GrpcUsers {
     rpc GetInfoForTopic (GetInfoRequest) returns (GrpcTopicInfoModel);
     rpc GetUniversityName (UniversityId) returns (UniversityName);
     rpc GetUserName (UserId) returns (UserName);
+    rpc GetUserUniversityRole (UserUniversityRequest) returns (UserUniversityRole);
 }
 
 message GetInfoRequest {
@@ -18,6 +19,7 @@ message GrpcTopicInfoModel {
     int64 userId = 2;
     bool isAllowed = 3;
     bool isTeacher = 4;
+    bool isDirector = 5;
 }
 
 message UniversityName {
@@ -34,4 +36,13 @@ message UserName{
 
 message UserId{
     int64 userId = 1;
+}
+
+message UserUniversityRequest {
+    int64 userId = 1;
+    int64 universityId = 2;
+}
+
+message UserUniversityRole {
+    string role = 1;
 }

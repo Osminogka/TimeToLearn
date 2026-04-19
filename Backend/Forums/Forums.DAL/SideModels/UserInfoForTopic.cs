@@ -7,5 +7,9 @@
         public long UniversityId { get; set; }
 
         public bool IsAllowed { get; set; }
+
+        public bool IsTeacher { get; set; }
+
+        public bool IsDirector { get; set; }
     }
 }

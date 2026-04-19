@@ -76,5 +76,42 @@ namespace Core.API.Grpc
 
             return response;
         }
+
+        public override async Task<UserUniversityRole> GetUserUniversityRole(UserUniversityRequest request, ServerCallContext context)
+        {
+            UserUniversityRole response = new UserUniversityRole
+            {
+                Role = "Unknown"
+            };
+
+            University? university = await _universityRepository.Where(obj => obj.Id == request.UniversityId)
+                .Include(obj => obj.StudentEnrollments)
+                .Include(obj => obj.TeacherEnrollments)
+                .FirstOrDefaultAsync();
+
+            if (university == null)
+                return response;
+
+            if (university.DirectorId == request.UserId)
+            {
+                response.Role = "Manager";
+                return response;
+            }
+
+            bool isTeacher = university.TeacherEnrollments.Any(e => e.BaseUserId == request.UserId);
+            if (isTeacher)
+            {
+                response.Role = "Teacher";
+                return response;
+            }
+
+            bool isStudent = university.StudentEnrollments.Any(e => e.BaseUserId == request.UserId);
+            if (isStudent)
+            {
+                response.Role = "Student";
+            }
+
+            return response;
+        }
     }
 }

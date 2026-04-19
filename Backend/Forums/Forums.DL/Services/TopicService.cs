@@ -40,20 +40,27 @@ namespace Forums.DL.Services
                 return response;
 
             var topics = await _topicRepository.Where(obj => obj.UniversityId == reply.UniversityId)
+                .OrderByDescending(obj => obj.CreatedAt)
                 .Skip(page * topicNumbers).Take(topicNumbers).ToListAsync();
 
             var creatorIds = topics.Select(t => t.CreatorId).Distinct();
             var nameEntries = await Task.WhenAll(
                 creatorIds.Select(async id => (id, name: await _grpcClient.GetUserName(id))));
+            var roleEntries = await Task.WhenAll(
+                creatorIds.Select(async id => (id, role: await _grpcClient.GetUserUniversityRole(id, reply.UniversityId))));
             var nameMap = nameEntries.ToDictionary(x => x.id, x => x.name);
+            var roleMap = roleEntries.ToDictionary(x => x.id, x => x.role);
 
             response.Success = true;
             response.Message = "You got some topics";
             response.Values = topics.Select(t => new ReadTopicDto
             {
+                Id = t.Id,
                 TopicTitle = t.TopicTitle,
                 TopicContent = t.TopicContent,
                 CreatorName = nameMap.TryGetValue(t.CreatorId, out var name) ? name : string.Empty,
+                CreatorRole = roleMap.TryGetValue(t.CreatorId, out var role) ? role ?? "Unknown" : "Unknown",
+                CreatedAt = t.CreatedAt,
                 Likes = t.LikesOverall,
                 Dislikes = t.DislikesOverall
             }).ToList();

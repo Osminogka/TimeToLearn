@@ -58,28 +58,43 @@ namespace Forums.DL.Services
                 return response;
             }
 
-            int commentNumber = isTopic ? 10 : 3;
+            int commentNumber = isTopic ? 10 : 5;
             var comments = await _commentRepository
                 .Where(obj => obj.IsTopic == isTopic && obj.PostId == recordId)
                 .Include(obj => obj.Likes)
                 .Include(obj => obj.Dislikes)
+                .OrderByDescending(obj => obj.CreatedAt)
                 .Skip(page * commentNumber)
                 .Take(commentNumber).ToListAsync();
 
             var nameEntries = await Task.WhenAll(
                 comments.Select(c => c.CreatorId).Distinct()
                         .Select(async id => (id, name: await _grpcClient.GetUserName(id))));
+            var roleEntries = await Task.WhenAll(
+                comments.Select(c => c.CreatorId).Distinct()
+                        .Select(async id => (id, role: await _grpcClient.GetUserUniversityRole(id, universityId))));
             var nameMap = nameEntries.ToDictionary(x => x.id, x => x.name);
+            var roleMap = roleEntries.ToDictionary(x => x.id, x => x.role);
+            var commentIds = comments.Select(c => c.Id).ToList();
+            var replyCounts = await _commentRepository.Where(c => !c.IsTopic && commentIds.Contains(c.PostId))
+                .GroupBy(c => c.PostId)
+                .Select(g => new { PostId = g.Key, Count = g.LongCount() })
+                .ToDictionaryAsync(x => x.PostId, x => x.Count);
 
             foreach (Comment comment in comments)
             {
                 ReadCommentDto tempReadCommentDto = new ReadCommentDto();
 
+                tempReadCommentDto.Id = comment.Id;
+                tempReadCommentDto.PostId = comment.PostId;
+                tempReadCommentDto.IsTopic = comment.IsTopic;
                 tempReadCommentDto.CommentContent = comment.CommentContent;
                 tempReadCommentDto.CreatedAt = comment.CreatedAt;
                 tempReadCommentDto.CreatorName = nameMap.TryGetValue(comment.CreatorId, out var name) ? name : string.Empty;
+                tempReadCommentDto.CreatorRole = roleMap.TryGetValue(comment.CreatorId, out var role) ? role ?? "Unknown" : "Unknown";
                 tempReadCommentDto.LikesOverall = comment.Likes.ToArray().Length;
                 tempReadCommentDto.DislikesOverall = comment.Dislikes.ToArray().Length;
+                tempReadCommentDto.RepliesCount = replyCounts.TryGetValue(comment.Id, out var replyCount) ? replyCount : 0;
                 response.Values.Add(tempReadCommentDto);
             }
 

@@ -62,5 +62,24 @@ namespace Forums.DL.Grpc
                 return null;
             }
         }
+
+        public async Task<string> GetUserUniversityRole(long userId, long universityId)
+        {
+            try
+            {
+                var request = new UserUniversityRequest
+                {
+                    UserId = userId,
+                    UniversityId = universityId
+                };
+                var reply = await _client.GetUserUniversityRoleAsync(request);
+                return reply.Role;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"--> Couldn't call GRPC Server: {ex.Message}");
+                return null;
+            }
+        }
     }
 }

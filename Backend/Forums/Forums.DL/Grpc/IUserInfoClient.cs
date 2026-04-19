@@ -7,5 +7,6 @@ namespace Forums.DL.Grpc
         Task<UserInfoForTopic> GetUserInfoForTopic(string universityName, string userEmail);
         Task<string> GetUniversityName(long universityId);
         Task<string> GetUserName(long userId);
+        Task<string> GetUserUniversityRole(long userId, long universityId);
     }
 }

@@ -136,5 +136,35 @@ namespace Users.Tests
 
             Assert.Equal("Osminogka", reply.Username);
         }
+
+        [Fact]
+        public async Task GetUserUniversityRole_Student()
+        {
+            UserUniversityRequest request = new UserUniversityRequest
+            {
+                UserId = 1,
+                UniversityId = 1
+            };
+
+            var mockServerCallContext = new Mock<ServerCallContext>(MockBehavior.Strict);
+            var reply = await Service.GetUserUniversityRole(request, mockServerCallContext.Object);
+
+            Assert.Equal("Student", reply.Role);
+        }
+
+        [Fact]
+        public async Task GetUserUniversityRole_Manager()
+        {
+            UserUniversityRequest request = new UserUniversityRequest
+            {
+                UserId = 2,
+                UniversityId = 1
+            };
+
+            var mockServerCallContext = new Mock<ServerCallContext>(MockBehavior.Strict);
+            var reply = await Service.GetUserUniversityRole(request, mockServerCallContext.Object);
+
+            Assert.Equal("Manager", reply.Role);
+        }
     }
 }
