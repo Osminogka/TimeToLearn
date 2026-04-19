@@ -69,8 +69,8 @@ defineProps({
         </svg>
 
         <svg v-else-if="name === 'back'" viewBox="0 0 24 24" fill="none">
-            <path d="M15.8 6.4 10.2 12l5.6 5.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M10.5 12h8.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M11 5.5 4.5 12 11 18.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M5.2 12h14.3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
         </svg>
 
         <svg v-else-if="name === 'refresh'" viewBox="0 0 24 24" fill="none">

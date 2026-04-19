@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import UniversitiesWorkspaceHeader from '@/Core/universities/components/UniversitiesWorkspaceHeader.vue';
 import roleApi from '@/Core/roles/services/roleApi';
 import authApi from '@/Authentication/services/authApi';
 import userApi from '../services/userApi';
@@ -302,12 +301,6 @@ onMounted(async () => {
 
 <template>
     <main class="page-shell">
-        <UniversitiesWorkspaceHeader
-            active="account"
-            title="Manage your account"
-            subtitle="Update personal details and switch between student and teacher roles."
-        />
-
         <section class="account-hero surface-card surface-card--raised">
             <div class="account-hero__profile">
                 <span class="account-hero__avatar">{{ (user.name || 'U').slice(0, 1).toUpperCase() }}</span>

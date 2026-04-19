@@ -62,20 +62,17 @@ function triggerJoin() {
 <template>
     <header class="context-header surface-card surface-card--raised">
         <div class="context-header__top">
-            <div class="context-header__meta">
-                <router-link 
-                    to="/universities/my" 
-                    custom 
+            <div class="context-header__title-wrap">
+                <router-link
+                    to="/universities/my"
+                    custom
                     v-slot="{ navigate }"
                 >
-                    <button class="secondary-button context-header__back-btn" @click="navigate" type="button" title="Back to my universities">
+                    <button class="secondary-button context-header__back-btn" @click="navigate" type="button" title="Back to my universities" aria-label="Back to my universities">
                         <AppIcon name="back" :boxed="false" />
-                        <span>Back</span>
                     </button>
                 </router-link>
-            </div>
 
-            <div class="context-header__title-wrap">
                 <AppIcon name="university" />
                 <div>
                     <h1 class="section-title">{{ universityName }}</h1>
@@ -91,9 +88,10 @@ function triggerJoin() {
                     :to="{ name: tab.routeName, params: { name: universityName } }"
                     class="context-nav__link"
                     :class="{ 'context-nav__link--active': activeTab === tab.key }"
+                    :title="tab.label"
+                    :aria-label="tab.label"
                 >
                     <AppIcon :name="tab.icon" :boxed="false" />
-                    {{ tab.label }}
                 </router-link>
             </nav>
 
@@ -127,16 +125,8 @@ function triggerJoin() {
 
 .context-header__title-wrap {
     display: flex;
-    align-items: flex-start;
-    gap: 0.8rem;
-}
-
-.context-header__meta {
-    display: flex;
     align-items: center;
-    gap: 0.6rem;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    gap: 0.8rem;
 }
 
 .context-header__bottom {
@@ -190,10 +180,6 @@ function triggerJoin() {
         align-items: flex-start;
     }
 
-    .context-header__meta {
-        justify-content: flex-start;
-    }
-
     .context-header__join {
         width: 100%;
     }
@@ -201,10 +187,8 @@ function triggerJoin() {
 
 @media (max-width: 680px) {
     .context-nav {
-        display: flex;
-        overflow-x: auto;
-        white-space: nowrap;
-        padding-bottom: 0.2rem;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.5rem;
     }
 
     .context-header__bottom {
@@ -212,15 +196,17 @@ function triggerJoin() {
     }
 
     .context-nav__link {
-        min-width: 9.5rem;
-        flex: 0 0 auto;
+        min-height: 2.45rem;
     }
 }
 
 .context-header__back-btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
+    justify-content: center;
+    min-width: 2.6rem;
+    padding-left: 0.7rem;
+    padding-right: 0.7rem;
 }
 
 .context-header__back-btn :deep(.app-icon) {
@@ -229,9 +215,4 @@ function triggerJoin() {
     border-radius: 0;
 }
 
-@media (max-width: 480px) {
-    .context-header__back-btn span {
-        display: none;
-    }
-}
 </style>

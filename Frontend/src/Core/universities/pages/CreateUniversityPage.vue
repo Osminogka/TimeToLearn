@@ -1,6 +1,5 @@
 <script setup>
 import { computed, reactive, ref } from 'vue';
-import UniversitiesWorkspaceHeader from '../components/UniversitiesWorkspaceHeader.vue';
 import universityApi from '../services/universityApi';
 import authUtils, { isTeacherRole, user } from '@/Shared/services/utils';
 
@@ -88,12 +87,6 @@ async function submitCreateUniversity() {
 
 <template>
     <main class="page-shell">
-        <UniversitiesWorkspaceHeader
-            active="create"
-            title="Create a university"
-            subtitle="Launch a new learning community with clear information and access settings."
-        />
-
         <section class="content-panel surface-card">
             <div>
                 <p class="section-kicker">New university</p>

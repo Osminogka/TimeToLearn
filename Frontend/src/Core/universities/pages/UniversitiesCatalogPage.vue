@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import UniversitiesWorkspaceHeader from '../components/UniversitiesWorkspaceHeader.vue';
 import universityApi from '../services/universityApi';
 import authUtils, { isTeacherRole, user } from '@/Shared/services/utils';
 
@@ -138,12 +137,6 @@ onMounted(() => {
 
 <template>
     <main class="page-shell">
-        <UniversitiesWorkspaceHeader
-            active="all"
-            title="Explore universities"
-            subtitle="Browse every university and quickly find communities that match your learning goals."
-        />
-
         <section class="content-panel surface-card">
             <div class="content-panel__top">
                 <div>

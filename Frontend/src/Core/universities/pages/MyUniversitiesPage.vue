@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import UniversitiesWorkspaceHeader from '../components/UniversitiesWorkspaceHeader.vue';
 import universityApi from '../services/universityApi';
 
 const universities = ref([]);
@@ -83,12 +82,6 @@ onMounted(loadMyUniversities);
 
 <template>
     <main class="page-shell">
-        <UniversitiesWorkspaceHeader
-            active="mine"
-            title="Your universities"
-            subtitle="Keep track of the university spaces where you already belong."
-        />
-
         <section class="content-panel surface-card">
             <div class="content-panel__top">
                 <div>
