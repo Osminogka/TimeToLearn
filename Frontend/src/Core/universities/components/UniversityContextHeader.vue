@@ -69,8 +69,9 @@ function triggerJoin() {
                     custom 
                     v-slot="{ navigate }"
                 >
-                    <button @click="navigate" type="button">
-                        Back
+                    <button class="context-header__back-btn" @click="navigate" type="button" title="Back to my universities">
+                        <AppIcon name="back" />
+                        <span>Back</span>
                     </button>
                 </router-link>
             </div>
@@ -205,11 +206,37 @@ function triggerJoin() {
 
 @media (max-width: 680px) {
     .context-nav {
-        grid-template-columns: 1fr;
+        display: flex;
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 0.2rem;
     }
 
     .context-header__bottom {
         gap: 0.65rem;
+    }
+
+    .context-nav__link {
+        min-width: 9.5rem;
+        flex: 0 0 auto;
+    }
+}
+
+.context-header__back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.context-header__back-btn :deep(.app-icon) {
+    width: 1.85rem;
+    height: 1.85rem;
+    border-radius: 0.65rem;
+}
+
+@media (max-width: 480px) {
+    .context-header__back-btn span {
+        display: none;
     }
 }
 </style>

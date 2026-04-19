@@ -63,6 +63,16 @@ defineProps({
             <path d="M5.2 6.2h13.6a1.4 1.4 0 0 1 1.4 1.4v7a1.4 1.4 0 0 1-1.4 1.4h-6.1L8.4 19v-3h-3.2a1.4 1.4 0 0 1-1.4-1.4v-7a1.4 1.4 0 0 1 1.4-1.4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
             <path d="M8.1 10.3h7.8M8.1 13h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
         </svg>
+
+        <svg v-else-if="name === 'back'" viewBox="0 0 24 24" fill="none">
+            <path d="M15.8 6.4 10.2 12l5.6 5.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M10.5 12h8.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+
+        <svg v-else-if="name === 'refresh'" viewBox="0 0 24 24" fill="none">
+            <path d="M19.6 12a7.6 7.6 0 1 1-2.1-5.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M19.6 5.8v3.6H16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
     </span>
 </template>
 

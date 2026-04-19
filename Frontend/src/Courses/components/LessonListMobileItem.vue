@@ -14,17 +14,9 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
-    disableMoveUp: {
-        type: Boolean,
-        default: false,
-    },
-    disableMoveDown: {
-        type: Boolean,
-        default: false,
-    },
 });
 
-const emit = defineEmits(['open', 'edit', 'move-up', 'move-down']);
+const emit = defineEmits(['open', 'edit']);
 
 const title = computed(() => String(props.lesson?.title || props.lesson?.Title || 'Untitled lesson'));
 const orderNumber = computed(() => Number(props.lesson?.orderNumber || props.lesson?.OrderNumber || 0));
@@ -36,14 +28,6 @@ function triggerOpen() {
 
 function triggerEdit() {
     emit('edit', props.lesson);
-}
-
-function moveUp() {
-    emit('move-up', props.lesson);
-}
-
-function moveDown() {
-    emit('move-down', props.lesson);
 }
 </script>
 
@@ -59,11 +43,6 @@ function moveDown() {
         <div class="lesson-mobile-item__actions">
             <button class="submit-button" type="button" :disabled="isBusy" @click="triggerOpen">Open</button>
             <button v-if="canManage" class="secondary-button" type="button" :disabled="isBusy" @click="triggerEdit">Edit</button>
-        </div>
-
-        <div v-if="canManage" class="lesson-mobile-item__reorder">
-            <button class="secondary-button" type="button" :disabled="isBusy || disableMoveUp" @click="moveUp">Move up</button>
-            <button class="secondary-button" type="button" :disabled="isBusy || disableMoveDown" @click="moveDown">Move down</button>
         </div>
     </article>
 </template>
@@ -101,22 +80,19 @@ function moveDown() {
     letter-spacing: -0.02em;
 }
 
-.lesson-mobile-item__actions,
-.lesson-mobile-item__reorder {
+.lesson-mobile-item__actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0.55rem;
 }
 
 .lesson-mobile-item__actions .submit-button,
-.lesson-mobile-item__actions .secondary-button,
-.lesson-mobile-item__reorder .secondary-button {
+.lesson-mobile-item__actions .secondary-button {
     min-height: 2.55rem;
 }
 
 @media (max-width: 420px) {
-    .lesson-mobile-item__actions,
-    .lesson-mobile-item__reorder {
+    .lesson-mobile-item__actions {
         grid-template-columns: 1fr;
     }
 }

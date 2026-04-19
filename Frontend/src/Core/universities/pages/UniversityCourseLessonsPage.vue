@@ -6,6 +6,7 @@ import universityApi from '../services/universityApi';
 import authUtils, { canManageUniversityContent, user } from '@/Shared/services/utils';
 import courseApi from '@/Courses/services/courseApi';
 import LessonListMobileItem from '@/Courses/components/LessonListMobileItem.vue';
+import AppIcon from '@/Shared/components/AppIcon.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -15,10 +16,19 @@ const course = ref(null);
 const lessons = ref([]);
 const courseProgress = ref(null);
 
+const studentsProgress = ref([]);
+const selectedTeacherStudentId = ref(0);
+const selectedLessonReviewId = ref(0);
+const teacherLessonQuizAnswers = ref([]);
+const teacherCourseQuizAnswers = ref([]);
+const gradeDraftByStudent = ref({});
+
 const isLoadingWorkspace = ref(false);
 const isLoadingLessons = ref(false);
 const isJoining = ref(false);
-const isReordering = ref(false);
+const isSavingGrade = ref(false);
+const isLoadingTeacherInsights = ref(false);
+const isLoadingLessonAnswers = ref(false);
 
 const isMember = ref(false);
 const actionMessage = ref('');
@@ -49,6 +59,42 @@ const progressPercent = computed(() => {
     return Math.round((progressCompletedCount.value / progressTotalCount.value) * 100);
 });
 
+const selectedTeacherStudent = computed(() => {
+    if (!studentsProgress.value.length) {
+        return null;
+    }
+
+    const selected = studentsProgress.value.find((item) => getStudentId(item) === selectedTeacherStudentId.value);
+    return selected || studentsProgress.value[0] || null;
+});
+
+const selectedTeacherStudentCanBeMarked = computed(() => {
+    const student = selectedTeacherStudent.value;
+    if (!student) {
+        return false;
+    }
+
+    return getStudentCanBeMarked(student);
+});
+
+const selectedTeacherStudentLessonQuizAnswers = computed(() => {
+    const studentId = getStudentId(selectedTeacherStudent.value);
+    if (!studentId) {
+        return [];
+    }
+
+    return teacherLessonQuizAnswers.value.filter((item) => Number(item?.studentId || item?.StudentId || 0) === studentId);
+});
+
+const selectedTeacherStudentCourseQuizAnswers = computed(() => {
+    const studentId = getStudentId(selectedTeacherStudent.value);
+    if (!studentId) {
+        return [];
+    }
+
+    return teacherCourseQuizAnswers.value.filter((item) => Number(item?.studentId || item?.StudentId || 0) === studentId);
+});
+
 function normalizeItems(payload) {
     return payload?.items || payload?.Items || payload?.values || payload?.Values || [];
 }
@@ -71,6 +117,40 @@ function getLessonId(lesson) {
 
 function getOrderNumber(lesson) {
     return Number(lesson?.orderNumber || lesson?.OrderNumber || 0);
+}
+
+function getStudentId(item) {
+    return Number(item?.studentId || item?.StudentId || 0);
+}
+
+function getStudentName(item) {
+    return String(item?.studentName || item?.StudentName || 'Unknown');
+}
+
+function getStudentCanBeMarked(item) {
+    const explicit = item?.canBeMarked ?? item?.CanBeMarked;
+    if (explicit !== undefined && explicit !== null) {
+        return Boolean(explicit);
+    }
+
+    const lessonsCompleted = Boolean(item?.isCompleted ?? item?.IsCompleted);
+    const quizzesCompleted = Boolean(item?.areAllQuizzesCompleted ?? item?.AreAllQuizzesCompleted);
+    return lessonsCompleted && quizzesCompleted;
+}
+
+function normalizeAnswerRows(payload) {
+    return payload?.values || payload?.Values || payload?.items || payload?.Items || [];
+}
+
+function getDraftMark(student) {
+    const studentId = getStudentId(student);
+    const rawFromDraft = gradeDraftByStudent.value[studentId];
+    if (rawFromDraft !== undefined) {
+        return Number(rawFromDraft) || 1;
+    }
+
+    const existingMark = Number(student?.mark || student?.Mark);
+    return Number.isInteger(existingMark) && existingMark >= 1 && existingMark <= 10 ? existingMark : 1;
 }
 
 function sortLessons(rows) {
@@ -140,6 +220,11 @@ async function loadLessons() {
     try {
         const response = await courseApi.getCourseLessons(courseId.value);
         lessons.value = sortLessons(normalizeItems(response));
+
+        const hasSelectedLesson = lessons.value.some((item) => getLessonId(item) === selectedLessonReviewId.value);
+        if (!hasSelectedLesson) {
+            selectedLessonReviewId.value = getLessonId(lessons.value[0]);
+        }
     } catch (error) {
         lessons.value = [];
         errorMessage.value = error?.message || 'Failed to load lessons.';
@@ -162,6 +247,65 @@ async function loadCourseProgress() {
     }
 }
 
+async function loadTeacherInsights() {
+    if (!canView.value || !canManage.value || !courseId.value) {
+        studentsProgress.value = [];
+        teacherCourseQuizAnswers.value = [];
+        teacherLessonQuizAnswers.value = [];
+        gradeDraftByStudent.value = {};
+        return;
+    }
+
+    isLoadingTeacherInsights.value = true;
+
+    try {
+        const [studentsResponse, courseAnswersResponse] = await Promise.all([
+            courseApi.getCourseStudentsProgress(courseId.value),
+            courseApi.getCourseQuizAnswersForTeacher(courseId.value),
+        ]);
+
+        studentsProgress.value = normalizeItems(studentsResponse);
+        teacherCourseQuizAnswers.value = normalizeAnswerRows(courseAnswersResponse);
+
+        const hasSelectedStudent = studentsProgress.value.some((item) => getStudentId(item) === selectedTeacherStudentId.value);
+        selectedTeacherStudentId.value = hasSelectedStudent ? selectedTeacherStudentId.value : getStudentId(studentsProgress.value[0]);
+
+        gradeDraftByStudent.value = studentsProgress.value.reduce((acc, item) => {
+            const studentId = getStudentId(item);
+            if (!studentId) {
+                return acc;
+            }
+
+            acc[studentId] = getDraftMark(item);
+            return acc;
+        }, {});
+    } catch (error) {
+        studentsProgress.value = [];
+        teacherCourseQuizAnswers.value = [];
+        gradeDraftByStudent.value = {};
+        errorMessage.value = error?.message || 'Failed to load teacher results.';
+    } finally {
+        isLoadingTeacherInsights.value = false;
+    }
+}
+
+async function loadSelectedLessonTeacherAnswers() {
+    if (!canManage.value || !selectedLessonReviewId.value) {
+        teacherLessonQuizAnswers.value = [];
+        return;
+    }
+
+    isLoadingLessonAnswers.value = true;
+    try {
+        const response = await courseApi.getLessonQuizAnswersForTeacher(selectedLessonReviewId.value);
+        teacherLessonQuizAnswers.value = normalizeAnswerRows(response);
+    } catch {
+        teacherLessonQuizAnswers.value = [];
+    } finally {
+        isLoadingLessonAnswers.value = false;
+    }
+}
+
 async function refreshWorkspace() {
     await loadUniversityMembership();
 
@@ -169,6 +313,8 @@ async function refreshWorkspace() {
         await loadCourse();
         await loadLessons();
         await loadCourseProgress();
+        await loadTeacherInsights();
+        await loadSelectedLessonTeacherAnswers();
     }
 }
 
@@ -187,6 +333,8 @@ async function joinUniversity() {
         await loadCourse();
         await loadLessons();
         await loadCourseProgress();
+        await loadTeacherInsights();
+        await loadSelectedLessonTeacherAnswers();
     } catch (error) {
         errorMessage.value = error?.message || 'Could not process university access action.';
     } finally {
@@ -240,64 +388,50 @@ function openCreateLesson() {
     });
 }
 
-function createReorderPayload(rows) {
-    return rows.map((item, index) => ({
-        lessonId: getLessonId(item),
-        orderNumber: index + 1,
-    }));
+async function onLessonReviewChange() {
+    await loadSelectedLessonTeacherAnswers();
 }
 
-function applyReorderedNumbers(rows) {
-    return rows.map((item, index) => ({
-        ...item,
-        orderNumber: index + 1,
-        OrderNumber: index + 1,
-    }));
-}
-
-async function moveLesson(lesson, direction) {
-    if (!canManage.value || isReordering.value) {
+async function saveStudentGrade(student = null) {
+    if (!canManage.value || isSavingGrade.value) {
         return;
     }
 
-    const currentId = getLessonId(lesson);
-    if (!currentId) {
+    const targetStudent = student || selectedTeacherStudent.value;
+    if (!targetStudent) {
+        errorMessage.value = 'Select a student first.';
         return;
     }
 
-    const currentIndex = lessons.value.findIndex((item) => getLessonId(item) === currentId);
-    if (currentIndex < 0) {
+    if (!getStudentCanBeMarked(targetStudent)) {
+        errorMessage.value = 'Mark can be assigned only after completed lessons and quizzes.';
         return;
     }
 
-    const targetIndex = currentIndex + direction;
-    if (targetIndex < 0 || targetIndex >= lessons.value.length) {
+    const studentId = getStudentId(targetStudent);
+    const mark = Number(gradeDraftByStudent.value[studentId]);
+
+    if (!studentId || !Number.isInteger(mark) || mark < 1 || mark > 10) {
+        errorMessage.value = 'Select a valid mark between 1 and 10.';
         return;
     }
-
-    const reordered = [...lessons.value];
-    const [moved] = reordered.splice(currentIndex, 1);
-    reordered.splice(targetIndex, 0, moved);
-
-    const normalized = applyReorderedNumbers(reordered);
-    const payload = createReorderPayload(normalized);
 
     clearMessages();
-    isReordering.value = true;
+    isSavingGrade.value = true;
 
     try {
-        await courseApi.reorderLessons({
+        const response = await courseApi.assignCourseGrade({
             courseId: courseId.value,
-            items: payload,
+            studentId,
+            mark,
         });
 
-        lessons.value = normalized;
-        actionMessage.value = 'Lessons reordered.';
+        actionMessage.value = readMessage(response) || 'Student mark saved successfully.';
+        await loadTeacherInsights();
     } catch (error) {
-        errorMessage.value = error?.message || 'Could not reorder lessons.';
-        await loadLessons();
+        errorMessage.value = error?.message || 'Could not save student mark.';
     } finally {
-        isReordering.value = false;
+        isSavingGrade.value = false;
     }
 }
 
@@ -330,10 +464,15 @@ onMounted(async () => {
                 </div>
 
                 <div class="workspace-card__actions">
-                    <button class="secondary-button" type="button" @click="openCoursesWorkspace">Back</button>
-                    <button class="secondary-button" type="button" :disabled="isLoadingWorkspace || isLoadingLessons" @click="refreshWorkspace">
-                        {{ isLoadingWorkspace || isLoadingLessons ? 'Refreshing...' : 'Refresh' }}
-                    </button>
+                    <div class="workspace-card__nav-actions">
+                        <button class="secondary-button icon-action" type="button" title="Back to courses" @click="openCoursesWorkspace">
+                            <AppIcon name="back" />
+                        </button>
+                        <button class="secondary-button icon-action" type="button" title="Refresh" :disabled="isLoadingWorkspace || isLoadingLessons" @click="refreshWorkspace">
+                            <AppIcon name="refresh" />
+                        </button>
+                    </div>
+
                     <button v-if="canManage" class="submit-button" type="button" :disabled="isLoadingLessons" @click="openCreateLesson">
                         New lesson
                     </button>
@@ -356,23 +495,118 @@ onMounted(async () => {
 
             <div v-if="canView" class="lessons-list">
                 <LessonListMobileItem
-                    v-for="(lesson, index) in lessons"
+                    v-for="lesson in lessons"
                     :key="getLessonId(lesson)"
                     :lesson="lesson"
                     :can-manage="canManage"
-                    :is-busy="isLoadingLessons || isReordering"
-                    :disable-move-up="index === 0"
-                    :disable-move-down="index === lessons.length - 1"
+                    :is-busy="isLoadingLessons"
                     @open="openLesson"
                     @edit="openEditLesson"
-                    @move-up="() => moveLesson(lesson, -1)"
-                    @move-down="() => moveLesson(lesson, 1)"
                 />
 
                 <p v-if="!isLoadingLessons && !hasLessons" class="state-message">No lessons yet.</p>
             </div>
 
-            <p v-else class="state-message">Membership is required to view lessons in this course.</p>
+            <section v-if="canManage && canView" class="surface-card teacher-panel">
+                <div class="teacher-panel__head">
+                    <div>
+                        <p class="section-kicker">Teacher results</p>
+                        <h3>Students, marks, and quiz answers</h3>
+                    </div>
+                </div>
+
+                <p v-if="isLoadingTeacherInsights" class="state-message">Loading teacher results...</p>
+
+                <div v-else-if="studentsProgress.length" class="teacher-panel__content">
+                    <div class="teacher-panel__students">
+                        <button
+                            v-for="student in studentsProgress"
+                            :key="getStudentId(student)"
+                            class="teacher-student-item"
+                            :class="{ 'teacher-student-item--active': selectedTeacherStudentId === getStudentId(student) }"
+                            type="button"
+                            @click="selectedTeacherStudentId = getStudentId(student)"
+                        >
+                            <p class="teacher-student-item__name">{{ getStudentName(student) }}</p>
+                            <p class="teacher-student-item__meta">
+                                Lessons: {{ student.completedLessons || student.CompletedLessons || 0 }} / {{ student.totalLessons || student.TotalLessons || 0 }}
+                            </p>
+                            <p class="teacher-student-item__meta">
+                                Final quiz: {{ student.completedQuizQuestions || student.CompletedQuizQuestions || 0 }} / {{ student.totalQuizQuestions || student.TotalQuizQuestions || 0 }}
+                            </p>
+                        </button>
+                    </div>
+
+                    <div v-if="selectedTeacherStudent" class="teacher-panel__details">
+                        <section class="surface-card teacher-box">
+                            <p class="section-kicker">Marking</p>
+                            <div class="teacher-box__row">
+                                <select
+                                    class="input-field"
+                                    :value="gradeDraftByStudent[getStudentId(selectedTeacherStudent)]"
+                                    :disabled="isSavingGrade || !selectedTeacherStudentCanBeMarked"
+                                    @change="gradeDraftByStudent[getStudentId(selectedTeacherStudent)] = Number($event.target.value)"
+                                >
+                                    <option v-for="value in 10" :key="value" :value="value">{{ value }}</option>
+                                </select>
+                                <button
+                                    class="secondary-button"
+                                    type="button"
+                                    :disabled="isSavingGrade || !selectedTeacherStudentCanBeMarked"
+                                    @click="saveStudentGrade(selectedTeacherStudent)"
+                                >
+                                    {{ isSavingGrade ? 'Saving...' : 'Save mark' }}
+                                </button>
+                            </div>
+                            <p v-if="!selectedTeacherStudentCanBeMarked" class="state-message">Student must finish lessons and quizzes before marking.</p>
+                        </section>
+
+                        <section class="surface-card teacher-box">
+                            <div class="teacher-box__head">
+                                <p class="section-kicker">Lesson quiz results</p>
+                                <select v-model.number="selectedLessonReviewId" class="input-field teacher-box__select" @change="onLessonReviewChange">
+                                    <option v-for="lesson in lessons" :key="getLessonId(lesson)" :value="getLessonId(lesson)">
+                                        {{ lesson.title || lesson.Title }}
+                                    </option>
+                                </select>
+                            </div>
+
+                            <p v-if="isLoadingLessonAnswers" class="state-message">Loading lesson results...</p>
+
+                            <div v-else-if="selectedTeacherStudentLessonQuizAnswers.length" class="teacher-answers">
+                                <article v-for="(answer, index) in selectedTeacherStudentLessonQuizAnswers" :key="`lesson-answer-${index}`" class="teacher-answer-item">
+                                    <p>{{ answer.questionText || answer.QuestionText }}</p>
+                                    <p>Selected: {{ answer.selectedOptionText || answer.SelectedOptionText }}</p>
+                                    <p>Correct: {{ answer.correctOptionText || answer.CorrectOptionText }}</p>
+                                    <span class="pill" :class="(answer.isCorrect || answer.IsCorrect) ? 'pill--accent' : 'pill--pink'">
+                                        {{ (answer.isCorrect || answer.IsCorrect) ? 'Correct' : 'Incorrect' }}
+                                    </span>
+                                </article>
+                            </div>
+                            <p v-else class="state-message">No lesson quiz answers for this student yet.</p>
+                        </section>
+
+                        <section class="surface-card teacher-box">
+                            <p class="section-kicker">Final course quiz</p>
+                            <div v-if="selectedTeacherStudentCourseQuizAnswers.length" class="teacher-answers">
+                                <article v-for="(answer, index) in selectedTeacherStudentCourseQuizAnswers" :key="`course-answer-${index}`" class="teacher-answer-item">
+                                    <p>{{ answer.questionText || answer.QuestionText }}</p>
+                                    <p>Selected: {{ answer.selectedOptionText || answer.SelectedOptionText }}</p>
+                                    <p>Correct: {{ answer.correctOptionText || answer.CorrectOptionText }}</p>
+                                    <span class="pill" :class="(answer.isCorrect || answer.IsCorrect) ? 'pill--accent' : 'pill--pink'">
+                                        {{ (answer.isCorrect || answer.IsCorrect) ? 'Correct' : 'Incorrect' }}
+                                    </span>
+                                </article>
+                            </div>
+                            <p v-else class="state-message">No final quiz answers for this student yet.</p>
+                        </section>
+                    </div>
+                </div>
+
+                <p v-else class="state-message">Student activity will appear here when learners start progress.</p>
+            </section>
+
+            <p v-else-if="!canView" class="state-message">Membership is required to view lessons in this course.</p>
         </section>
     </main>
 </template>
@@ -400,14 +634,33 @@ onMounted(async () => {
 }
 
 .workspace-card__actions {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 0.55rem;
 }
 
-.workspace-card__actions .submit-button,
-.workspace-card__actions .secondary-button {
+.workspace-card__nav-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.workspace-card__actions .submit-button {
     min-height: 2.6rem;
+}
+
+.icon-action {
+    min-height: 2.6rem;
+    min-width: 2.8rem;
+    padding: 0.45rem;
+    border-radius: 0.8rem;
+}
+
+.icon-action :deep(.app-icon) {
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 0.62rem;
 }
 
 .lessons-list {
@@ -451,6 +704,109 @@ onMounted(async () => {
     transition: width var(--ttl-transition-base);
 }
 
+.teacher-panel {
+    padding: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.teacher-panel__head h3 {
+    margin: 0;
+    color: var(--ttl-text-primary);
+    font-size: 1.05rem;
+}
+
+.teacher-panel__content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.teacher-panel__students {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.teacher-student-item {
+    text-align: left;
+    padding: 0.55rem;
+    border: 1px solid var(--ttl-border-subtle);
+    border-radius: var(--ttl-radius-sm);
+    background: var(--ttl-bg-surface-soft);
+    cursor: pointer;
+}
+
+.teacher-student-item--active {
+    border-color: rgba(143, 44, 226, 0.35);
+    background: rgba(143, 44, 226, 0.09);
+}
+
+.teacher-student-item__name {
+    margin: 0;
+    color: var(--ttl-text-primary);
+    font-weight: 700;
+}
+
+.teacher-student-item__meta {
+    margin: 0.2rem 0 0;
+    color: var(--ttl-text-secondary);
+    font-size: 0.82rem;
+}
+
+.teacher-panel__details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.teacher-box {
+    padding: 0.7rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.teacher-box__row {
+    display: grid;
+    grid-template-columns: minmax(0, 120px) auto;
+    gap: 0.55rem;
+    align-items: center;
+}
+
+.teacher-box__head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.teacher-box__select {
+    min-height: 2.5rem;
+}
+
+.teacher-answers {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.teacher-answer-item {
+    padding: 0.5rem;
+    border-radius: var(--ttl-radius-sm);
+    border: 1px solid var(--ttl-border-subtle);
+    background: var(--ttl-bg-surface-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.teacher-answer-item p {
+    margin: 0;
+    color: var(--ttl-text-secondary);
+    font-size: 0.83rem;
+}
+
 .state-message {
     margin: 0;
     color: var(--ttl-text-secondary);
@@ -466,6 +822,19 @@ onMounted(async () => {
 
 @media (max-width: 620px) {
     .workspace-card__actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .workspace-card__nav-actions {
+        width: 100%;
+    }
+
+    .workspace-card__nav-actions .icon-action {
+        flex: 1 1 auto;
+    }
+
+    .teacher-box__row {
         grid-template-columns: 1fr;
     }
 }
