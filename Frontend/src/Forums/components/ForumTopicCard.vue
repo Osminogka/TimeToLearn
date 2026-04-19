@@ -20,6 +20,7 @@ const isCommentsOpen = ref(false);
 const isLoadingComments = ref(false);
 const commentsPage = ref(0);
 const hasMoreComments = ref(false);
+const isLoadingMoreComments = ref(false);
 const isCommentFormOpen = ref(false);
 const commentText = ref('');
 const isCreatingComment = ref(false);
@@ -111,30 +112,38 @@ async function loadComments({ reset = false } = {}) {
     }
 }
 
+async function loadMoreComments() {
+    if (!hasMoreComments.value || isLoadingComments.value || isLoadingMoreComments.value) {
+        return;
+    }
+
+    isLoadingMoreComments.value = true;
+
+    try {
+        const nextPage = commentsPage.value + 1;
+        const response = await forumApi.getComments({
+            isTopic: true,
+            recordId: localTopic.value.id,
+            page: nextPage,
+        });
+
+        const values = normalizeItems(response);
+        comments.value = [...comments.value, ...values];
+        commentsPage.value = nextPage;
+        hasMoreComments.value = values.length === 10;
+    } catch (error) {
+        errorMessage.value = error?.message || 'Failed to load more comments.';
+    } finally {
+        isLoadingMoreComments.value = false;
+    }
+}
+
 async function toggleComments() {
     isCommentsOpen.value = !isCommentsOpen.value;
 
     if (isCommentsOpen.value && !comments.value.length) {
         await loadComments({ reset: true });
     }
-}
-
-async function goToPrevCommentPage() {
-    if (commentsPage.value <= 0 || isLoadingComments.value) {
-        return;
-    }
-
-    commentsPage.value -= 1;
-    await loadComments();
-}
-
-async function goToNextCommentPage() {
-    if (!hasMoreComments.value || isLoadingComments.value) {
-        return;
-    }
-
-    commentsPage.value += 1;
-    await loadComments();
 }
 
 function toggleCommentForm() {
@@ -232,7 +241,7 @@ async function dislikeTopic() {
 </script>
 
 <template>
-    <article class="topic-card surface-card hover-lift">
+    <article class="topic-card surface-card">
         <header class="topic-card__header">
             <div class="topic-card__author">
                 <AppIcon name="profile" :boxed="false" />
@@ -245,18 +254,20 @@ async function dislikeTopic() {
         <h3>{{ localTopic.topicTitle }}</h3>
         <p class="topic-card__content">{{ localTopic.topicContent }}</p>
 
-        <footer class="topic-card__footer">
-            <button class="secondary-button" type="button" @click="likeTopic" :disabled="isLiking || isDisliking">
-                Like {{ localTopic.likes }}
+        <footer class="topic-card__footer" aria-label="Topic actions">
+            <button class="action-chip" type="button" title="Like" aria-label="Like topic" @click="likeTopic" :disabled="isLiking || isDisliking">
+                <AppIcon name="vote-up" :boxed="false" />
+                <span class="action-chip__count">{{ localTopic.likes }}</span>
             </button>
-            <button class="secondary-button" type="button" @click="dislikeTopic" :disabled="isLiking || isDisliking">
-                Dislike {{ localTopic.dislikes }}
+            <button class="action-chip" type="button" title="Dislike" aria-label="Dislike topic" @click="dislikeTopic" :disabled="isLiking || isDisliking">
+                <AppIcon name="vote-down" :boxed="false" />
+                <span class="action-chip__count">{{ localTopic.dislikes }}</span>
             </button>
-            <button class="secondary-button" type="button" @click="toggleComments" :disabled="isLoadingComments">
-                {{ isCommentsOpen ? 'Hide comments' : 'Show comments' }}
+            <button class="action-chip" type="button" title="Toggle comments" aria-label="Toggle comments" @click="toggleComments" :disabled="isLoadingComments">
+                <AppIcon name="comment" :boxed="false" />
             </button>
-            <button class="secondary-button" type="button" @click="toggleCommentForm" :disabled="isCreatingComment">
-                {{ isCommentFormOpen ? 'Cancel' : 'Add comment' }}
+            <button class="action-chip" type="button" title="Reply" aria-label="Write comment" @click="toggleCommentForm" :disabled="isCreatingComment">
+                <AppIcon :name="isCommentFormOpen ? 'chevron-down' : 'reply'" :boxed="false" />
             </button>
         </footer>
 
@@ -271,8 +282,8 @@ async function dislikeTopic() {
                 maxlength="1000"
                 placeholder="Write your comment"
             />
-            <button class="submit-button" type="submit" :disabled="isCreatingComment || !commentText.trim()">
-                {{ isCreatingComment ? 'Posting...' : 'Post comment' }}
+            <button class="action-chip action-chip--send" type="submit" title="Send" aria-label="Send comment" :disabled="isCreatingComment || !commentText.trim()">
+                <AppIcon name="send" :boxed="false" />
             </button>
         </form>
 
@@ -288,13 +299,10 @@ async function dislikeTopic() {
                 :depth="0"
             />
 
-            <footer class="topic-card__pagination">
-                <button class="secondary-button" type="button" @click="goToPrevCommentPage" :disabled="commentsPage <= 0 || isLoadingComments">
-                    Previous comments
-                </button>
-                <p class="pagination-status">Page {{ commentsPage + 1 }}</p>
-                <button class="secondary-button" type="button" @click="goToNextCommentPage" :disabled="!hasMoreComments || isLoadingComments">
-                    Next comments
+            <footer v-if="hasMoreComments" class="topic-card__more-row">
+                <button class="action-chip" type="button" title="Load more comments" aria-label="Load more comments" @click="loadMoreComments" :disabled="isLoadingMoreComments">
+                    <AppIcon name="comment" :boxed="false" />
+                    <span>{{ isLoadingMoreComments ? 'Loading' : 'More' }}</span>
                 </button>
             </footer>
         </section>
@@ -303,10 +311,10 @@ async function dislikeTopic() {
 
 <style scoped>
 .topic-card {
-    padding: 1rem;
+    padding: 0.8rem 0.9rem;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.55rem;
 }
 
 .topic-card__header {
@@ -337,27 +345,63 @@ async function dislikeTopic() {
 .topic-card h3 {
     margin: 0;
     color: var(--ttl-text-primary);
-    letter-spacing: -0.02em;
+    font-size: 1rem;
 }
 
 .topic-card__content {
     margin: 0;
     color: var(--ttl-text-primary);
-    line-height: 1.6;
+    line-height: 1.5;
     white-space: pre-wrap;
     word-break: break-word;
 }
 
 .topic-card__footer {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.action-chip {
+    min-height: 2rem;
+    border: 1px solid rgba(143, 44, 226, 0.16);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(143, 44, 226, 0.06));
+    color: var(--ttl-accent-dark);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    padding: 0 0.58rem;
+    cursor: pointer;
+    transition: transform var(--ttl-transition-fast), border-color var(--ttl-transition-base), background var(--ttl-transition-base);
+}
+
+.action-chip:hover {
+    transform: translateY(-1px);
+    border-color: rgba(143, 44, 226, 0.32);
+}
+
+.action-chip:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.action-chip--send {
+    align-self: flex-end;
+}
+
+.action-chip__count {
+    min-width: 1rem;
+    color: var(--ttl-text-secondary);
+    font-size: 0.82rem;
+    text-align: center;
 }
 
 .topic-card__comment-form {
     display: flex;
     flex-direction: column;
-    gap: 0.55rem;
+    gap: 0.4rem;
 }
 
 .topic-card__textarea {
@@ -367,14 +411,18 @@ async function dislikeTopic() {
 .topic-card__comments {
     display: flex;
     flex-direction: column;
-    gap: 0.7rem;
+    gap: 0.45rem;
+    border-top: 1px solid rgba(143, 44, 226, 0.12);
+    padding-top: 0.45rem;
 }
 
 .topic-card__pagination {
+    display: none;
+}
+
+.topic-card__more-row {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.7rem;
+    justify-content: flex-start;
 }
 
 .pagination-status {
@@ -402,13 +450,8 @@ async function dislikeTopic() {
         align-items: flex-start;
     }
 
-    .topic-card__pagination {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .topic-card__pagination .secondary-button {
-        width: 100%;
+    .topic-card__footer {
+        flex-wrap: wrap;
     }
 }
 </style>

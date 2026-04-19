@@ -27,6 +27,7 @@ const isRepliesOpen = ref(false);
 const isLoadingReplies = ref(false);
 const replyPage = ref(0);
 const hasMoreReplies = ref(false);
+const isLoadingMoreReplies = ref(false);
 const isReplyFormOpen = ref(false);
 const replyText = ref('');
 const isCreatingReply = ref(false);
@@ -127,6 +128,32 @@ async function loadReplies({ reset = false } = {}) {
     }
 }
 
+async function loadMoreReplies() {
+    if (!hasMoreReplies.value || isLoadingReplies.value || isLoadingMoreReplies.value) {
+        return;
+    }
+
+    isLoadingMoreReplies.value = true;
+
+    try {
+        const nextPage = replyPage.value + 1;
+        const response = await forumApi.getComments({
+            isTopic: false,
+            recordId: localComment.value.id,
+            page: nextPage,
+        });
+
+        const values = normalizeItems(response);
+        replies.value = [...replies.value, ...values];
+        replyPage.value = nextPage;
+        hasMoreReplies.value = values.length === 5;
+    } catch (error) {
+        errorMessage.value = error?.message || 'Failed to load more replies.';
+    } finally {
+        isLoadingMoreReplies.value = false;
+    }
+}
+
 async function toggleReplies() {
     if (!hasReplies.value) {
         return;
@@ -136,24 +163,6 @@ async function toggleReplies() {
     if (isRepliesOpen.value && !replies.value.length) {
         await loadReplies({ reset: true });
     }
-}
-
-async function goToPrevReplyPage() {
-    if (replyPage.value <= 0 || isLoadingReplies.value) {
-        return;
-    }
-
-    replyPage.value -= 1;
-    await loadReplies();
-}
-
-async function goToNextReplyPage() {
-    if (!hasMoreReplies.value || isLoadingReplies.value) {
-        return;
-    }
-
-    replyPage.value += 1;
-    await loadReplies();
 }
 
 function toggleReplyForm() {
@@ -253,7 +262,7 @@ async function dislikeComment() {
 
 <template>
     <article class="comment-node" :style="paddingStyle">
-        <div class="comment-node__card surface-card">
+        <div class="comment-node__card">
             <header class="comment-node__header">
                 <div class="comment-node__author">
                     <AppIcon name="profile" :boxed="false" />
@@ -267,23 +276,28 @@ async function dislikeComment() {
             <p class="comment-node__content">{{ localComment.commentContent }}</p>
 
             <footer class="comment-node__actions">
-                <button class="secondary-button" type="button" @click="likeComment" :disabled="isLiking || isDisliking">
-                    Like {{ localComment.likesOverall }}
+                <button class="action-chip" type="button" title="Like" aria-label="Like comment" @click="likeComment" :disabled="isLiking || isDisliking">
+                    <AppIcon name="vote-up" :boxed="false" />
+                    <span class="action-chip__count">{{ localComment.likesOverall }}</span>
                 </button>
-                <button class="secondary-button" type="button" @click="dislikeComment" :disabled="isLiking || isDisliking">
-                    Dislike {{ localComment.dislikesOverall }}
+                <button class="action-chip" type="button" title="Dislike" aria-label="Dislike comment" @click="dislikeComment" :disabled="isLiking || isDisliking">
+                    <AppIcon name="vote-down" :boxed="false" />
+                    <span class="action-chip__count">{{ localComment.dislikesOverall }}</span>
                 </button>
-                <button class="secondary-button" type="button" @click="toggleReplyForm" :disabled="isCreatingReply">
-                    {{ isReplyFormOpen ? 'Cancel reply' : 'Reply' }}
+                <button class="action-chip" type="button" title="Reply" aria-label="Write reply" @click="toggleReplyForm" :disabled="isCreatingReply">
+                    <AppIcon :name="isReplyFormOpen ? 'chevron-down' : 'reply'" :boxed="false" />
                 </button>
                 <button
                     v-if="hasReplies"
-                    class="secondary-button"
+                    class="action-chip"
                     type="button"
+                    :title="isRepliesOpen ? 'Hide child replies' : 'Show child replies'"
+                    :aria-label="isRepliesOpen ? 'Hide child replies' : 'Show child replies'"
                     @click="toggleReplies"
                     :disabled="isLoadingReplies"
                 >
-                    {{ isRepliesOpen ? 'Collapse replies' : `Expand replies (${localComment.repliesCount})` }}
+                    <AppIcon :name="isRepliesOpen ? 'chevron-down' : 'comment'" :boxed="false" />
+                    <span class="action-chip__count">{{ localComment.repliesCount }}</span>
                 </button>
             </footer>
 
@@ -298,8 +312,8 @@ async function dislikeComment() {
                     maxlength="1000"
                     placeholder="Write your reply"
                 />
-                <button class="submit-button" type="submit" :disabled="isCreatingReply || !replyText.trim()">
-                    {{ isCreatingReply ? 'Posting...' : 'Post reply' }}
+                <button class="action-chip action-chip--send" type="submit" title="Send" aria-label="Send reply" :disabled="isCreatingReply || !replyText.trim()">
+                    <AppIcon name="send" :boxed="false" />
                 </button>
             </form>
         </div>
@@ -316,13 +330,10 @@ async function dislikeComment() {
                 :depth="depth + 1"
             />
 
-            <footer class="comment-node__pagination">
-                <button class="secondary-button" type="button" @click="goToPrevReplyPage" :disabled="replyPage <= 0 || isLoadingReplies">
-                    Previous replies
-                </button>
-                <p class="pagination-status">Page {{ replyPage + 1 }}</p>
-                <button class="secondary-button" type="button" @click="goToNextReplyPage" :disabled="!hasMoreReplies || isLoadingReplies">
-                    Next replies
+            <footer v-if="hasMoreReplies" class="comment-node__more-row">
+                <button class="action-chip" type="button" title="Load more replies" aria-label="Load more replies" @click="loadMoreReplies" :disabled="isLoadingMoreReplies">
+                    <AppIcon name="comment" :boxed="false" />
+                    <span>{{ isLoadingMoreReplies ? 'Loading' : 'More' }}</span>
                 </button>
             </footer>
         </section>
@@ -333,14 +344,16 @@ async function dislikeComment() {
 .comment-node {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.3rem;
 }
 
 .comment-node__card {
-    padding: 0.9rem;
+    padding: 0.35rem 0;
     display: flex;
     flex-direction: column;
-    gap: 0.65rem;
+    gap: 0.35rem;
+    border-left: 2px solid rgba(143, 44, 226, 0.18);
+    padding-left: 0.55rem;
 }
 
 .comment-node__header {
@@ -353,39 +366,77 @@ async function dislikeComment() {
 .comment-node__author {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.42rem;
 }
 
 .comment-node__author p {
     margin: 0;
     color: var(--ttl-text-primary);
-    font-weight: 700;
+    font-weight: 600;
+    font-size: 0.9rem;
 }
 
 .comment-node__time {
     margin: 0;
     color: var(--ttl-text-secondary);
-    font-size: 0.82rem;
+    font-size: 0.8rem;
 }
 
 .comment-node__content {
     margin: 0;
     color: var(--ttl-text-primary);
-    line-height: 1.55;
+    line-height: 1.45;
     white-space: pre-wrap;
     word-break: break-word;
+    font-size: 0.92rem;
 }
 
 .comment-node__actions {
     display: flex;
+    align-items: center;
     flex-wrap: wrap;
-    gap: 0.45rem;
+    gap: 0.42rem;
+}
+
+.action-chip {
+    min-height: 1.9rem;
+    border: 1px solid rgba(143, 44, 226, 0.16);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(143, 44, 226, 0.05));
+    color: var(--ttl-accent-dark);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    padding: 0 0.54rem;
+    cursor: pointer;
+    transition: transform var(--ttl-transition-fast), border-color var(--ttl-transition-base), background var(--ttl-transition-base);
+}
+
+.action-chip:hover {
+    transform: translateY(-1px);
+    border-color: rgba(143, 44, 226, 0.3);
+}
+
+.action-chip:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.action-chip--send {
+    align-self: flex-end;
+}
+
+.action-chip__count {
+    color: var(--ttl-text-secondary);
+    font-size: 0.82rem;
+    line-height: 1;
 }
 
 .comment-node__reply-form {
     display: flex;
     flex-direction: column;
-    gap: 0.55rem;
+    gap: 0.4rem;
 }
 
 .comment-node__textarea {
@@ -395,25 +446,18 @@ async function dislikeComment() {
 .comment-node__replies {
     display: flex;
     flex-direction: column;
-    gap: 0.55rem;
+    gap: 0.3rem;
 }
 
-.comment-node__pagination {
+.comment-node__more-row {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.7rem;
-}
-
-.pagination-status {
-    margin: 0;
-    color: var(--ttl-text-secondary);
-    font-size: 0.86rem;
+    justify-content: flex-start;
 }
 
 .state-message {
     margin: 0;
     color: var(--ttl-text-secondary);
+    font-size: 0.82rem;
 }
 
 .state-message--error {
@@ -429,14 +473,6 @@ async function dislikeComment() {
         flex-direction: column;
         align-items: flex-start;
     }
-
-    .comment-node__pagination {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .comment-node__pagination .secondary-button {
-        width: 100%;
-    }
 }
 </style>
+

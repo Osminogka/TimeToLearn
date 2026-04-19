@@ -77,6 +77,36 @@ defineProps({
             <path d="M19.6 12a7.6 7.6 0 1 1-2.1-5.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
             <path d="M19.6 5.8v3.6H16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
+
+        <svg v-else-if="name === 'vote-up'" viewBox="0 0 24 24" fill="none">
+            <path d="M12 5.5 5.5 12h4.2v6.5h4.6V12h4.2L12 5.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+        </svg>
+
+        <svg v-else-if="name === 'vote-down'" viewBox="0 0 24 24" fill="none">
+            <path d="m12 18.5 6.5-6.5h-4.2V5.5H9.7V12H5.5L12 18.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+        </svg>
+
+        <svg v-else-if="name === 'comment'" viewBox="0 0 24 24" fill="none">
+            <path d="M5.2 6.2h13.6a1.4 1.4 0 0 1 1.4 1.4v7a1.4 1.4 0 0 1-1.4 1.4h-6.1L8.4 19v-3h-3.2a1.4 1.4 0 0 1-1.4-1.4v-7a1.4 1.4 0 0 1 1.4-1.4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+        </svg>
+
+        <svg v-else-if="name === 'reply'" viewBox="0 0 24 24" fill="none">
+            <path d="M9.2 8 4.8 12l4.4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M5.2 12h8.2c3.2 0 5.8 2.6 5.8 5.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+
+        <svg v-else-if="name === 'send'" viewBox="0 0 24 24" fill="none">
+            <path d="M20 4 4.8 10.5l6.1 2.4L13.4 19 20 4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="M10.9 12.9 20 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+
+        <svg v-else-if="name === 'chevron-right'" viewBox="0 0 24 24" fill="none">
+            <path d="m9.5 5 6.5 7-6.5 7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+
+        <svg v-else-if="name === 'chevron-down'" viewBox="0 0 24 24" fill="none">
+            <path d="m5 9.5 7 6.5 7-6.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
     </span>
 </template>
 
