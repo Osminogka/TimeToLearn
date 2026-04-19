@@ -43,8 +43,7 @@ const isLoadingLessonQuiz = ref(false);
 const isLoadingCourseQuiz = ref(false);
 const isLoadingStudentQuizAnswers = ref(false);
 const isLoadingTeacherQuizAnswers = ref(false);
-const isCreatingLessonQuizQuestion = ref(false);
-const isCreatingCourseQuizQuestion = ref(false);
+const isSavingCourseQuiz = ref(false);
 const isSubmittingLessonQuizAnswer = ref(false);
 const isSubmittingCourseQuizAnswer = ref(false);
 
@@ -57,20 +56,9 @@ const teacherCourseQuizAnswers = ref([]);
 
 const lessonQuizAnswerDraftByQuestion = ref({});
 const courseQuizAnswerDraftByQuestion = ref({});
-
-const lessonQuizQuestionDraft = ref({
-    questionText: '',
-    optionTexts: ['', '', '', ''],
-    correctOptionIndex: 0,
-    attemptPolicy: 'reattempt',
-});
-
-const courseQuizQuestionDraft = ref({
-    questionText: '',
-    optionTexts: ['', '', '', ''],
-    correctOptionIndex: 0,
-    attemptPolicy: 'reattempt',
-});
+const editingLessonQuizQuestions = ref([]);
+const isCourseQuizEditorOpen = ref(false);
+const courseQuizEditorQuestions = ref([]);
 
 const universityName = computed(() => String(route.params.name || ''));
 const courseId = computed(() => Number(route.params.courseId || 0));
@@ -258,22 +246,37 @@ function getOptionId(item) {
     return Number(item?.id || item?.Id || 0);
 }
 
-function resetLessonQuizQuestionDraft() {
-    lessonQuizQuestionDraft.value = {
+function createEmptyQuestionDraft() {
+    return {
         questionText: '',
-        optionTexts: ['', '', '', ''],
+        optionTexts: ['', ''],
         correctOptionIndex: 0,
         attemptPolicy: 'reattempt',
     };
 }
 
-function resetCourseQuizQuestionDraft() {
-    courseQuizQuestionDraft.value = {
-        questionText: '',
-        optionTexts: ['', '', '', ''],
-        correctOptionIndex: 0,
-        attemptPolicy: 'reattempt',
+function mapQuestionToDraft(question) {
+    const options = (question?.options || question?.Options || [])
+        .map((item) => String(item?.optionText || item?.OptionText || '').trim())
+        .filter((item) => item.length > 0);
+
+    const correctOptionIndex = (question?.options || question?.Options || []).findIndex((item) => Boolean(item?.isCorrect ?? item?.IsCorrect));
+
+    return {
+        questionText: String(question?.questionText || question?.QuestionText || ''),
+        optionTexts: options.length >= 2 ? options : ['', ''],
+        correctOptionIndex: correctOptionIndex >= 0 ? correctOptionIndex : 0,
+        attemptPolicy: getQuestionAttemptPolicy(question),
     };
+}
+
+function mapQuestionsToDraft(questions) {
+    const rows = Array.isArray(questions) ? questions : [];
+    if (!rows.length) {
+        return [createEmptyQuestionDraft()];
+    }
+
+    return rows.map((item) => mapQuestionToDraft(item));
 }
 
 function buildQuizQuestionPayload(draft) {
@@ -295,6 +298,38 @@ function buildQuizQuestionPayload(draft) {
 function getQuestionAttemptPolicy(question) {
     const raw = String(question?.attemptPolicy || question?.AttemptPolicy || 'reattempt').trim().toLowerCase();
     return raw === 'single' ? 'single' : 'reattempt';
+}
+
+function addQuestionDraftRow(targetRef) {
+    targetRef.value.push(createEmptyQuestionDraft());
+}
+
+function removeQuestionDraftRow(targetRef, questionIndex) {
+    if (targetRef.value.length <= 1) {
+        return;
+    }
+
+    targetRef.value.splice(questionIndex, 1);
+}
+
+function addOptionToQuestion(targetRef, questionIndex) {
+    if (!targetRef.value[questionIndex]) {
+        return;
+    }
+
+    targetRef.value[questionIndex].optionTexts.push('');
+}
+
+function removeOptionFromQuestion(targetRef, questionIndex, optionIndex) {
+    const question = targetRef.value[questionIndex];
+    if (!question || question.optionTexts.length <= 2) {
+        return;
+    }
+
+    question.optionTexts.splice(optionIndex, 1);
+    if (question.correctOptionIndex >= question.optionTexts.length) {
+        question.correctOptionIndex = 0;
+    }
 }
 
 function isSingleAttemptQuestion(question) {
@@ -449,65 +484,53 @@ async function loadQuizWorkspace() {
     await loadTeacherQuizAnswers();
 }
 
-async function createLessonQuizQuestion() {
-    if (!canManage.value || !selectedLessonId.value || isCreatingLessonQuizQuestion.value) {
-        return;
-    }
-
-    const payload = buildQuizQuestionPayload(lessonQuizQuestionDraft.value);
-    if (!payload.questionText || payload.options.length < 2 || payload.options.filter(opt => opt.isCorrect).length !== 1) {
-        errorMessage.value = 'Provide question text, at least two options, and one correct answer.';
-        return;
-    }
-
-    clearMessages();
-    isCreatingLessonQuizQuestion.value = true;
-    try {
-        const response = await courseApi.createLessonQuizQuestion({
-            lessonId: selectedLessonId.value,
-            questionText: payload.questionText,
-            options: payload.options,
-            attemptPolicy: payload.attemptPolicy,
-        });
-
-        actionMessage.value = readMessage(response) || 'Lesson mini quiz question created.';
-        resetLessonQuizQuestionDraft();
-        await loadQuizWorkspace();
-    } catch (error) {
-        errorMessage.value = error?.message || 'Could not create lesson mini quiz question.';
-    } finally {
-        isCreatingLessonQuizQuestion.value = false;
-    }
+function openCreateCourseQuizEditor() {
+    courseQuizEditorQuestions.value = mapQuestionsToDraft([]);
+    isCourseQuizEditorOpen.value = true;
 }
 
-async function createCourseQuizQuestion() {
-    if (!canManage.value || !courseId.value || isCreatingCourseQuizQuestion.value) {
+function openEditCourseQuizEditor() {
+    courseQuizEditorQuestions.value = mapQuestionsToDraft(courseQuizQuestions.value);
+    isCourseQuizEditorOpen.value = true;
+}
+
+function closeCourseQuizEditor() {
+    isCourseQuizEditorOpen.value = false;
+    courseQuizEditorQuestions.value = [];
+}
+
+async function saveCourseQuizEditor() {
+    if (!canManage.value || !courseId.value || isSavingCourseQuiz.value) {
         return;
     }
 
-    const payload = buildQuizQuestionPayload(courseQuizQuestionDraft.value);
-    if (!payload.questionText || payload.options.length < 2 || payload.options.filter(opt => opt.isCorrect).length !== 1) {
-        errorMessage.value = 'Provide question text, at least two options, and one correct answer.';
+    const questionsPayload = courseQuizEditorQuestions.value.map((draft) => buildQuizQuestionPayload(draft));
+
+    if (!questionsPayload.length) {
+        errorMessage.value = 'Course quiz must contain at least one question.';
+        return;
+    }
+
+    if (questionsPayload.some((item) => !item.questionText || item.options.length < 2 || item.options.filter((opt) => opt.isCorrect).length !== 1)) {
+        errorMessage.value = 'Each question must include text, at least two variants, and exactly one correct answer.';
         return;
     }
 
     clearMessages();
-    isCreatingCourseQuizQuestion.value = true;
+    isSavingCourseQuiz.value = true;
     try {
-        const response = await courseApi.createCourseQuizQuestion({
+        const response = await courseApi.upsertCourseQuiz({
             courseId: courseId.value,
-            questionText: payload.questionText,
-            options: payload.options,
-            attemptPolicy: payload.attemptPolicy,
+            questions: questionsPayload,
         });
 
-        actionMessage.value = readMessage(response) || 'Course quiz question created.';
-        resetCourseQuizQuestionDraft();
+        actionMessage.value = readMessage(response) || 'Course quiz saved successfully.';
+        closeCourseQuizEditor();
         await loadQuizWorkspace();
     } catch (error) {
-        errorMessage.value = error?.message || 'Could not create course quiz question.';
+        errorMessage.value = error?.message || 'Could not save course quiz.';
     } finally {
-        isCreatingCourseQuizQuestion.value = false;
+        isSavingCourseQuiz.value = false;
     }
 }
 
@@ -618,24 +641,36 @@ function clearMessages() {
 
 function resetLessonForm() {
     editingLessonId.value = 0;
+    editingLessonQuizQuestions.value = [];
     formErrorMessage.value = '';
     isLessonFormOpen.value = false;
 }
 
 function openCreateLessonForm() {
     editingLessonId.value = 0;
+    editingLessonQuizQuestions.value = mapQuestionsToDraft([]);
     formErrorMessage.value = '';
     isLessonFormOpen.value = true;
 }
 
-function openEditLessonForm(lesson) {
+async function openEditLessonForm(lesson) {
     const id = getLessonId(lesson);
     if (!id) {
         return;
     }
 
     editingLessonId.value = id;
+    editingLessonQuizQuestions.value = [];
     formErrorMessage.value = '';
+
+    try {
+        const response = await courseApi.getLessonQuizQuestions(id);
+        const questions = normalizeQuestionRows(response);
+        editingLessonQuizQuestions.value = questions.length ? questions : [];
+    } catch {
+        editingLessonQuizQuestions.value = [];
+    }
+
     isLessonFormOpen.value = true;
 }
 
@@ -860,6 +895,17 @@ async function saveStudentGrade(student = null) {
     }
 }
 
+async function upsertLessonQuizForLesson(lessonId, quizPayload) {
+    if (!lessonId) {
+        return;
+    }
+
+    await courseApi.upsertLessonQuiz({
+        lessonId,
+        questions: Array.isArray(quizPayload) ? quizPayload : [],
+    });
+}
+
 async function submitLessonForm(payload) {
     formErrorMessage.value = payload.validationError || '';
     if (payload.validationError) {
@@ -871,6 +917,7 @@ async function submitLessonForm(payload) {
 
     try {
         const resourceFields = lessonResourcesService.buildApiResourceFields(payload.resources);
+        const lessonQuizPayload = payload.lessonQuizQuestions;
 
         if (isEditingMode.value) {
             const response = await courseApi.updateLesson({
@@ -882,6 +929,8 @@ async function submitLessonForm(payload) {
                 resources: resourceFields.resources,
                 orderNumber: payload.orderNumber,
             });
+
+            await upsertLessonQuizForLesson(editingLessonId.value, lessonQuizPayload);
 
             actionMessage.value = readMessage(response) || 'Lesson updated successfully.';
             await loadLessons();
@@ -912,13 +961,16 @@ async function submitLessonForm(payload) {
             if (lessons.value.length) {
                 const newestLessonId = getLessonId(lessons.value[lessons.value.length - 1]);
                 if (newestLessonId) {
+                    await upsertLessonQuizForLesson(newestLessonId, lessonQuizPayload);
                     selectedLessonId.value = newestLessonId;
                     await loadLessonDetails(newestLessonId);
+                    await loadQuizWorkspace();
                 }
             }
         }
 
         resetLessonForm();
+        editingLessonQuizQuestions.value = [];
     } catch (error) {
         formErrorMessage.value = error?.message || 'Could not save lesson.';
     } finally {
@@ -1046,6 +1098,7 @@ onMounted(async () => {
                 :mode="isEditingMode ? 'edit' : 'create'"
                 :initial-lesson="editingLesson"
                 :initial-resources="editingLessonResources"
+                :initial-quiz-questions="editingLessonQuizQuestions"
                 :is-submitting="isSubmittingLesson"
                 :error-message="formErrorMessage"
                 @submit="submitLessonForm"
@@ -1114,34 +1167,7 @@ onMounted(async () => {
                             <p class="section-copy">{{ hasLessonQuizQuestions ? `${lessonQuizQuestions.length} question(s)` : 'No lesson mini quiz questions yet.' }}</p>
                         </div>
 
-                        <div v-if="canManage" class="quiz-creator">
-                            <div class="field-group">
-                                <label class="field-label">Question</label>
-                                <input v-model="lessonQuizQuestionDraft.questionText" class="input-field" type="text" maxlength="400" placeholder="What is the time complexity of binary search?" />
-                            </div>
-
-                            <div class="field-group">
-                                <label class="field-label">Attempt policy</label>
-                                <select v-model="lessonQuizQuestionDraft.attemptPolicy" class="input-field">
-                                    <option value="reattempt">Reattempt allowed</option>
-                                    <option value="single">Single attempt (lock after first answer)</option>
-                                </select>
-                            </div>
-
-                            <div class="quiz-creator__options">
-                                <div v-for="(optionText, index) in lessonQuizQuestionDraft.optionTexts" :key="`lesson-opt-${index}`" class="quiz-creator__option-row">
-                                    <input v-model="lessonQuizQuestionDraft.optionTexts[index]" class="input-field" type="text" maxlength="300" :placeholder="`Option ${index + 1}`" />
-                                    <label class="quiz-creator__correct">
-                                        <input v-model.number="lessonQuizQuestionDraft.correctOptionIndex" type="radio" name="lesson-quiz-correct" :value="index" />
-                                        Correct
-                                    </label>
-                                </div>
-                            </div>
-
-                            <button class="submit-button" type="button" :disabled="isCreatingLessonQuizQuestion || !selectedLessonId" @click="createLessonQuizQuestion">
-                                {{ isCreatingLessonQuizQuestion ? 'Creating...' : 'Add lesson mini quiz question' }}
-                            </button>
-                        </div>
+                        <p v-if="canManage" class="state-message">Quiz for this lesson is configured only inside lesson create/edit form.</p>
 
                         <div v-if="hasLessonQuizQuestions" class="quiz-questions-list">
                             <article v-for="question in lessonQuizQuestions" :key="getQuestionId(question)" class="quiz-question-card">
@@ -1177,7 +1203,7 @@ onMounted(async () => {
                             </article>
                         </div>
 
-                        <p v-else-if="!isLoadingLessonQuiz && canManage" class="state-message">No lesson mini quiz questions published yet.</p>
+                        <p v-else-if="!isLoadingLessonQuiz" class="state-message">No lesson mini quiz questions published yet.</p>
 
                         <div v-if="!canManage && myLessonQuizAnswers.length" class="quiz-score-card">
                             <p class="section-kicker">Your lesson mini quiz score</p>
@@ -1213,33 +1239,57 @@ onMounted(async () => {
                     <p class="section-copy">{{ hasCourseQuizQuestions ? `${courseQuizQuestions.length} question(s)` : 'No course-level quiz questions yet.' }}</p>
                 </div>
 
-                <div v-if="canManage" class="quiz-creator">
-                    <div class="field-group">
-                        <label class="field-label">Question</label>
-                        <input v-model="courseQuizQuestionDraft.questionText" class="input-field" type="text" maxlength="400" placeholder="What does HTTP status 404 mean?" />
-                    </div>
-
-                    <div class="field-group">
-                        <label class="field-label">Attempt policy</label>
-                        <select v-model="courseQuizQuestionDraft.attemptPolicy" class="input-field">
-                            <option value="reattempt">Reattempt allowed</option>
-                            <option value="single">Single attempt (lock after first answer)</option>
-                        </select>
-                    </div>
-
-                    <div class="quiz-creator__options">
-                        <div v-for="(optionText, index) in courseQuizQuestionDraft.optionTexts" :key="`course-opt-${index}`" class="quiz-creator__option-row">
-                            <input v-model="courseQuizQuestionDraft.optionTexts[index]" class="input-field" type="text" maxlength="300" :placeholder="`Option ${index + 1}`" />
-                            <label class="quiz-creator__correct">
-                                <input v-model.number="courseQuizQuestionDraft.correctOptionIndex" type="radio" name="course-quiz-correct" :value="index" />
-                                Correct
-                            </label>
-                        </div>
-                    </div>
-
-                    <button class="submit-button" type="button" :disabled="isCreatingCourseQuizQuestion" @click="createCourseQuizQuestion">
-                        {{ isCreatingCourseQuizQuestion ? 'Creating...' : 'Add course quiz question' }}
+                <div v-if="canManage" class="quiz-panel__actions">
+                    <button class="submit-button" type="button" :disabled="isSavingCourseQuiz" @click="hasCourseQuizQuestions ? openEditCourseQuizEditor() : openCreateCourseQuizEditor()">
+                        {{ hasCourseQuizQuestions ? 'Edit course quiz' : 'Create course quiz' }}
                     </button>
+                </div>
+
+                <div v-if="canManage && isCourseQuizEditorOpen" class="quiz-creator">
+                    <div class="quiz-creator__questions">
+                        <article v-for="(questionDraft, questionIndex) in courseQuizEditorQuestions" :key="`course-question-draft-${questionIndex}`" class="quiz-creator__question-card">
+                            <div class="field-group">
+                                <label class="field-label">Question {{ questionIndex + 1 }}</label>
+                                <input v-model="questionDraft.questionText" class="input-field" type="text" maxlength="400" placeholder="What does HTTP status 404 mean?" />
+                            </div>
+
+                            <div class="field-group">
+                                <label class="field-label">Attempt policy</label>
+                                <select v-model="questionDraft.attemptPolicy" class="input-field">
+                                    <option value="reattempt">Reattempt allowed</option>
+                                    <option value="single">Single attempt (lock after first answer)</option>
+                                </select>
+                            </div>
+
+                            <div class="quiz-creator__options">
+                                <div v-for="(optionText, optionIndex) in questionDraft.optionTexts" :key="`course-opt-${questionIndex}-${optionIndex}`" class="quiz-creator__option-row">
+                                    <input v-model="questionDraft.optionTexts[optionIndex]" class="input-field" type="text" maxlength="300" :placeholder="`Variant ${optionIndex + 1}`" />
+                                    <label class="quiz-creator__correct">
+                                        <input v-model.number="questionDraft.correctOptionIndex" type="radio" :name="`course-quiz-correct-${questionIndex}`" :value="optionIndex" />
+                                        Correct
+                                    </label>
+                                    <button class="secondary-button" type="button" :disabled="questionDraft.optionTexts.length <= 2" @click="removeOptionFromQuestion(courseQuizEditorQuestions, questionIndex, optionIndex)">
+                                        Remove
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="quiz-panel__actions">
+                                <button class="secondary-button" type="button" @click="addOptionToQuestion(courseQuizEditorQuestions, questionIndex)">Add variant</button>
+                                <button class="secondary-button" type="button" :disabled="courseQuizEditorQuestions.length <= 1" @click="removeQuestionDraftRow(courseQuizEditorQuestions, questionIndex)">
+                                    Remove question
+                                </button>
+                            </div>
+                        </article>
+                    </div>
+
+                    <div class="quiz-panel__actions">
+                        <button class="secondary-button" type="button" @click="addQuestionDraftRow(courseQuizEditorQuestions)">Add question</button>
+                        <button class="submit-button" type="button" :disabled="isSavingCourseQuiz" @click="saveCourseQuizEditor">
+                            {{ isSavingCourseQuiz ? 'Saving...' : 'Save whole quiz' }}
+                        </button>
+                        <button class="secondary-button" type="button" :disabled="isSavingCourseQuiz" @click="closeCourseQuizEditor">Cancel</button>
+                    </div>
                 </div>
 
                 <div v-if="hasCourseQuizQuestions" class="quiz-questions-list">
@@ -1614,11 +1664,33 @@ onMounted(async () => {
     gap: 0.5rem;
 }
 
+.quiz-creator__questions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.quiz-creator__question-card {
+    padding: 0.65rem;
+    border-radius: var(--ttl-radius-sm);
+    border: 1px solid var(--ttl-border-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
 .quiz-creator__option-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
     gap: 0.55rem;
+}
+
+.quiz-panel__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: wrap;
 }
 
 .quiz-creator__correct {

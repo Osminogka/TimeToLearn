@@ -69,12 +69,80 @@ namespace Courses.API.Controllers
             }
         }
 
+        [HttpPut("lesson/{lessonId}")]
+        public async Task<IActionResult> UpsertLessonQuizAsync(long lessonId, UpsertQuizDto dto)
+        {
+            try
+            {
+                var result = await _quizService.UpsertLessonQuizAsync(lessonId, dto, getUserEmail());
+                if (!result.Success)
+                    return BadRequest(result.Message);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return HandleException(ex);
+            }
+        }
+
+        [HttpPut("lesson/{lessonId}/questions/{questionId}")]
+        public async Task<IActionResult> UpdateLessonQuizQuestionAsync(long lessonId, long questionId, CreateQuizQuestionDto dto)
+        {
+            try
+            {
+                var result = await _quizService.UpdateLessonQuizQuestionAsync(lessonId, questionId, dto, getUserEmail());
+                if (!result.Success)
+                    return BadRequest(result.Message);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return HandleException(ex);
+            }
+        }
+
         [HttpPost("course/{courseId}/questions")]
         public async Task<IActionResult> CreateCourseQuizQuestionAsync(long courseId, CreateQuizQuestionDto dto)
         {
             try
             {
                 var result = await _quizService.CreateCourseQuizQuestionAsync(courseId, dto, getUserEmail());
+                if (!result.Success)
+                    return BadRequest(result.Message);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return HandleException(ex);
+            }
+        }
+
+        [HttpPut("course/{courseId}")]
+        public async Task<IActionResult> UpsertCourseQuizAsync(long courseId, UpsertQuizDto dto)
+        {
+            try
+            {
+                var result = await _quizService.UpsertCourseQuizAsync(courseId, dto, getUserEmail());
+                if (!result.Success)
+                    return BadRequest(result.Message);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return HandleException(ex);
+            }
+        }
+
+        [HttpPut("course/{courseId}/questions/{questionId}")]
+        public async Task<IActionResult> UpdateCourseQuizQuestionAsync(long courseId, long questionId, CreateQuizQuestionDto dto)
+        {
+            try
+            {
+                var result = await _quizService.UpdateCourseQuizQuestionAsync(courseId, questionId, dto, getUserEmail());
                 if (!result.Success)
                     return BadRequest(result.Message);
                 return Ok(result);

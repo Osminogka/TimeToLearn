@@ -108,6 +108,18 @@ const getCourseQuizQuestions = async (courseId) => {
     return httpClient.getAuth(`${QUIZZES_BASE_URL}/course/${courseId}`);
 };
 
+const upsertLessonQuiz = async ({ lessonId, questions }) => {
+    return httpClient.putAuth(`${QUIZZES_BASE_URL}/lesson/${lessonId}`, {
+        questions,
+    });
+};
+
+const upsertCourseQuiz = async ({ courseId, questions }) => {
+    return httpClient.putAuth(`${QUIZZES_BASE_URL}/course/${courseId}`, {
+        questions,
+    });
+};
+
 const createLessonQuizQuestion = async ({ lessonId, questionText, options, attemptPolicy }) => {
     return httpClient.postAuth(`${QUIZZES_BASE_URL}/lesson/${lessonId}/questions`, {
         questionText,
@@ -116,8 +128,24 @@ const createLessonQuizQuestion = async ({ lessonId, questionText, options, attem
     });
 };
 
+const updateLessonQuizQuestion = async ({ lessonId, questionId, questionText, options, attemptPolicy }) => {
+    return httpClient.putAuth(`${QUIZZES_BASE_URL}/lesson/${lessonId}/questions/${questionId}`, {
+        questionText,
+        options,
+        attemptPolicy,
+    });
+};
+
 const createCourseQuizQuestion = async ({ courseId, questionText, options, attemptPolicy }) => {
     return httpClient.postAuth(`${QUIZZES_BASE_URL}/course/${courseId}/questions`, {
+        questionText,
+        options,
+        attemptPolicy,
+    });
+};
+
+const updateCourseQuizQuestion = async ({ courseId, questionId, questionText, options, attemptPolicy }) => {
+    return httpClient.putAuth(`${QUIZZES_BASE_URL}/course/${courseId}/questions/${questionId}`, {
         questionText,
         options,
         attemptPolicy,
@@ -171,8 +199,12 @@ export default {
     assignCourseGrade,
     getLessonQuizQuestions,
     getCourseQuizQuestions,
+    upsertLessonQuiz,
+    upsertCourseQuiz,
     createLessonQuizQuestion,
+    updateLessonQuizQuestion,
     createCourseQuizQuestion,
+    updateCourseQuizQuestion,
     submitLessonQuizAnswer,
     submitCourseQuizAnswer,
     getMyLessonQuizAnswers,

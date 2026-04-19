@@ -275,6 +275,233 @@ namespace Courses.DL.Services
             return response;
         }
 
+        private async Task<ResponseMessage> UpsertQuizAsync(long expectedCourseId, long? expectedLessonId, IEnumerable<CreateQuizQuestionDto>? questions, string teacherEmail)
+        {
+            var response = new ResponseMessage { Message = "You don't have such rights" };
+
+            if (expectedLessonId.HasValue)
+            {
+                var lessonContext = await ResolveLessonContextAsync(expectedLessonId.Value, teacherEmail);
+                if (lessonContext.error != null)
+                {
+                    response.Message = lessonContext.error;
+                    return response;
+                }
+
+                if (lessonContext.userInfo == null || !IsTeacherLike(lessonContext.userInfo))
+                {
+                    response.Message = "Only university teachers or directors can edit lesson mini quizzes";
+                    return response;
+                }
+            }
+            else
+            {
+                var courseContext = await ResolveCourseContextAsync(expectedCourseId, teacherEmail);
+                if (courseContext.error != null)
+                {
+                    response.Message = courseContext.error;
+                    return response;
+                }
+
+                if (courseContext.userInfo == null || !IsTeacherLike(courseContext.userInfo))
+                {
+                    response.Message = "Only university teachers or directors can edit course quizzes";
+                    return response;
+                }
+            }
+
+            var sourceQuestions = (questions ?? Array.Empty<CreateQuizQuestionDto>()).ToList();
+            var payloadQuestions = new List<(string QuestionText, string AttemptPolicy, List<CreateQuizOptionDto> Options)>();
+
+            foreach (var item in sourceQuestions)
+            {
+                var validated = ValidateQuestionPayload(item);
+                if (!validated.valid)
+                {
+                    response.Message = validated.error ?? "Invalid quiz question";
+                    return response;
+                }
+
+                payloadQuestions.Add((
+                    QuestionText: item.QuestionText.Trim(),
+                    AttemptPolicy: NormalizeAttemptPolicy(item.AttemptPolicy),
+                    Options: validated.options
+                ));
+            }
+
+            var existingQuestions = await _quizQuestionRepository.Where(obj =>
+                    obj.CourseId == expectedCourseId && obj.LessonId == expectedLessonId)
+                .Include(obj => obj.Options)
+                .ToListAsync();
+
+            if (existingQuestions.Any())
+            {
+                var existingQuestionIds = existingQuestions.Select(obj => obj.Id).ToList();
+                var hasSubmittedAnswers = await _quizAnswerRepository.Where(obj => existingQuestionIds.Contains(obj.QuizQuestionId)).AnyAsync();
+                if (hasSubmittedAnswers)
+                {
+                    response.Message = "Cannot edit this quiz after students submitted answers";
+                    return response;
+                }
+
+                await _quizQuestionRepository.DeleteRangeAsync(existingQuestions);
+            }
+
+            foreach (var item in payloadQuestions)
+            {
+                var question = new QuizQuestion
+                {
+                    CourseId = expectedCourseId,
+                    LessonId = expectedLessonId,
+                    QuestionText = item.QuestionText,
+                    AttemptPolicy = item.AttemptPolicy,
+                    CreatedAt = DateTime.UtcNow,
+                };
+
+                await _quizQuestionRepository.AddAsync(question);
+
+                foreach (var option in item.Options)
+                {
+                    await _quizOptionRepository.AddAsync(new QuizOption
+                    {
+                        QuizQuestionId = question.Id,
+                        OptionText = option.OptionText,
+                        IsCorrect = option.IsCorrect,
+                        CreatedAt = DateTime.UtcNow,
+                    });
+                }
+            }
+
+            response.Success = true;
+            response.Message = payloadQuestions.Any() ? "Quiz saved successfully" : "Quiz cleared successfully";
+            return response;
+        }
+
+        public async Task<ResponseMessage> UpsertLessonQuizAsync(long lessonId, UpsertQuizDto dto, string teacherEmail)
+        {
+            var lesson = await _lessonRepository.SingleOrDefaultAsync(obj => obj.Id == lessonId);
+            if (lesson == null)
+            {
+                return new ResponseMessage
+                {
+                    Message = "Such lesson doesn't exist"
+                };
+            }
+
+            return await UpsertQuizAsync(lesson.CourseId, lessonId, dto.Questions, teacherEmail);
+        }
+
+        public async Task<ResponseMessage> UpsertCourseQuizAsync(long courseId, UpsertQuizDto dto, string teacherEmail)
+            => await UpsertQuizAsync(courseId, null, dto.Questions, teacherEmail);
+
+        private async Task<ResponseMessage> UpdateQuestionAsync(long expectedCourseId, long? expectedLessonId, long questionId, CreateQuizQuestionDto dto, string teacherEmail)
+        {
+            var response = new ResponseMessage { Message = "You don't have such rights" };
+
+            if (expectedLessonId.HasValue)
+            {
+                var lessonContext = await ResolveLessonContextAsync(expectedLessonId.Value, teacherEmail);
+                if (lessonContext.error != null)
+                {
+                    response.Message = lessonContext.error;
+                    return response;
+                }
+
+                if (lessonContext.userInfo == null || !IsTeacherLike(lessonContext.userInfo))
+                {
+                    response.Message = "Only university teachers or directors can edit lesson mini quizzes";
+                    return response;
+                }
+            }
+            else
+            {
+                var courseContext = await ResolveCourseContextAsync(expectedCourseId, teacherEmail);
+                if (courseContext.error != null)
+                {
+                    response.Message = courseContext.error;
+                    return response;
+                }
+
+                if (courseContext.userInfo == null || !IsTeacherLike(courseContext.userInfo))
+                {
+                    response.Message = "Only university teachers or directors can edit course quizzes";
+                    return response;
+                }
+            }
+
+            var payloadValidation = ValidateQuestionPayload(dto);
+            if (!payloadValidation.valid)
+            {
+                response.Message = payloadValidation.error ?? "Invalid quiz question";
+                return response;
+            }
+
+            var question = await _quizQuestionRepository.Where(obj => obj.Id == questionId)
+                .Include(obj => obj.Options)
+                .FirstOrDefaultAsync();
+
+            if (question == null)
+            {
+                response.Message = "Quiz question does not exist";
+                return response;
+            }
+
+            if (question.CourseId != expectedCourseId || question.LessonId != expectedLessonId)
+            {
+                response.Message = "Question does not belong to this quiz scope";
+                return response;
+            }
+
+            var hasSubmittedAnswers = await _quizAnswerRepository.Where(obj => obj.QuizQuestionId == questionId).AnyAsync();
+            if (hasSubmittedAnswers)
+            {
+                response.Message = "Cannot edit this quiz question after students submitted answers";
+                return response;
+            }
+
+            question.QuestionText = dto.QuestionText.Trim();
+            question.AttemptPolicy = NormalizeAttemptPolicy(dto.AttemptPolicy);
+            question.UpdatedAt = DateTime.UtcNow;
+            await _quizQuestionRepository.UpdateAsync(question);
+
+            if (question.Options.Any())
+            {
+                await _quizOptionRepository.DeleteRangeAsync(question.Options.ToList());
+            }
+
+            foreach (var option in payloadValidation.options)
+            {
+                await _quizOptionRepository.AddAsync(new QuizOption
+                {
+                    QuizQuestionId = question.Id,
+                    OptionText = option.OptionText,
+                    IsCorrect = option.IsCorrect,
+                    CreatedAt = DateTime.UtcNow,
+                });
+            }
+
+            response.Success = true;
+            response.Message = "Quiz question updated successfully";
+            return response;
+        }
+
+        public async Task<ResponseMessage> UpdateLessonQuizQuestionAsync(long lessonId, long questionId, CreateQuizQuestionDto dto, string teacherEmail)
+        {
+            var lesson = await _lessonRepository.SingleOrDefaultAsync(obj => obj.Id == lessonId);
+            if (lesson == null)
+            {
+                return new ResponseMessage
+                {
+                    Message = "Such lesson doesn't exist"
+                };
+            }
+
+            return await UpdateQuestionAsync(lesson.CourseId, lessonId, questionId, dto, teacherEmail);
+        }
+
+        public async Task<ResponseMessage> UpdateCourseQuizQuestionAsync(long courseId, long questionId, CreateQuizQuestionDto dto, string teacherEmail)
+            => await UpdateQuestionAsync(courseId, null, questionId, dto, teacherEmail);
+
         private async Task<ResponseMessage> SubmitAnswerAsync(long expectedCourseId, long? expectedLessonId, long questionId, SubmitQuizAnswerDto dto, string userEmail)
         {
             var response = new ResponseMessage { Message = "You don't have such rights" };
