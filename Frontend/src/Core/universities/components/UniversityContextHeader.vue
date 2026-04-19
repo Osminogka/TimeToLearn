@@ -65,12 +65,11 @@ function triggerJoin() {
             <div class="context-header__meta">
                 <router-link 
                     to="/universities/my" 
-                    class="secondary-button context-header__back" 
                     custom 
                     v-slot="{ navigate }"
                 >
-                    <button class="context-header__back-btn" @click="navigate" type="button" title="Back to my universities">
-                        <AppIcon name="back" />
+                    <button class="secondary-button context-header__back-btn" @click="navigate" type="button" title="Back to my universities">
+                        <AppIcon name="back" :boxed="false" />
                         <span>Back</span>
                     </button>
                 </router-link>
@@ -93,7 +92,7 @@ function triggerJoin() {
                     class="context-nav__link"
                     :class="{ 'context-nav__link--active': activeTab === tab.key }"
                 >
-                    <AppIcon :name="tab.icon" />
+                    <AppIcon :name="tab.icon" :boxed="false" />
                     {{ tab.label }}
                 </router-link>
             </nav>
@@ -184,10 +183,6 @@ function triggerJoin() {
     flex: 0 0 auto;
 }
 
-.context-header__back {
-    min-height: 2.4rem;
-}
-
 @media (max-width: 930px) {
     .context-header__top,
     .context-header__bottom {
@@ -229,9 +224,9 @@ function triggerJoin() {
 }
 
 .context-header__back-btn :deep(.app-icon) {
-    width: 1.85rem;
-    height: 1.85rem;
-    border-radius: 0.65rem;
+    width: auto;
+    height: auto;
+    border-radius: 0;
 }
 
 @media (max-width: 480px) {

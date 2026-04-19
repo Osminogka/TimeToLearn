@@ -320,11 +320,11 @@ onMounted(async () => {
 
             <div class="account-hero__actions">
                 <span class="pill pill--accent">
-                    <AppIcon name="profile" />
+                    <AppIcon name="profile" :boxed="false" />
                     {{ currentRoleLabel }}
                 </span>
                 <button class="secondary-button account-logout" type="button" @click="logout">
-                    <AppIcon name="logout" />
+                    <AppIcon name="logout" :boxed="false" />
                     Log out
                 </button>
             </div>

@@ -54,7 +54,7 @@ function isActive(routeName) {
                     class="primary-nav__link"
                     :class="{ 'primary-nav__link--active': isActive(item.routeName) }"
                 >
-                    <AppIcon :name="item.icon" />
+                    <AppIcon :name="item.icon" :boxed="false" />
                     <span>{{ item.label }}</span>
                 </router-link>
             </nav>
@@ -68,7 +68,7 @@ function isActive(routeName) {
                 class="bottom-nav__link"
                 :class="{ 'bottom-nav__link--active': isActive(item.routeName) }"
             >
-                <AppIcon :name="item.icon" />
+                <AppIcon :name="item.icon" :boxed="false" />
                 <span>{{ item.label }}</span>
             </router-link>
         </nav>

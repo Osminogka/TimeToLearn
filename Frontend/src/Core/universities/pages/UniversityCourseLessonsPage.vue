@@ -757,10 +757,10 @@ onMounted(async () => {
                 <div class="workspace-card__actions">
                     <div class="workspace-card__nav-actions">
                         <button class="secondary-button icon-action" type="button" title="Back to courses" @click="openCoursesWorkspace">
-                            <AppIcon name="back" />
+                            <AppIcon name="back" :boxed="false" />
                         </button>
                         <button class="secondary-button icon-action" type="button" title="Refresh" :disabled="isLoadingWorkspace || isLoadingLessons" @click="refreshWorkspace">
-                            <AppIcon name="refresh" />
+                            <AppIcon name="refresh" :boxed="false" />
                         </button>
                     </div>
 
@@ -1096,9 +1096,9 @@ onMounted(async () => {
 }
 
 .icon-action :deep(.app-icon) {
-    width: 1.9rem;
-    height: 1.9rem;
-    border-radius: 0.62rem;
+    width: auto;
+    height: auto;
+    border-radius: 0;
 }
 
 .lessons-list {
