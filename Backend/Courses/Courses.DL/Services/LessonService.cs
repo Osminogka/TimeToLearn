@@ -13,6 +13,8 @@ namespace Courses.DL.Services
         private readonly IBaseRepository<LessonResource> _lessonResourceRepository;
         private readonly IBaseRepository<Course> _courseRepository;
         private readonly IBaseRepository<StudentLessonCompletion> _completionRepository;
+        private readonly IBaseRepository<QuizQuestion> _quizQuestionRepository;
+        private readonly IBaseRepository<QuizAnswer> _quizAnswerRepository;
         private readonly IUserInfoClient _grpcClient;
         private readonly IMarkdownService _markdownService;
 
@@ -21,6 +23,8 @@ namespace Courses.DL.Services
             IBaseRepository<LessonResource> lessonResourceRepository,
             IBaseRepository<Course> courseRepository,
             IBaseRepository<StudentLessonCompletion> completionRepository,
+            IBaseRepository<QuizQuestion> quizQuestionRepository,
+            IBaseRepository<QuizAnswer> quizAnswerRepository,
             IUserInfoClient grpcClient,
             IMarkdownService markdownService)
         {
@@ -28,6 +32,8 @@ namespace Courses.DL.Services
             _lessonResourceRepository = lessonResourceRepository;
             _courseRepository = courseRepository;
             _completionRepository = completionRepository;
+            _quizQuestionRepository = quizQuestionRepository;
+            _quizAnswerRepository = quizAnswerRepository;
             _grpcClient = grpcClient;
             _markdownService = markdownService;
         }
@@ -388,6 +394,23 @@ namespace Courses.DL.Services
             {
                 response.Message = "Only university teachers or directors can delete lessons";
                 return response;
+            }
+
+            var lessonQuizQuestions = await _quizQuestionRepository.Where(obj => obj.LessonId == lessonId)
+                .ToListAsync();
+
+            if (lessonQuizQuestions.Any())
+            {
+                var questionIds = lessonQuizQuestions.Select(obj => obj.Id).ToList();
+                var quizAnswers = await _quizAnswerRepository.Where(obj => questionIds.Contains(obj.QuizQuestionId))
+                    .ToListAsync();
+
+                if (quizAnswers.Any())
+                {
+                    await _quizAnswerRepository.DeleteRangeAsync(quizAnswers);
+                }
+
+                await _quizQuestionRepository.DeleteRangeAsync(lessonQuizQuestions);
             }
 
             await _lessonRepository.DeleteAsync(lesson);
