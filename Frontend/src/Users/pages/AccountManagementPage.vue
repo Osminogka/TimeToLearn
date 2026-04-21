@@ -34,7 +34,6 @@ function syncRoleFromToken() {
 const degree = ref('');
 const roleTarget = ref('student');
 const invites = ref([]);
-const inviteSecondaryAction = ref({});
 const isLoadingProfile = ref(false);
 const isLoadingInvites = ref(false);
 const isSavingProfile = ref(false);
@@ -236,21 +235,6 @@ async function acceptInviteAsCurrentRole(universityName) {
     }
 }
 
-async function acceptInviteAsStudent(universityName) {
-    setInviteActionLoading(universityName, 'student', true);
-    clearMessages();
-
-    try {
-        const response = await userApi.enterUniversityAsStudent(universityName);
-        successMessage.value = response?.message || response?.Message || 'You entered university as student.';
-        await loadInvites();
-    } catch (error) {
-        errorMessage.value = error?.message || 'Failed to enter university as student.';
-    } finally {
-        setInviteActionLoading(universityName, 'student', false);
-    }
-}
-
 async function rejectInvite(universityName) {
     setInviteActionLoading(universityName, 'reject', true);
     clearMessages();
@@ -264,30 +248,6 @@ async function rejectInvite(universityName) {
     } finally {
         setInviteActionLoading(universityName, 'reject', false);
     }
-}
-
-function setInviteSecondaryAction(universityName, action) {
-    inviteSecondaryAction.value = {
-        ...inviteSecondaryAction.value,
-        [universityName]: action,
-    };
-}
-
-async function runInviteSecondaryAction(universityName) {
-    const action = inviteSecondaryAction.value[universityName];
-    if (!action) {
-        return;
-    }
-
-    if (action === 'student') {
-        await acceptInviteAsStudent(universityName);
-    }
-
-    if (action === 'reject') {
-        await rejectInvite(universityName);
-    }
-
-    setInviteSecondaryAction(universityName, '');
 }
 
 onMounted(async () => {
@@ -427,35 +387,22 @@ onMounted(async () => {
 
                         <div class="invite-actions">
                             <button
-                                class="submit-button"
+                                class="submit-button invite-action-button invite-action-button--accept"
                                 type="button"
                                 @click="acceptInviteAsCurrentRole(universityName)"
-                                :disabled="isInviteActionLoading(universityName, 'accept') || isInviteActionLoading(universityName, 'student') || isInviteActionLoading(universityName, 'reject')"
+                                :disabled="isInviteActionLoading(universityName, 'accept') || isInviteActionLoading(universityName, 'reject')"
                             >
-                                {{ isInviteActionLoading(universityName, 'accept')
-                                    ? 'Joining...'
-                                    : roleState.isTeacher ? 'Join as teacher' : 'Accept invite' }}
+                                {{ isInviteActionLoading(universityName, 'accept') ? 'Accepting...' : 'Accept invite' }}
                             </button>
 
-                            <div class="invite-actions__secondary">
-                                <select
-                                    class="input-field"
-                                    :value="inviteSecondaryAction[universityName] || ''"
-                                    @change="setInviteSecondaryAction(universityName, $event.target.value)"
-                                >
-                                    <option value="">Secondary action</option>
-                                    <option v-if="roleState.isTeacher" value="student">Join as student</option>
-                                    <option value="reject">Reject invite</option>
-                                </select>
-                                <button
-                                    class="secondary-button"
-                                    type="button"
-                                    @click="runInviteSecondaryAction(universityName)"
-                                    :disabled="!(inviteSecondaryAction[universityName]) || isInviteActionLoading(universityName, 'reject') || isInviteActionLoading(universityName, 'accept') || isInviteActionLoading(universityName, 'student')"
-                                >
-                                    Apply
-                                </button>
-                            </div>
+                            <button
+                                class="secondary-button invite-action-button invite-action-button--reject"
+                                type="button"
+                                @click="rejectInvite(universityName)"
+                                :disabled="isInviteActionLoading(universityName, 'accept') || isInviteActionLoading(universityName, 'reject')"
+                            >
+                                {{ isInviteActionLoading(universityName, 'reject') ? 'Rejecting...' : 'Reject invite' }}
+                            </button>
                         </div>
                     </article>
                 </div>
@@ -590,19 +537,27 @@ onMounted(async () => {
 }
 
 .invite-actions {
-    display: grid;
-    grid-template-columns: 1fr;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
     gap: 0.6rem;
 }
 
-.invite-actions__secondary {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 0.6rem;
+.invite-action-button {
+    min-width: 9.5rem;
 }
 
-.invite-actions__secondary .secondary-button {
-    min-width: 5.5rem;
+.invite-action-button--accept {
+    background: linear-gradient(135deg, var(--ttl-accent) 0%, var(--ttl-accent-bright) 100%);
+}
+
+.invite-action-button--reject {
+    border-color: color-mix(in srgb, var(--ttl-danger) 35%, transparent);
+    color: var(--ttl-danger);
+}
+
+.invite-action-button--reject:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--ttl-danger) 8%, transparent);
 }
 
 @media (max-width: 900px) {
@@ -619,9 +574,12 @@ onMounted(async () => {
 
 @media (max-width: 640px) {
     .split-fields,
-    .invite-actions,
-    .invite-actions__secondary {
+    .invite-actions {
         grid-template-columns: 1fr;
+    }
+
+    .invite-actions {
+        display: grid;
     }
 }
 </style>
