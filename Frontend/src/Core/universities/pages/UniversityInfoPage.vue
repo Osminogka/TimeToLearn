@@ -1,12 +1,14 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import { useRouter } from 'vue-router';
 import UniversityContextHeader from '../components/UniversityContextHeader.vue';
 import universityApi from '../services/universityApi';
 import authUtils, { isTeacherRole, user } from '@/Shared/services/utils';
 import AppIcon from '@/Shared/components/AppIcon.vue';
 
 const route = useRoute();
+const router = useRouter();
 
 const university = ref(null);
 const students = ref([]);
@@ -14,11 +16,14 @@ const teachers = ref([]);
 const isLoading = ref(false);
 const isLoadingMembers = ref(false);
 const isProcessingManagerAction = ref(false);
+const isLeavingUniversity = ref(false);
 const isJoining = ref(false);
 const isMember = ref(false);
 const isManager = ref(false);
-const memberSearchInput = ref('');
-const memberSearchTerm = ref('');
+const teacherSearchInput = ref('');
+const teacherSearchTerm = ref('');
+const studentSearchInput = ref('');
+const studentSearchTerm = ref('');
 const actionMessage = ref('');
 const errorMessage = ref('');
 
@@ -37,11 +42,33 @@ const inviteForm = reactive({
     studentEmail: '',
 });
 
+const leaveFlow = reactive({
+    isConfirmationOpen: false,
+    universityNameCheck: '',
+    dangerAcknowledged: false,
+});
+
 const universityName = computed(() => String(route.params.name || ''));
 const isTeacher = computed(() => isTeacherRole(user.value.role));
 
 const joinLabel = computed(() => isTeacher.value ? 'Enter as student' : 'Enter university');
 const joinVisible = computed(() => !isMember.value && !!university.value?.isOpened);
+const canLeaveUniversity = computed(() => isMember.value || isManager.value);
+const leaveActionLabel = computed(() => {
+    return isManager.value ? 'Delete university and leave' : 'Leave university';
+});
+const leaveWarningText = computed(() => {
+    return isManager.value
+        ? 'You are this university manager. Leaving will permanently delete the whole university and remove all members.'
+        : 'Leaving will remove your membership from this university.';
+});
+const leaveConfirmationLabel = computed(() => {
+    return isManager.value ? 'DELETE' : 'LEAVE';
+});
+const isLeaveConfirmationValid = computed(() => {
+    return leaveFlow.dangerAcknowledged
+        && leaveFlow.universityNameCheck.trim().toLowerCase() === universityName.value.trim().toLowerCase();
+});
 const directorName = computed(() => {
     return university.value?.directorUsername
         || university.value?.DirectorUsername
@@ -50,31 +77,65 @@ const directorName = computed(() => {
             : 'Director information unavailable');
 });
 
-const allMembers = computed(() => {
-    const members = [
-        ...teachers.value.map((name) => ({ username: name, role: 'Teacher' })),
-        ...students.value.map((name) => ({ username: name, role: 'Student' })),
-    ];
-
-    if (!memberSearchTerm.value) {
-        return members;
-    }
-
-    const normalizedSearch = memberSearchTerm.value.toLowerCase();
-    return members.filter((member) => String(member.username).toLowerCase().includes(normalizedSearch));
-});
-
 const filteredTeachers = computed(() => {
-    return allMembers.value
-        .filter((member) => member.role === 'Teacher')
-        .map((member) => member.username);
+    return teachers.value.filter((name) => isNicknameMatch(name, teacherSearchTerm.value));
 });
 
 const filteredStudents = computed(() => {
-    return allMembers.value
-        .filter((member) => member.role === 'Student')
-        .map((member) => member.username);
+    return students.value.filter((name) => isNicknameMatch(name, studentSearchTerm.value));
 });
+
+function levenshteinDistance(left, right) {
+    const source = String(left || '').toLowerCase();
+    const target = String(right || '').toLowerCase();
+
+    if (!source.length) {
+        return target.length;
+    }
+    if (!target.length) {
+        return source.length;
+    }
+
+    const matrix = Array.from({ length: source.length + 1 }, () => Array(target.length + 1).fill(0));
+
+    for (let i = 0; i <= source.length; i += 1) {
+        matrix[i][0] = i;
+    }
+
+    for (let j = 0; j <= target.length; j += 1) {
+        matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= source.length; i += 1) {
+        for (let j = 1; j <= target.length; j += 1) {
+            const substitutionCost = source[i - 1] === target[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(
+                matrix[i - 1][j] + 1,
+                matrix[i][j - 1] + 1,
+                matrix[i - 1][j - 1] + substitutionCost,
+            );
+        }
+    }
+
+    return matrix[source.length][target.length];
+}
+
+function isNicknameMatch(nickname, searchTerm) {
+    const normalizedNickname = String(nickname || '').trim().toLowerCase();
+    const normalizedSearch = String(searchTerm || '').trim().toLowerCase();
+
+    if (!normalizedSearch) {
+        return true;
+    }
+
+    if (normalizedNickname.includes(normalizedSearch)) {
+        return true;
+    }
+
+    const distance = levenshteinDistance(normalizedNickname, normalizedSearch);
+    const allowedDistance = Math.max(1, Math.floor(normalizedSearch.length * 0.4));
+    return distance <= allowedDistance;
+}
 
 function normalizeValue(payload) {
     return payload.value || payload.Value || null;
@@ -95,6 +156,23 @@ function setManageFormFromUniversity() {
 function clearMessages() {
     actionMessage.value = '';
     errorMessage.value = '';
+}
+
+function openLeaveConfirmation() {
+    if (!canLeaveUniversity.value || isLeavingUniversity.value) {
+        return;
+    }
+
+    clearMessages();
+    leaveFlow.isConfirmationOpen = true;
+    leaveFlow.universityNameCheck = '';
+    leaveFlow.dangerAcknowledged = false;
+}
+
+function cancelLeaveConfirmation() {
+    leaveFlow.isConfirmationOpen = false;
+    leaveFlow.universityNameCheck = '';
+    leaveFlow.dangerAcknowledged = false;
 }
 
 async function loadUniversity() {
@@ -144,8 +222,8 @@ async function loadMembers() {
 
     try {
         const [teachersResponse, studentsResponse] = await Promise.all([
-            universityApi.getUniversityTeachers(universityName.value, { page: 1, pageSize: 8 }),
-            universityApi.getUniversityStudents(universityName.value, { page: 1, pageSize: 8 }),
+            universityApi.getUniversityTeachers(universityName.value, { page: 1, pageSize: 100 }),
+            universityApi.getUniversityStudents(universityName.value, { page: 1, pageSize: 100 }),
         ]);
 
         teachers.value = normalizeItems(teachersResponse);
@@ -271,13 +349,47 @@ async function kickMember(username) {
     }
 }
 
-function searchMembers() {
-    memberSearchTerm.value = memberSearchInput.value.trim();
+async function leaveUniversity() {
+    if (!canLeaveUniversity.value || !isLeaveConfirmationValid.value || isLeavingUniversity.value) {
+        return;
+    }
+
+    isLeavingUniversity.value = true;
+    clearMessages();
+
+    try {
+        const response = await universityApi.leaveUniversity(universityName.value);
+        const serverMessage = response?.message || response?.Message;
+        actionMessage.value = serverMessage
+            || (isManager.value
+                ? 'University deleted and you left successfully.'
+                : 'You left the university successfully.');
+
+        cancelLeaveConfirmation();
+        await router.push({ name: 'UniversitiesMine' });
+    } catch (error) {
+        errorMessage.value = error?.message || 'Could not leave the university.';
+    } finally {
+        isLeavingUniversity.value = false;
+    }
 }
 
-function clearMemberSearch() {
-    memberSearchInput.value = '';
-    memberSearchTerm.value = '';
+function searchTeachers() {
+    teacherSearchTerm.value = teacherSearchInput.value.trim();
+}
+
+function clearTeacherSearch() {
+    teacherSearchInput.value = '';
+    teacherSearchTerm.value = '';
+}
+
+function searchStudents() {
+    studentSearchTerm.value = studentSearchInput.value.trim();
+}
+
+function clearStudentSearch() {
+    studentSearchInput.value = '';
+    studentSearchTerm.value = '';
 }
 
 onMounted(async () => {
@@ -358,6 +470,21 @@ onMounted(async () => {
                         <span class="pill">{{ isLoadingMembers ? 'Loading...' : filteredTeachers.length }}</span>
                     </div>
 
+                    <div v-if="isManager" class="member-search-row">
+                        <input
+                            v-model="teacherSearchInput"
+                            class="input-field"
+                            type="text"
+                            placeholder="Search teacher nickname"
+                        />
+                        <button class="secondary-button" type="button" @click="searchTeachers">
+                            Search
+                        </button>
+                        <button class="secondary-button" type="button" @click="clearTeacherSearch" :disabled="!teacherSearchInput && !teacherSearchTerm">
+                            Clear
+                        </button>
+                    </div>
+
                     <p v-if="!filteredTeachers.length" class="member-empty">No teachers found for this view.</p>
 
                     <ul v-else class="member-list">
@@ -381,6 +508,21 @@ onMounted(async () => {
                     <div class="member-block__top">
                         <h3>Students</h3>
                         <span class="pill">{{ isLoadingMembers ? 'Loading...' : filteredStudents.length }}</span>
+                    </div>
+
+                    <div v-if="isManager" class="member-search-row">
+                        <input
+                            v-model="studentSearchInput"
+                            class="input-field"
+                            type="text"
+                            placeholder="Search student nickname"
+                        />
+                        <button class="secondary-button" type="button" @click="searchStudents">
+                            Search
+                        </button>
+                        <button class="secondary-button" type="button" @click="clearStudentSearch" :disabled="!studentSearchInput && !studentSearchTerm">
+                            Clear
+                        </button>
                     </div>
 
                     <p v-if="!filteredStudents.length" class="member-empty">No students found for this view.</p>
@@ -479,30 +621,63 @@ onMounted(async () => {
                             </button>
                         </div>
                     </article>
+                </div>
+            </section>
 
-                    <article class="manager-card manager-card--wide">
-                        <h4>Members search</h4>
+            <section v-if="canLeaveUniversity" class="surface-card leave-panel">
+                <div class="leave-panel__top">
+                    <div>
+                        <p class="section-kicker">Membership action</p>
+                        <h3>Leave university</h3>
+                    </div>
+                    <span class="pill pill--pink">Destructive action</span>
+                </div>
 
-                        <div class="manager-search-row">
-                            <input
-                                v-model="memberSearchInput"
-                                class="input-field"
-                                type="text"
-                                placeholder="Search member by username"
-                            />
-                            <button class="secondary-button" type="button" @click="searchMembers">
-                                Search
-                            </button>
-                            <button class="secondary-button" type="button" @click="clearMemberSearch" :disabled="!memberSearchTerm && !memberSearchInput">
-                                Clear
-                            </button>
-                        </div>
+                <p class="leave-panel__warning">
+                    {{ leaveWarningText }}
+                </p>
 
-                        <p class="member-search-note">
-                            Showing {{ allMembers.length }} {{ allMembers.length === 1 ? 'member' : 'members' }}
-                            <span v-if="memberSearchTerm">for "{{ memberSearchTerm }}"</span>.
-                        </p>
-                    </article>
+                <button
+                    class="secondary-button leave-panel__trigger"
+                    type="button"
+                    :disabled="isLeavingUniversity || isProcessingManagerAction"
+                    @click="openLeaveConfirmation"
+                >
+                    {{ leaveActionLabel }}
+                </button>
+
+                <div v-if="leaveFlow.isConfirmationOpen" class="surface-card leave-confirmation">
+                    <p>
+                        Confirm this action by typing
+                        <strong>{{ universityName }}</strong>
+                        below.
+                    </p>
+
+                    <input
+                        v-model="leaveFlow.universityNameCheck"
+                        class="input-field"
+                        type="text"
+                        :placeholder="`Type ${universityName}`"
+                    />
+
+                    <label class="leave-confirmation__checkbox">
+                        <input v-model="leaveFlow.dangerAcknowledged" type="checkbox" />
+                        <span>I understand this action cannot be undone.</span>
+                    </label>
+
+                    <div class="leave-confirmation__actions">
+                        <button class="secondary-button" type="button" @click="cancelLeaveConfirmation" :disabled="isLeavingUniversity">
+                            Cancel
+                        </button>
+                        <button
+                            class="submit-button submit-button--danger"
+                            type="button"
+                            :disabled="!isLeaveConfirmationValid || isLeavingUniversity"
+                            @click="leaveUniversity"
+                        >
+                            {{ isLeavingUniversity ? 'Processing...' : `${leaveConfirmationLabel} NOW` }}
+                        </button>
+                    </div>
                 </div>
             </section>
         </section>
@@ -646,6 +821,9 @@ onMounted(async () => {
     display: flex;
     flex-direction: column;
     gap: 0.55rem;
+    max-height: 18rem;
+    overflow-y: auto;
+    padding-right: 0.25rem;
 }
 
 .member-item {
@@ -699,10 +877,6 @@ onMounted(async () => {
     gap: 0.75rem;
 }
 
-.manager-card--wide {
-    grid-column: 1 / -1;
-}
-
 .manager-textarea {
     min-height: 6.4rem;
     resize: vertical;
@@ -714,16 +888,78 @@ onMounted(async () => {
     gap: 0.65rem;
 }
 
-.manager-search-row {
+.member-search-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;
     gap: 0.6rem;
     align-items: center;
 }
 
-.member-search-note {
+.leave-panel {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    border: 1px solid rgba(212, 61, 106, 0.24);
+    background: linear-gradient(180deg, rgba(255, 232, 239, 0.55), rgba(255, 255, 255, 0.9));
+}
+
+.leave-panel__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.leave-panel__top h3 {
+    margin: 0;
+    color: var(--ttl-text-primary);
+    letter-spacing: -0.02em;
+}
+
+.leave-panel__warning {
     margin: 0;
     color: var(--ttl-text-secondary);
+}
+
+.leave-panel__trigger {
+    align-self: flex-start;
+}
+
+.leave-confirmation {
+    padding: 0.9rem;
+    border: 1px dashed rgba(212, 61, 106, 0.44);
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+
+.leave-confirmation p {
+    margin: 0;
+    color: var(--ttl-text-primary);
+}
+
+.leave-confirmation__checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--ttl-text-secondary);
+}
+
+.leave-confirmation__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.55rem;
+}
+
+.submit-button--danger {
+    background: linear-gradient(135deg, #d43d6a 0%, #bf2a56 100%);
+    box-shadow: 0 10px 20px rgba(212, 61, 106, 0.25);
+}
+
+.submit-button--danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px rgba(212, 61, 106, 0.3);
 }
 
 @media (max-width: 900px) {
@@ -735,7 +971,7 @@ onMounted(async () => {
         grid-template-columns: 1fr;
     }
 
-    .manager-search-row {
+    .member-search-row {
         grid-template-columns: 1fr;
     }
 }
@@ -750,8 +986,13 @@ onMounted(async () => {
     }
 
     .manager-address-grid,
-    .manager-search-row {
+    .member-search-row {
         grid-template-columns: 1fr;
+    }
+
+    .leave-confirmation__actions {
+        flex-direction: column;
+        align-items: stretch;
     }
 }
 </style>

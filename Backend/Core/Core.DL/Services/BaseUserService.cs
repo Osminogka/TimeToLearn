@@ -239,10 +239,40 @@ namespace Core.DL.Services
                 return response;
             }
 
-            var isDirector = await _universityRepository.Where(u => u.Name == universityName && u.DirectorId == user.Id).AnyAsync();
+            var university = await _universityRepository
+                .Where(u => u.Name == universityName)
+                .FirstOrDefaultAsync();
+
+            if (university == null)
+            {
+                response.Message = "Such university doesn't exist";
+                return response;
+            }
+
+            var isDirector = university.DirectorId == user.Id;
             if (isDirector)
             {
-                response.Message = "You cannot leave a university you are directing. Transfer directorship first";
+                var studentEnrollments = await _studentEnrollmentRepository
+                    .Where(e => e.UniversityId == university.Id)
+                    .ToListAsync();
+                var teacherEnrollments = await _teacherEnrollmentRepository
+                    .Where(e => e.UniversityId == university.Id)
+                    .ToListAsync();
+                var entryRequests = await _entryRequestRepository
+                    .Where(e => e.UniversityId == university.Id)
+                    .ToListAsync();
+
+                if (studentEnrollments.Count > 0)
+                    await _studentEnrollmentRepository.DeleteRangeAsync(studentEnrollments);
+                if (teacherEnrollments.Count > 0)
+                    await _teacherEnrollmentRepository.DeleteRangeAsync(teacherEnrollments);
+                if (entryRequests.Count > 0)
+                    await _entryRequestRepository.DeleteRangeAsync(entryRequests);
+
+                await _universityRepository.DeleteAsync(university);
+
+                response.Success = true;
+                response.Message = "You left the university. Since you were the manager, the university was deleted";
                 return response;
             }
 

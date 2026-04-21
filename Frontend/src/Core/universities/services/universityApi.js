@@ -2,6 +2,7 @@ import { httpClient } from '@/Shared/api/httpClient';
 import { SERVICE_BASE_PATHS } from '@/Shared/api/serviceBasePaths';
 
 const BASE_URL = `${SERVICE_BASE_PATHS.users}/university`;
+const USER_BASE_URL = `${SERVICE_BASE_PATHS.users}/user`;
 const STUDENT_BASE_URL = `${SERVICE_BASE_PATHS.users}/student`;
 const TEACHER_BASE_URL = `${SERVICE_BASE_PATHS.users}/teacher`;
 const DIRECTOR_BASE_URL = `${SERVICE_BASE_PATHS.users}/director`;
@@ -34,6 +35,10 @@ const getUniversityStudents = (name, { page = 1, pageSize = 6 } = {}) => {
 
 const enterUniversity = (name) => {
 	return httpClient.postAuth(`${STUDENT_BASE_URL}/entry/${encodeName(name)}`, {});
+};
+
+const leaveUniversity = (name) => {
+	return httpClient.deleteAuth(`${USER_BASE_URL}/university/${encodeName(name)}/leave`);
 };
 
 const requestJoinAsTeacher = (name) => {
@@ -82,6 +87,7 @@ export default {
 	getUniversityTeachers,
 	getUniversityStudents,
 	enterUniversity,
+	leaveUniversity,
 	requestJoinAsTeacher,
 	inviteStudent,
 	inviteTeacher,

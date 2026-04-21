@@ -195,5 +195,40 @@ namespace Users.Tests
             Assert.Null(enrollment);
             Assert.Null(invite);
         }
+
+        [Fact]
+        public async Task LeaveUniversityAsMemberTest()
+        {
+            await TeacherEnrollmentRepository.AddAsync(new TeacherEnrollment
+            {
+                BaseUserId = 1,
+                UniversityId = 1
+            });
+
+            var result = await Service.LeaveUniversityAsync("DKU", UserEmail);
+
+            var enrollment = await TeacherEnrollmentRepository.SingleOrDefaultAsync(
+                e => e.BaseUserId == 1 && e.UniversityId == 1);
+            var university = await UniversityRepository.SingleOrDefaultAsync(u => u.Name == "DKU");
+
+            var response = Assert.IsType<ResponseMessage>(result);
+            Assert.True(response.Success);
+            Assert.Null(enrollment);
+            Assert.NotNull(university);
+        }
+
+        [Fact]
+        public async Task LeaveUniversityAsDirectorDeletesUniversityTest()
+        {
+            var result = await Service.LeaveUniversityAsync("DKU", "redter@test.com");
+
+            var university = await UniversityRepository.SingleOrDefaultAsync(u => u.Name == "DKU");
+            var invites = await EntryRequestRepository.Where(r => r.UniversityId == 1).ToListAsync();
+
+            var response = Assert.IsType<ResponseMessage>(result);
+            Assert.True(response.Success);
+            Assert.Null(university);
+            Assert.Empty(invites);
+        }
     }
 }
