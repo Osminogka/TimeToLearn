@@ -18,6 +18,8 @@ const courseProgress = ref(null);
 
 const studentsProgress = ref([]);
 const selectedTeacherStudentId = ref(0);
+const teacherStudentSearchQuery = ref('');
+const teacherViewMode = ref('list');
 const selectedLessonReviewId = ref(0);
 const teacherLessonQuizAnswers = ref([]);
 const teacherCourseQuizAnswers = ref([]);
@@ -76,6 +78,27 @@ const selectedTeacherStudent = computed(() => {
 
     const selected = studentsProgress.value.find((item) => getStudentId(item) === selectedTeacherStudentId.value);
     return selected || studentsProgress.value[0] || null;
+});
+
+const filteredStudentsProgress = computed(() => {
+    const rows = [...studentsProgress.value];
+    const query = normalizeSearchValue(teacherStudentSearchQuery.value);
+
+    if (!query) {
+        return rows;
+    }
+
+    const maxDistance = Math.max(2, Math.floor(query.length * 0.45));
+
+    return rows
+        .map((student) => {
+            const studentName = getStudentName(student);
+            const score = computeSearchScore(studentName, query);
+            return { student, score };
+        })
+        .filter((item) => item.score <= maxDistance)
+        .sort((a, b) => a.score - b.score || getStudentName(a.student).localeCompare(getStudentName(b.student)))
+        .map((item) => item.student);
 });
 
 const selectedTeacherStudentCanBeMarked = computed(() => {
@@ -139,6 +162,64 @@ function getStudentId(item) {
 
 function getStudentName(item) {
     return String(item?.studentName || item?.StudentName || 'Unknown');
+}
+
+function normalizeSearchValue(raw) {
+    return String(raw || '').trim().toLowerCase();
+}
+
+function levenshteinDistance(source, target) {
+    const left = normalizeSearchValue(source);
+    const right = normalizeSearchValue(target);
+
+    if (!left.length) {
+        return right.length;
+    }
+
+    if (!right.length) {
+        return left.length;
+    }
+
+    const matrix = Array.from({ length: left.length + 1 }, () => Array(right.length + 1).fill(0));
+
+    for (let row = 0; row <= left.length; row += 1) {
+        matrix[row][0] = row;
+    }
+
+    for (let column = 0; column <= right.length; column += 1) {
+        matrix[0][column] = column;
+    }
+
+    for (let row = 1; row <= left.length; row += 1) {
+        for (let column = 1; column <= right.length; column += 1) {
+            const substitutionCost = left[row - 1] === right[column - 1] ? 0 : 1;
+
+            matrix[row][column] = Math.min(
+                matrix[row - 1][column] + 1,
+                matrix[row][column - 1] + 1,
+                matrix[row - 1][column - 1] + substitutionCost,
+            );
+        }
+    }
+
+    return matrix[left.length][right.length];
+}
+
+function computeSearchScore(studentName, query) {
+    const normalizedName = normalizeSearchValue(studentName);
+    if (!query || !normalizedName) {
+        return Number.MAX_SAFE_INTEGER;
+    }
+
+    if (normalizedName.includes(query)) {
+        return 0;
+    }
+
+    const tokens = normalizedName.split(/\s+/).filter(Boolean);
+    const tokenDistances = tokens.map((token) => levenshteinDistance(token, query));
+    const fullDistance = levenshteinDistance(normalizedName, query);
+
+    return Math.min(fullDistance, ...tokenDistances);
 }
 
 function getStudentCanBeMarked(item) {
@@ -679,6 +760,15 @@ function openCreateLesson() {
     });
 }
 
+function openTeacherStudentResults(student) {
+    selectedTeacherStudentId.value = getStudentId(student);
+    teacherViewMode.value = 'student';
+}
+
+function closeTeacherStudentResults() {
+    teacherViewMode.value = 'list';
+}
+
 async function onLessonReviewChange() {
     await loadSelectedLessonTeacherAnswers();
 }
@@ -851,127 +941,158 @@ onMounted(async () => {
                 <div class="teacher-panel__head">
                     <div>
                         <p class="section-kicker">Teacher results</p>
-                        <h3>Students, marks, and quiz answers</h3>
+                        <h3>Students and detailed progress review</h3>
                     </div>
                 </div>
 
                 <p v-if="isLoadingTeacherInsights" class="state-message">Loading teacher results...</p>
 
                 <div v-else-if="studentsProgress.length" class="teacher-panel__content">
-                    <div class="teacher-panel__students">
-                        <button
-                            v-for="student in studentsProgress"
-                            :key="getStudentId(student)"
-                            class="teacher-student-item"
-                            :class="{ 'teacher-student-item--active': selectedTeacherStudentId === getStudentId(student) }"
-                            type="button"
-                            @click="selectedTeacherStudentId = getStudentId(student)"
-                        >
-                            <p class="teacher-student-item__name">{{ getStudentName(student) }}</p>
-                            <p class="teacher-student-item__meta">
-                                Lessons: {{ student.completedLessons || student.CompletedLessons || 0 }} / {{ student.totalLessons || student.TotalLessons || 0 }}
-                            </p>
-                            <p class="teacher-student-item__meta">
-                                Final quiz: {{ student.completedQuizQuestions || student.CompletedQuizQuestions || 0 }} / {{ student.totalQuizQuestions || student.TotalQuizQuestions || 0 }}
-                            </p>
-                        </button>
-                    </div>
+                    <section class="surface-card teacher-box">
+                        <div class="teacher-box__head">
+                            <p class="section-kicker">Final quiz editor</p>
+                            <div class="teacher-box__actions">
+                                <button
+                                    class="secondary-button"
+                                    type="button"
+                                    :disabled="isSavingCourseQuiz"
+                                    @click="hasCourseQuizQuestions ? openEditCourseQuizEditor() : openCreateCourseQuizEditor()"
+                                >
+                                    {{ hasCourseQuizQuestions ? 'Edit final quiz' : 'Create final quiz' }}
+                                </button>
+                            </div>
+                        </div>
 
-                    <div v-if="selectedTeacherStudent" class="teacher-panel__details">
-                        <section class="surface-card teacher-box">
-                            <div class="teacher-box__head">
-                                <p class="section-kicker">Final quiz editor</p>
-                                <div class="teacher-box__actions">
-                                    <button
-                                        class="secondary-button"
-                                        type="button"
-                                        :disabled="isSavingCourseQuiz"
-                                        @click="hasCourseQuizQuestions ? openEditCourseQuizEditor() : openCreateCourseQuizEditor()"
-                                    >
-                                        {{ hasCourseQuizQuestions ? 'Edit final quiz' : 'Create final quiz' }}
-                                    </button>
-                                </div>
+                        <div v-if="isCourseQuizEditorOpen" class="quiz-editor">
+                            <div class="field-group">
+                                <label class="field-label">Attempt policy for whole final quiz</label>
+                                <select v-model="courseQuizEditorAttemptPolicy" class="input-field">
+                                    <option value="reattempt">Reattempt allowed</option>
+                                    <option value="single">Single attempt (lock after first submit)</option>
+                                </select>
                             </div>
 
-                            <div v-if="isCourseQuizEditorOpen" class="quiz-editor">
-                                <div class="field-group">
-                                    <label class="field-label">Attempt policy for whole final quiz</label>
-                                    <select v-model="courseQuizEditorAttemptPolicy" class="input-field">
-                                        <option value="reattempt">Reattempt allowed</option>
-                                        <option value="single">Single attempt (lock after first submit)</option>
-                                    </select>
-                                </div>
+                            <div class="quiz-editor__questions">
+                                <article
+                                    v-for="(questionDraft, questionIndex) in courseQuizEditorQuestions"
+                                    :key="`teacher-course-question-draft-${questionIndex}`"
+                                    class="quiz-editor__question-card"
+                                >
+                                    <div class="field-group">
+                                        <label class="field-label">Question {{ questionIndex + 1 }}</label>
+                                        <input
+                                            v-model="questionDraft.questionText"
+                                            class="input-field"
+                                            type="text"
+                                            maxlength="400"
+                                            placeholder="What does HTTP status 404 mean?"
+                                        />
+                                    </div>
 
-                                <div class="quiz-editor__questions">
-                                    <article
-                                        v-for="(questionDraft, questionIndex) in courseQuizEditorQuestions"
-                                        :key="`teacher-course-question-draft-${questionIndex}`"
-                                        class="quiz-editor__question-card"
-                                    >
-                                        <div class="field-group">
-                                            <label class="field-label">Question {{ questionIndex + 1 }}</label>
+                                    <div class="quiz-editor__options">
+                                        <div
+                                            v-for="(optionText, optionIndex) in questionDraft.optionTexts"
+                                            :key="`teacher-course-opt-${questionIndex}-${optionIndex}`"
+                                            class="quiz-editor__option-row"
+                                        >
                                             <input
-                                                v-model="questionDraft.questionText"
+                                                v-model="questionDraft.optionTexts[optionIndex]"
                                                 class="input-field"
                                                 type="text"
-                                                maxlength="400"
-                                                placeholder="What does HTTP status 404 mean?"
+                                                maxlength="300"
+                                                :placeholder="`Variant ${optionIndex + 1}`"
                                             />
-                                        </div>
-
-                                        <div class="quiz-editor__options">
-                                            <div
-                                                v-for="(optionText, optionIndex) in questionDraft.optionTexts"
-                                                :key="`teacher-course-opt-${questionIndex}-${optionIndex}`"
-                                                class="quiz-editor__option-row"
-                                            >
+                                            <label class="quiz-editor__correct">
                                                 <input
-                                                    v-model="questionDraft.optionTexts[optionIndex]"
-                                                    class="input-field"
-                                                    type="text"
-                                                    maxlength="300"
-                                                    :placeholder="`Variant ${optionIndex + 1}`"
+                                                    v-model.number="questionDraft.correctOptionIndex"
+                                                    type="radio"
+                                                    :name="`teacher-course-quiz-correct-${questionIndex}`"
+                                                    :value="optionIndex"
                                                 />
-                                                <label class="quiz-editor__correct">
-                                                    <input
-                                                        v-model.number="questionDraft.correctOptionIndex"
-                                                        type="radio"
-                                                        :name="`teacher-course-quiz-correct-${questionIndex}`"
-                                                        :value="optionIndex"
-                                                    />
-                                                    Correct
-                                                </label>
-                                                <button
-                                                    class="secondary-button"
-                                                    type="button"
-                                                    :disabled="questionDraft.optionTexts.length <= 2"
-                                                    @click="removeOptionFromQuestion(questionIndex, optionIndex)"
-                                                >
-                                                    Remove
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div class="teacher-box__actions">
-                                            <button class="secondary-button" type="button" @click="addOptionToQuestion(questionIndex)">Add variant</button>
+                                                Correct
+                                            </label>
                                             <button
                                                 class="secondary-button"
                                                 type="button"
-                                                :disabled="courseQuizEditorQuestions.length <= 1"
-                                                @click="removeQuestionDraftRow(questionIndex)"
+                                                :disabled="questionDraft.optionTexts.length <= 2"
+                                                @click="removeOptionFromQuestion(questionIndex, optionIndex)"
                                             >
-                                                Remove question
+                                                Remove
                                             </button>
                                         </div>
-                                    </article>
-                                </div>
+                                    </div>
 
+                                    <div class="teacher-box__actions">
+                                        <button class="secondary-button" type="button" @click="addOptionToQuestion(questionIndex)">Add variant</button>
+                                        <button
+                                            class="secondary-button"
+                                            type="button"
+                                            :disabled="courseQuizEditorQuestions.length <= 1"
+                                            @click="removeQuestionDraftRow(questionIndex)"
+                                        >
+                                            Remove question
+                                        </button>
+                                    </div>
+                                </article>
+                            </div>
+
+                            <div class="teacher-box__actions">
+                                <button class="secondary-button" type="button" @click="addQuestionDraftRow">Add question</button>
+                                <button class="submit-button" type="button" :disabled="isSavingCourseQuiz" @click="saveCourseQuizEditor">
+                                    {{ isSavingCourseQuiz ? 'Saving...' : 'Save final quiz' }}
+                                </button>
+                                <button class="secondary-button" type="button" :disabled="isSavingCourseQuiz" @click="closeCourseQuizEditor">Cancel</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section v-if="teacherViewMode === 'list'" class="surface-card teacher-box teacher-students-view">
+                        <div class="teacher-box__head">
+                            <p class="section-kicker">Students</p>
+                            <p class="state-message">Search by nickname using typo-friendly matching.</p>
+                        </div>
+
+                        <div class="field-group">
+                            <label class="field-label" for="teacher-student-search">Find student</label>
+                            <input
+                                id="teacher-student-search"
+                                v-model="teacherStudentSearchQuery"
+                                class="input-field"
+                                type="text"
+                                maxlength="100"
+                                placeholder="Start typing nickname..."
+                            />
+                        </div>
+
+                        <div class="teacher-panel__students">
+                            <button
+                                v-for="student in filteredStudentsProgress"
+                                :key="getStudentId(student)"
+                                class="teacher-student-item"
+                                :class="{ 'teacher-student-item--active': selectedTeacherStudentId === getStudentId(student) }"
+                                type="button"
+                                @click="openTeacherStudentResults(student)"
+                            >
+                                <p class="teacher-student-item__name">{{ getStudentName(student) }}</p>
+                                <p class="teacher-student-item__meta">
+                                    Lessons: {{ student.completedLessons || student.CompletedLessons || 0 }} / {{ student.totalLessons || student.TotalLessons || 0 }}
+                                </p>
+                                <p class="teacher-student-item__meta">
+                                    Final quiz: {{ student.completedQuizQuestions || student.CompletedQuizQuestions || 0 }} / {{ student.totalQuizQuestions || student.TotalQuizQuestions || 0 }}
+                                </p>
+                            </button>
+
+                            <p v-if="!filteredStudentsProgress.length" class="state-message">No students found for current search.</p>
+                        </div>
+                    </section>
+
+                    <div v-else-if="selectedTeacherStudent" class="teacher-panel__details">
+                        <section class="surface-card teacher-box teacher-student-details-head">
+                            <div class="teacher-box__head">
+                                <p class="section-kicker">Student result workspace</p>
+                                <h3>{{ getStudentName(selectedTeacherStudent) }}</h3>
                                 <div class="teacher-box__actions">
-                                    <button class="secondary-button" type="button" @click="addQuestionDraftRow">Add question</button>
-                                    <button class="submit-button" type="button" :disabled="isSavingCourseQuiz" @click="saveCourseQuizEditor">
-                                        {{ isSavingCourseQuiz ? 'Saving...' : 'Save final quiz' }}
-                                    </button>
-                                    <button class="secondary-button" type="button" :disabled="isSavingCourseQuiz" @click="closeCourseQuizEditor">Cancel</button>
+                                    <button class="secondary-button" type="button" @click="closeTeacherStudentResults">Back to student list</button>
                                 </div>
                             </div>
                         </section>
@@ -1038,6 +1159,10 @@ onMounted(async () => {
                             </div>
                             <p v-else class="state-message">No final quiz answers for this student yet.</p>
                         </section>
+                    </div>
+
+                    <div v-else class="teacher-panel__details">
+                        <p class="state-message">Select a student to review detailed results.</p>
                     </div>
                 </div>
 
@@ -1219,6 +1344,12 @@ onMounted(async () => {
     gap: 0.75rem;
 }
 
+.teacher-students-view {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
 .teacher-panel__students {
     display: flex;
     flex-direction: column;
@@ -1255,6 +1386,12 @@ onMounted(async () => {
     display: flex;
     flex-direction: column;
     gap: 0.65rem;
+}
+
+.teacher-student-details-head h3 {
+    margin: 0;
+    color: var(--ttl-text-primary);
+    font-size: 1.05rem;
 }
 
 .teacher-box {

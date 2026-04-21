@@ -40,7 +40,7 @@ function triggerEdit() {
 
         <h3 class="lesson-mobile-item__title">{{ title }}</h3>
 
-        <div class="lesson-mobile-item__actions">
+        <div class="lesson-mobile-item__actions" :class="{ 'lesson-mobile-item__actions--single': !canManage }">
             <button class="submit-button" type="button" :disabled="isBusy" @click="triggerOpen">Open</button>
             <button v-if="canManage" class="secondary-button" type="button" :disabled="isBusy" @click="triggerEdit">Edit</button>
         </div>
@@ -84,6 +84,10 @@ function triggerEdit() {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0.55rem;
+}
+
+.lesson-mobile-item__actions--single {
+    grid-template-columns: 1fr;
 }
 
 .lesson-mobile-item__actions .submit-button,
