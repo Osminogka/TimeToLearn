@@ -131,6 +131,17 @@ const selectedTeacherStudentCourseQuizAnswers = computed(() => {
 const hasCourseQuizQuestions = computed(() => courseQuizQuestions.value.length > 0);
 const myCourseQuizCorrectCount = computed(() => myCourseQuizAnswers.value.filter(item => item.isCorrect || item.IsCorrect).length);
 const myCourseQuizScoreLabel = computed(() => `${myCourseQuizCorrectCount.value}/${myCourseQuizAnswers.value.length}`);
+const isFinalQuizUnlocked = computed(() => {
+    if (!canView.value || canManage.value) {
+        return false;
+    }
+
+    if (!progressTotalCount.value) {
+        return false;
+    }
+
+    return progressCompletedCount.value >= progressTotalCount.value;
+});
 
 function normalizeItems(payload) {
     return payload?.items || payload?.Items || payload?.values || payload?.Values || [];
@@ -874,7 +885,7 @@ onMounted(async () => {
                 </div>
             </article>
 
-            <section v-if="canView && !canManage" class="surface-card final-quiz-panel">
+            <section v-if="canView && !canManage && isFinalQuizUnlocked" class="surface-card final-quiz-panel">
                 <div class="final-quiz-panel__head">
                     <p class="section-kicker">Final quiz</p>
                     <p v-if="hasCourseQuizQuestions" class="final-quiz-panel__policy">
@@ -922,6 +933,13 @@ onMounted(async () => {
 
                 <p v-else class="state-message">No final quiz questions published yet.</p>
             </section>
+
+            <article v-else-if="canView && !canManage" class="surface-card final-quiz-panel">
+                <div class="final-quiz-panel__head">
+                    <p class="section-kicker">Final quiz</p>
+                </div>
+                <p class="state-message">Final quiz unlocks after all lessons are marked as finished.</p>
+            </article>
 
             <div v-if="canView" class="lessons-list">
                 <LessonListMobileItem
