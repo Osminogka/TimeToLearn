@@ -5,22 +5,20 @@ import UniversityContextHeader from '../components/UniversityContextHeader.vue';
 import universityApi from '../services/universityApi';
 import authUtils, { isTeacherRole, user } from '@/Shared/services/utils';
 import AppIcon from '@/Shared/components/AppIcon.vue';
-import userApi from '@/Users/services/userApi';
 
 const route = useRoute();
 
 const university = ref(null);
 const students = ref([]);
 const teachers = ref([]);
-const allUsers = ref([]);
-const selectedMember = ref('');
-const currentUserId = ref(0);
 const isLoading = ref(false);
 const isLoadingMembers = ref(false);
 const isProcessingManagerAction = ref(false);
 const isJoining = ref(false);
 const isMember = ref(false);
 const isManager = ref(false);
+const memberSearchInput = ref('');
+const memberSearchTerm = ref('');
 const actionMessage = ref('');
 const errorMessage = ref('');
 
@@ -35,8 +33,8 @@ const manageForm = reactive({
 });
 
 const inviteForm = reactive({
-    teacherUsername: '',
-    studentUsername: '',
+    teacherEmail: '',
+    studentEmail: '',
 });
 
 const universityName = computed(() => String(route.params.name || ''));
@@ -52,31 +50,30 @@ const directorName = computed(() => {
             : 'Director information unavailable');
 });
 
-const teacherOptions = computed(() => {
-    const existing = new Set(teachers.value.map((name) => String(name).toLowerCase()));
-    const currentUsername = String(user.value.name || '').toLowerCase();
-
-    return allUsers.value.filter((name) => {
-        const normalized = String(name).toLowerCase();
-        return normalized !== currentUsername && !existing.has(normalized);
-    });
-});
-
-const studentOptions = computed(() => {
-    const existing = new Set(students.value.map((name) => String(name).toLowerCase()));
-    const currentUsername = String(user.value.name || '').toLowerCase();
-
-    return allUsers.value.filter((name) => {
-        const normalized = String(name).toLowerCase();
-        return normalized !== currentUsername && !existing.has(normalized);
-    });
-});
-
 const allMembers = computed(() => {
-    return [
+    const members = [
         ...teachers.value.map((name) => ({ username: name, role: 'Teacher' })),
         ...students.value.map((name) => ({ username: name, role: 'Student' })),
     ];
+
+    if (!memberSearchTerm.value) {
+        return members;
+    }
+
+    const normalizedSearch = memberSearchTerm.value.toLowerCase();
+    return members.filter((member) => String(member.username).toLowerCase().includes(normalizedSearch));
+});
+
+const filteredTeachers = computed(() => {
+    return allMembers.value
+        .filter((member) => member.role === 'Teacher')
+        .map((member) => member.username);
+});
+
+const filteredStudents = computed(() => {
+    return allMembers.value
+        .filter((member) => member.role === 'Student')
+        .map((member) => member.username);
 });
 
 function normalizeValue(payload) {
@@ -100,36 +97,12 @@ function clearMessages() {
     errorMessage.value = '';
 }
 
-async function loadCurrentUserContext() {
-    const currentName = String(user.value.name || '').trim();
-    if (!currentName) {
-        currentUserId.value = 0;
-        return;
-    }
-
-    const profileResponse = await userApi.getByName(currentName);
-    const profile = normalizeValue(profileResponse);
-    currentUserId.value = Number(profile?.id || profile?.Id || 0);
-}
-
-async function loadAllUsers() {
-    if (!isManager.value) {
-        allUsers.value = [];
-        return;
-    }
-
-    const usersResponse = await userApi.getAllUsers();
-    allUsers.value = normalizeItems(usersResponse);
-}
-
 async function loadUniversity() {
     isLoading.value = true;
     clearMessages();
 
     try {
         authUtils.getCurrentUser();
-
-        await loadCurrentUserContext();
 
         const [universityResponse, myUniversitiesResponse] = await Promise.all([
             universityApi.getUniversityByName(universityName.value),
@@ -144,7 +117,12 @@ async function loadUniversity() {
             return currentName === universityName.value.toLowerCase();
         });
 
-        isManager.value = Boolean(university.value?.directorId) && Number(university.value.directorId) === currentUserId.value;
+        const currentUsername = String(user.value.name || '').toLowerCase();
+        const directorUsername = String(university.value?.directorUsername || university.value?.DirectorUsername || '').toLowerCase();
+        const currentUserId = Number(user.value.id || user.value.Id || 0);
+        const directorId = Number(university.value?.directorId || university.value?.DirectorId || 0);
+        isManager.value = (!!currentUsername && !!directorUsername && currentUsername === directorUsername)
+            || (currentUserId > 0 && directorId > 0 && currentUserId === directorId);
 
         setManageFormFromUniversity();
     } catch (error) {
@@ -183,7 +161,6 @@ async function loadMembers() {
 async function refreshManagementData() {
     await loadUniversity();
     await loadMembers();
-    await loadAllUsers();
 }
 
 async function joinUniversity() {
@@ -209,7 +186,7 @@ async function joinUniversity() {
 }
 
 async function inviteTeacher() {
-    if (!isManager.value || !inviteForm.teacherUsername) {
+    if (!isManager.value || !inviteForm.teacherEmail.trim()) {
         return;
     }
 
@@ -217,9 +194,9 @@ async function inviteTeacher() {
     clearMessages();
 
     try {
-        const response = await universityApi.inviteTeacher(universityName.value, inviteForm.teacherUsername);
+        const response = await universityApi.inviteTeacher(universityName.value, inviteForm.teacherEmail.trim());
         actionMessage.value = response?.message || response?.Message || 'Teacher invite sent.';
-        inviteForm.teacherUsername = '';
+        inviteForm.teacherEmail = '';
     } catch (error) {
         errorMessage.value = error?.message || 'Could not invite teacher.';
     } finally {
@@ -228,7 +205,7 @@ async function inviteTeacher() {
 }
 
 async function inviteStudent() {
-    if (!isManager.value || !inviteForm.studentUsername) {
+    if (!isManager.value || !inviteForm.studentEmail.trim()) {
         return;
     }
 
@@ -236,9 +213,9 @@ async function inviteStudent() {
     clearMessages();
 
     try {
-        const response = await universityApi.inviteStudent(universityName.value, inviteForm.studentUsername);
+        const response = await universityApi.inviteStudent(universityName.value, inviteForm.studentEmail.trim());
         actionMessage.value = response?.message || response?.Message || 'Student invite sent.';
-        inviteForm.studentUsername = '';
+        inviteForm.studentEmail = '';
     } catch (error) {
         errorMessage.value = error?.message || 'Could not invite student.';
     } finally {
@@ -275,12 +252,8 @@ async function saveUniversitySettings() {
     }
 }
 
-function selectMember(username) {
-    selectedMember.value = selectedMember.value === username ? '' : username;
-}
-
-async function kickSelectedMember() {
-    if (!isManager.value || !selectedMember.value) {
+async function kickMember(username) {
+    if (!isManager.value || !username) {
         return;
     }
 
@@ -288,15 +261,23 @@ async function kickSelectedMember() {
     clearMessages();
 
     try {
-        const response = await universityApi.removeMember(universityName.value, selectedMember.value);
+        const response = await universityApi.removeMember(universityName.value, username);
         actionMessage.value = response?.message || response?.Message || 'Member removed from university.';
-        selectedMember.value = '';
         await loadMembers();
     } catch (error) {
         errorMessage.value = error?.message || 'Could not remove selected member.';
     } finally {
         isProcessingManagerAction.value = false;
     }
+}
+
+function searchMembers() {
+    memberSearchTerm.value = memberSearchInput.value.trim();
+}
+
+function clearMemberSearch() {
+    memberSearchInput.value = '';
+    memberSearchTerm.value = '';
 }
 
 onMounted(async () => {
@@ -374,15 +355,24 @@ onMounted(async () => {
                 <article class="surface-card member-block">
                     <div class="member-block__top">
                         <h3>Teachers</h3>
-                        <span class="pill">{{ isLoadingMembers ? 'Loading...' : teachers.length }}</span>
+                        <span class="pill">{{ isLoadingMembers ? 'Loading...' : filteredTeachers.length }}</span>
                     </div>
 
-                    <p v-if="!teachers.length" class="member-empty">No teachers available or access is limited.</p>
+                    <p v-if="!filteredTeachers.length" class="member-empty">No teachers found for this view.</p>
 
                     <ul v-else class="member-list">
-                        <li v-for="teacherName in teachers" :key="teacherName" class="member-item">
+                        <li v-for="teacherName in filteredTeachers" :key="teacherName" class="member-item">
                             <AppIcon name="profile" />
                             <span>{{ teacherName }}</span>
+                            <button
+                                v-if="isManager"
+                                class="secondary-button member-action"
+                                type="button"
+                                :disabled="isProcessingManagerAction"
+                                @click="kickMember(teacherName)"
+                            >
+                                Kick
+                            </button>
                         </li>
                     </ul>
                 </article>
@@ -390,15 +380,24 @@ onMounted(async () => {
                 <article class="surface-card member-block">
                     <div class="member-block__top">
                         <h3>Students</h3>
-                        <span class="pill">{{ isLoadingMembers ? 'Loading...' : students.length }}</span>
+                        <span class="pill">{{ isLoadingMembers ? 'Loading...' : filteredStudents.length }}</span>
                     </div>
 
-                    <p v-if="!students.length" class="member-empty">No students available or access is limited.</p>
+                    <p v-if="!filteredStudents.length" class="member-empty">No students found for this view.</p>
 
                     <ul v-else class="member-list">
-                        <li v-for="studentName in students" :key="studentName" class="member-item">
+                        <li v-for="studentName in filteredStudents" :key="studentName" class="member-item">
                             <AppIcon name="profile" />
                             <span>{{ studentName }}</span>
+                            <button
+                                v-if="isManager"
+                                class="secondary-button member-action"
+                                type="button"
+                                :disabled="isProcessingManagerAction"
+                                @click="kickMember(studentName)"
+                            >
+                                Kick
+                            </button>
                         </li>
                     </ul>
                 </article>
@@ -453,48 +452,56 @@ onMounted(async () => {
                         <h4>Invite members</h4>
 
                         <div class="field-group">
-                            <label class="field-label" for="invite-teacher">Invite teacher</label>
-                            <select id="invite-teacher" v-model="inviteForm.teacherUsername" class="input-field">
-                                <option value="">Select teacher username</option>
-                                <option v-for="teacherName in teacherOptions" :key="`invite-teacher-${teacherName}`" :value="teacherName">{{ teacherName }}</option>
-                            </select>
-                            <button class="secondary-button" type="button" @click="inviteTeacher" :disabled="!inviteForm.teacherUsername || isProcessingManagerAction">
+                            <label class="field-label" for="invite-teacher">Invite verified teacher by email</label>
+                            <input
+                                id="invite-teacher"
+                                v-model="inviteForm.teacherEmail"
+                                class="input-field"
+                                type="email"
+                                placeholder="teacher@email.com"
+                            />
+                            <button class="secondary-button" type="button" @click="inviteTeacher" :disabled="!inviteForm.teacherEmail.trim() || isProcessingManagerAction">
                                 Invite teacher
                             </button>
                         </div>
 
                         <div class="field-group">
-                            <label class="field-label" for="invite-student">Invite student</label>
-                            <select id="invite-student" v-model="inviteForm.studentUsername" class="input-field">
-                                <option value="">Select student username</option>
-                                <option v-for="studentName in studentOptions" :key="`invite-student-${studentName}`" :value="studentName">{{ studentName }}</option>
-                            </select>
-                            <button class="secondary-button" type="button" @click="inviteStudent" :disabled="!inviteForm.studentUsername || isProcessingManagerAction">
+                            <label class="field-label" for="invite-student">Invite student by email</label>
+                            <input
+                                id="invite-student"
+                                v-model="inviteForm.studentEmail"
+                                class="input-field"
+                                type="email"
+                                placeholder="student@email.com"
+                            />
+                            <button class="secondary-button" type="button" @click="inviteStudent" :disabled="!inviteForm.studentEmail.trim() || isProcessingManagerAction">
                                 Invite student
                             </button>
                         </div>
                     </article>
 
                     <article class="manager-card manager-card--wide">
-                        <h4>Members management</h4>
+                        <h4>Members search</h4>
 
-                        <div class="manager-members-list">
-                            <button
-                                v-for="member in allMembers"
-                                :key="`member-${member.role}-${member.username}`"
-                                class="manager-member"
-                                :class="{ 'manager-member--active': selectedMember === member.username }"
-                                type="button"
-                                @click="selectMember(member.username)"
-                            >
-                                <span>{{ member.username }}</span>
-                                <span class="pill">{{ member.role }}</span>
+                        <div class="manager-search-row">
+                            <input
+                                v-model="memberSearchInput"
+                                class="input-field"
+                                type="text"
+                                placeholder="Search member by username"
+                            />
+                            <button class="secondary-button" type="button" @click="searchMembers">
+                                Search
+                            </button>
+                            <button class="secondary-button" type="button" @click="clearMemberSearch" :disabled="!memberSearchTerm && !memberSearchInput">
+                                Clear
                             </button>
                         </div>
 
-                        <button class="submit-button manager-kick" type="button" @click="kickSelectedMember" :disabled="!selectedMember || isProcessingManagerAction">
-                            {{ isProcessingManagerAction ? 'Processing...' : selectedMember ? `Kick ${selectedMember}` : 'Select member to kick' }}
-                        </button>
+                        <p class="member-search-note">
+                            Showing {{ allMembers.length }} {{ allMembers.length === 1 ? 'member' : 'members' }}
+                            <span v-if="memberSearchTerm">for "{{ memberSearchTerm }}"</span>.
+                        </p>
                     </article>
                 </div>
             </section>
@@ -651,6 +658,10 @@ onMounted(async () => {
     color: var(--ttl-text-primary);
 }
 
+.member-action {
+    margin-left: auto;
+}
+
 .manager-panel {
     padding: 1rem;
     display: flex;
@@ -703,38 +714,16 @@ onMounted(async () => {
     gap: 0.65rem;
 }
 
-.manager-members-list {
+.manager-search-row {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) auto auto;
     gap: 0.6rem;
-}
-
-.manager-member {
-    border: 1px solid var(--ttl-border-subtle);
-    border-radius: 0.8rem;
-    background: rgba(143, 44, 226, 0.06);
-    color: var(--ttl-text-primary);
-    min-height: 2.75rem;
-    padding: 0.5rem 0.7rem;
-    display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.6rem;
-    cursor: pointer;
-    transition: border-color var(--ttl-transition-base), background var(--ttl-transition-base), transform var(--ttl-transition-fast);
 }
 
-.manager-member:hover {
-    transform: translateY(-1px);
-}
-
-.manager-member--active {
-    border-color: rgba(143, 44, 226, 0.35);
-    background: rgba(143, 44, 226, 0.14);
-}
-
-.manager-kick {
-    width: 100%;
+.member-search-note {
+    margin: 0;
+    color: var(--ttl-text-secondary);
 }
 
 @media (max-width: 900px) {
@@ -746,7 +735,7 @@ onMounted(async () => {
         grid-template-columns: 1fr;
     }
 
-    .manager-members-list {
+    .manager-search-row {
         grid-template-columns: 1fr;
     }
 }
@@ -761,7 +750,7 @@ onMounted(async () => {
     }
 
     .manager-address-grid,
-    .manager-members-list {
+    .manager-search-row {
         grid-template-columns: 1fr;
     }
 }

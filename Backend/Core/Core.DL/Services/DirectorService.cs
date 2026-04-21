@@ -161,7 +161,7 @@ namespace Core.DL.Services
             return response;
         }
 
-        public async Task<ResponseMessage> InviteStudentToUniversityAsync(string universityName, string studentUsername, string mainUserEmail)
+        public async Task<ResponseMessage> InviteStudentToUniversityAsync(string universityName, string studentIdentifier, string mainUserEmail)
         {
             ResponseMessage response = new ResponseMessage();
 
@@ -174,7 +174,8 @@ namespace Core.DL.Services
                 return response;
             }
 
-            var baseUser = await _baseUserRepository.Where(obj => obj.Username == studentUsername)
+            var normalizedIdentifier = studentIdentifier.Trim();
+            var baseUser = await _baseUserRepository.Where(obj => obj.Username == normalizedIdentifier || obj.Email == normalizedIdentifier)
                 .FirstOrDefaultAsync();
             if (baseUser == null)
             {
@@ -222,7 +223,7 @@ namespace Core.DL.Services
             return response;
         }
 
-        public async Task<ResponseMessage> InviteTeacherToUniversityAsync(string universityName, string teacherUsername, string mainUserEmail)
+        public async Task<ResponseMessage> InviteTeacherToUniversityAsync(string universityName, string teacherIdentifier, string mainUserEmail)
         {
             ResponseMessage response = new ResponseMessage();
 
@@ -235,7 +236,8 @@ namespace Core.DL.Services
                 return response;
             }
 
-            var teacher = await _baseUserRepository.Where(obj => obj.Username == teacherUsername && obj.TeacherId != null && obj.Teacher.IsVerified == true)
+            var normalizedIdentifier = teacherIdentifier.Trim();
+            var teacher = await _baseUserRepository.Where(obj => (obj.Username == normalizedIdentifier || obj.Email == normalizedIdentifier) && obj.TeacherId != null && obj.Teacher.IsVerified == true)
                 .Include(obj => obj.Teacher)
                 .FirstOrDefaultAsync();
             if (teacher == null)
