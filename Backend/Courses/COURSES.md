@@ -1,6 +1,6 @@
 # Courses Service
 
-Manages university courses and their lessons. Access control is delegated entirely to the Core service via gRPC — this service has no user or university tables of its own.
+Manages university courses, lessons, progress tracking, and quiz flows. Access control is delegated entirely to the Core service via gRPC — this service has no user or university tables of its own.
 
 ---
 
@@ -53,11 +53,13 @@ Courses/
 │   │   ├── UpdateCourseDto.cs        # CourseId + nullable Title/Description
 │   │   ├── LessonResourceDto.cs      # Resource item: Title, Url, Type
 │   │   ├── CreateLessonDto.cs        # CourseId, Title, Content, IsMarkdown, legacy links, resources[], OrderNumber
-│   │   ├── ReadLessonDto.cs          # Includes RenderedContent and resources[]
+│   │   ├── ReadLessonDto.cs          # Includes CourseId, RenderedContent, resources[], completion metadata
 │   │   ├── UpdateLessonDto.cs        # LessonId + nullable fields + optional resources[] replacement
 │   │   ├── CreateQuizQuestionDto.cs / CreateQuizOptionDto.cs
 │   │   ├── QuizQuestionDto.cs / QuizOptionDto.cs
-│   │   ├── SubmitQuizAnswerDto.cs
+│   │   ├── UpsertQuizDto.cs          # Bulk upsert quiz + attempt policy (single/reattempt)
+│   │   ├── SubmitQuizDto.cs / SubmitQuizQuestionAnswerDto.cs
+│   │   ├── ReorderLessonsDto.cs      # Bulk lesson ordering
 │   │   ├── StudentQuizAnswerDto.cs
 │   │   └── QuizAnswerReviewDto.cs
 │   └── SideModels/
@@ -104,7 +106,7 @@ Where(Expression<Func<T, bool>>)          // deferred — used for pagination an
 SingleOrDefaultAsync(Expression<Func<T, bool>>)
 ```
 
-Two repositories registered: `IBaseRepository<Course>` and `IBaseRepository<Lesson>`, both `Transient`.
+Repositories are registered for all persisted aggregates (`Course`, `Lesson`, `LessonResource`, `StudentLessonCompletion`, `StudentCourseGrade`, `QuizQuestion`, `QuizOption`, `QuizAnswer`) with `Transient` lifetime.
 
 ---
 
@@ -143,8 +145,8 @@ LessonResource
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/{universityName}/{page}` | Optional | Paginated courses for a university (10/page) |
-| GET | `/course/{courseId}` | Optional | Single course with lesson count |
+| GET | `/{universityName}/{page}` | Required | Paginated courses for a university (10/page) |
+| GET | `/course/{courseId}` | Required | Single course with lesson count |
 | POST | `/create` | Required | Create course (teacher only) |
 | PUT | `/update` | Required | Update title/description (owner teacher only) |
 | DELETE | `/delete/{courseId}` | Required | Delete course + all lessons (owner teacher only) |
@@ -156,11 +158,12 @@ LessonResource
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/course/{courseId}` | Optional | All lessons for a course, ordered by `OrderNumber` |
-| GET | `/lesson/{lessonId}` | Optional | Single lesson; markdown rendered to HTML if `IsMarkdown=true` |
+| GET | `/course/{courseId}` | Required | All lessons for a course, ordered by `OrderNumber` |
+| GET | `/lesson/{lessonId}` | Required | Single lesson; markdown rendered to HTML if `IsMarkdown=true` |
 | POST | `/create` | Required | Create lesson (owner teacher only) |
 | PUT | `/update` | Required | Partial update (owner teacher only); `IsMarkdown` cannot be changed |
 | DELETE | `/delete/{lessonId}` | Required | Delete lesson (owner teacher only) |
+| PUT | `/reorder` | Required | Bulk reorder lessons in course |
 | POST | `/{lessonId}/complete` | Required | Student marks lesson as completed |
 | GET | `/{lessonId}/progress` | Required | Current user completion status for lesson |
 
@@ -169,13 +172,17 @@ LessonResource
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/lesson/{lessonId}` | Required | Get lesson mini quiz questions (students do not receive correct-answer flags) |
+| PUT | `/lesson/{lessonId}` | Required | Bulk upsert lesson quiz questions + attempt policy |
 | POST | `/lesson/{lessonId}/questions` | Required | Teacher/director creates lesson mini quiz question |
-| POST | `/lesson/{lessonId}/questions/{questionId}/answer` | Required | Student submits or updates answer for lesson mini quiz question |
+| PUT | `/lesson/{lessonId}/questions/{questionId}` | Required | Teacher/director updates lesson mini quiz question |
+| POST | `/lesson/{lessonId}/submit` | Required | Student submits lesson quiz answers (batch payload) |
 | GET | `/lesson/{lessonId}/my-answers` | Required | Student retrieves own lesson mini quiz answers + correctness |
 | GET | `/lesson/{lessonId}/answers` | Required | Teacher/director reviews all student answers for lesson mini quiz |
 | GET | `/course/{courseId}` | Required | Get course-level quiz questions (quiz mode without lesson content) |
+| PUT | `/course/{courseId}` | Required | Bulk upsert course quiz questions + attempt policy |
 | POST | `/course/{courseId}/questions` | Required | Teacher/director creates course-level quiz question |
-| POST | `/course/{courseId}/questions/{questionId}/answer` | Required | Student submits or updates answer for course-level quiz question |
+| PUT | `/course/{courseId}/questions/{questionId}` | Required | Teacher/director updates course-level quiz question |
+| POST | `/course/{courseId}/submit` | Required | Student submits course quiz answers (batch payload) |
 | GET | `/course/{courseId}/my-answers` | Required | Student retrieves own course quiz answers + correctness |
 | GET | `/course/{courseId}/answers` | Required | Teacher/director reviews all student answers for course-level quiz |
 
@@ -190,7 +197,7 @@ All authorization is resolved by calling the Core service via gRPC — this serv
 | Read (get courses/lessons) | `UserInfoForCourse.IsAllowed == true` (user is university member) |
 | Create / Update / Delete | `IsAllowed && (IsTeacher || IsDirector)` |
 
-Anonymous users receive empty result sets for read operations rather than 401/403 errors.
+All controllers are decorated with `[Authorize]`, so requests require a valid JWT before service-level gRPC authorization checks are executed.
 
 ---
 
@@ -240,10 +247,20 @@ RabbitMQ:    localhost:5672
 
 | Service | Lifetime |
 |---------|----------|
+| `GrpcChannel` | Singleton |
+| `GrpcUsers.GrpcUsersClient` | Singleton |
+| `IBaseRepository<LessonResource>` | Transient |
+| `IBaseRepository<StudentLessonCompletion>` | Transient |
+| `IBaseRepository<StudentCourseGrade>` | Transient |
+| `IBaseRepository<QuizQuestion>` | Transient |
+| `IBaseRepository<QuizOption>` | Transient |
+| `IBaseRepository<QuizAnswer>` | Transient |
 | `IBaseRepository<Course>` | Transient |
 | `IBaseRepository<Lesson>` | Transient |
 | `ICourseService` | Transient |
 | `ILessonService` | Transient |
+| `IProgressService` | Transient |
+| `IQuizService` | Transient |
 | `IMarkdownService` | Transient |
 | `IUserInfoClient` | **Scoped** |
 
@@ -257,6 +274,8 @@ RabbitMQ:    localhost:5672
 - **Partial updates** — all `Update*Dto` fields are nullable; service only applies non-null values
 - **`UpdatedAt`** is set in the service layer on every update, not via EF interceptors
 - **Lesson resources support** — lessons now support a full `resources[]` collection while keeping `VideoLink` / `MaterialLink` for backward compatibility
+- **Quiz submission shape** — students submit batch payloads (`SubmitQuizDto`) for lesson/course quiz flows
+- **Quiz authoring modes** — supports both granular create/update endpoints and bulk upsert endpoints
 
 ---
 
@@ -301,6 +320,7 @@ RabbitMQ:    localhost:5672
 - Exactly one option must be marked correct.
 - Only students can submit quiz answers.
 - Teachers/directors can create questions and review all submissions.
+- Attempt policy supports `single` or `reattempt` and is configured via `UpsertQuizDto.AttemptPolicy`.
 
 ### Teacher Review Surface
 
