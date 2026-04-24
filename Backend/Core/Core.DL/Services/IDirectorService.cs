@@ -4,8 +4,6 @@ namespace Core.DL.Services
 {
     public interface IDirectorService
     {
-        Task<ResponseMessage> AcceptEntryRequestAsync(EntryRequestModel model, string mainUserEmail);
-        Task<ResponseMessage> RejectEntryRequestAsync(EntryRequestModel model, string mainUserEmail);
         Task<ResponseMessage> UpdateUniversityInfoAsync(UpdateUniversityInfoModel model, string email);
         Task<ResponseMessage> InviteStudentToUniversityAsync(string universityName, string studentUsername,
             string mainUserEmail);

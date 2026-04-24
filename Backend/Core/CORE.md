@@ -1,76 +1,86 @@
 # Core Service
 
-Manages users, universities, and roles (student/teacher/director). Receives new user events from RabbitMQ and exposes a gRPC server used by Courses and Forums services to resolve user and university identity.
+Core is the identity and membership domain service for TimeToLearn.
+It stores platform users, manages university lifecycle and membership, processes user-created events from Authentication, and exposes gRPC methods consumed by Courses and Forums.
 
 ---
 
-## Project Structure
+## What This Service Handles
 
-```
+Core owns these responsibilities:
+
+- Persisting platform users (`BaseUser`) replicated from Authentication events.
+- Role state for users (`teacher` vs `student`) with teacher verification.
+- University management (create, list, update, member visibility).
+- Membership management through explicit enrollment tables:
+  - `StudentEnrollment`
+  - `TeacherEnrollment`
+- University invite/request workflow (`EntryRequest`) for closed/open universities.
+- Director operations: invite, remove members, update university data.
+- gRPC identity/membership lookups for other backend services.
+
+---
+
+## Current Project Structure
+
+```text
 Core/
 ├── Core.API/
+│   ├── Program.cs
+│   ├── appsettings.json
+│   ├── appsettings.Development.json
 │   ├── Controllers/
-│   │   ├── BaseController.cs             # JWT claim helpers, exception → HTTP mapping
-│   │   ├── BaseUserController.cs         # User info, invites
-│   │   ├── StudentController.cs          # Become student, request/enter university
-│   │   ├── TeacherController.cs          # Become teacher, verify degree, request university
-│   │   ├── DirectorController.cs         # Invite/approve/reject university members
-│   │   ├── UniversityController.cs       # CRUD universities, list members
-│   │   └── GeneralinfoController.cs      # Role info (public, no auth)
+│   │   ├── BaseController.cs
+│   │   ├── BaseUserController.cs
+│   │   ├── StudentController.cs
+│   │   ├── TeacherController.cs
+│   │   ├── DirectorController.cs
+│   │   ├── UniversityController.cs
+│   │   └── GeneralinfoController.cs
 │   ├── AsyncDataService/
-│   │   └── MessageBusSubscriber.cs       # RabbitMQ background subscriber
+│   │   └── MessageBusSubscriber.cs
 │   ├── EventProcessing/
 │   │   ├── IEventProcessor.cs
-│   │   └── EventProcessor.cs             # Deserializes events, creates BaseUser records
+│   │   └── EventProcessor.cs
 │   ├── Grpc/
-│   │   └── GrpcUserinfoService.cs        # gRPC server (port 666)
+│   │   └── GrpcUserinfoService.cs
 │   ├── Infrastructure/
-│   │   └── Mapper.cs                     # AutoMapper profiles
-│   ├── appsettings.json                  # Production config (K8S cluster endpoints)
-│   ├── appsettings.Development.json      # Local dev config
-│   └── Program.cs                        # DI registration, middleware pipeline
+│   │   └── Mapper.cs
+│   └── Proto/
+│       └── userinfo.proto
 ├── Core.DL/
-│   ├── Services/
-│   │   ├── BaseUserService.cs            # User info, invites, accept/reject
-│   │   ├── UniversityService.cs          # University CRUD, member lists
-│   │   ├── StudentService.cs             # Role transitions, entry requests
-│   │   ├── TeacherService.cs             # Role transitions, degree verification
-│   │   ├── DirectorService.cs            # Invite, approve, reject, update university
-│   │   └── GeneralUserInfoService.cs     # isTeacher / isStudent flags
-│   └── Repositories/
-│       ├── IBaseRepository.cs            # Generic interface
-│       └── BaseRepository.cs             # Generic EF Core implementation
+│   ├── Repositories/
+│   │   ├── IBaseRepository.cs
+│   │   └── BaseRepository.cs
+│   └── Services/
+│       ├── BaseUserService.cs
+│       ├── StudentService.cs
+│       ├── TeacherService.cs
+│       ├── DirectorService.cs
+│       ├── UniversityService.cs
+│       ├── GeneralUserInfoService.cs
+│       └── service interfaces (I*Service)
 ├── Core.DAL/
 │   ├── Context/
-│   │   └── DataContext.cs                # EF Core DbContext, relationships
+│   │   └── DataContext.cs
 │   ├── Models/
-│   │   ├── BaseEntity.cs                 # Abstract base: long Id
-│   │   ├── Address.cs                    # Owned entity (embedded in users & universities)
-│   │   ├── BaseUser.cs                   # Core user identity
-│   │   ├── Student.cs                    # One-to-one with BaseUser
-│   │   ├── Teacher.cs                    # One-to-one with BaseUser (has Degree, IsVerified)
-│   │   ├── University.cs                 # University entity
-│   │   └── EntryRequest.cs               # Pending invites / join requests
+│   │   ├── BaseEntity.cs
+│   │   ├── Address.cs
+│   │   ├── BaseUser.cs
+│   │   ├── Teacher.cs
+│   │   ├── University.cs
+│   │   ├── EntryRequest.cs
+│   │   ├── StudentEnrollment.cs
+│   │   ├── TeacherEnrollment.cs
+│   │   └── Student.cs (legacy placeholder, removed in favor of enrollments)
 │   ├── Dtos/
-│   │   ├── BaseUserPublishDto.cs          # Incoming RabbitMQ payload
-│   │   ├── GenericEventDto.cs             # Used to determine event type before full deserialization
-│   │   ├── ReadBaseUserDto.cs
-│   │   ├── CreateUniversityDto.cs
-│   │   └── ReadUniversityDto.cs
 │   └── SideModels/
-│       ├── ResponseMessage.cs             # Success + Message
-│       ├── ResponseWithValue.cs           # Success + Message + Value<T>
-│       ├── ResponseGetEnum.cs             # Success + Message + IEnumerable<T>
-│       ├── EntryRequestModel.cs           # UniversityName + Username
-│       ├── UpdateUserInfoModel.cs
-│       ├── UpdateUniversityInfoModel.cs
-│       └── RoleUserInfo.cs                # isTeacher, isStudent flags
 └── Core.Tests/
     ├── BaseUserServiceTest.cs
-    ├── UniversityServiceTests.cs
     ├── StudentServiceTests.cs
     ├── TeacherServiceTest.cs
     ├── DirectorServiceTests.cs
+    ├── UniversityServiceTests.cs
     ├── GeneralUserInfoServiceTest.cs
     ├── MessageBusTests.cs
     └── GrpcServiceTest.cs
@@ -80,216 +90,266 @@ Core/
 
 ## Architecture
 
+### Layering
+
+```text
+Core.API  ->  Core.DL  ->  Core.DAL
+```
+
 ### Layer Responsibilities
 
-| Layer | Responsibility |
-|-------|---------------|
-| **API** | HTTP routing, gRPC server, RabbitMQ subscription, startup wiring |
-| **DL** | Business logic, validation, role transitions, repository orchestration |
-| **DAL** | EF Core entities, DbContext, DTOs, request/response models |
-| **Tests** | Unit tests against real in-memory database; mocks only for gRPC context |
+- `Core.API`
+  - HTTP controllers
+  - gRPC server endpoint
+  - RabbitMQ background subscriber
+  - DI and middleware bootstrap
+- `Core.DL`
+  - Business rules and role transitions
+  - Invite/request flow orchestration
+  - Membership and permission checks
+- `Core.DAL`
+  - EF Core models and DbContext mapping
+  - DTOs and response models
+- `Core.Tests`
+  - Unit tests for services, message processing, and gRPC behavior
 
-### Dependencies Between Layers
+### Persistence Pattern
 
-```
-Core.API
-    └── Core.DL
-            └── Core.DAL
-```
-
-### Generic Repository
-
-All persistence goes through a single generic `IBaseRepository<T>` / `BaseRepository<T>`:
+All entities are accessed through generic repository abstraction:
 
 ```csharp
+GetContext()
 GetAllAsync()
 GetByIdAsync(long id)
 Where(Expression<Func<T, bool>>)
 SingleOrDefaultAsync(Expression<Func<T, bool>>)
 AddAsync(T)
-UpdateAsync(T)       // uses Entry().CurrentValues.SetValues()
+UpdateAsync(T)
 DeleteAsync(T)
 DeleteRangeAsync(List<T>)
-GetContext()         // exposes DbContext for .Include() chains in services
-```
-
-Each entity type gets its own `IBaseRepository<T>` registration — five repositories total (`University`, `BaseUser`, `Student`, `Teacher`, `EntryRequest`), all `Transient`.
-
----
-
-## Data Model
-
-### Entities & Relationships
-
-```
-BaseUser (1) ──────────────── (0..1) Student
-BaseUser (1) ──────────────── (0..1) Teacher  [has Degree, IsVerified]
-BaseUser (1) ──────────────── (0..1) University  [as director]
-BaseUser (M) ──────────────── (N) University    [members, implicit join table]
-BaseUser (1) ──────────────── (M) EntryRequest
-University (1) ──────────────── (M) EntryRequest  [cascade restricted]
-```
-
-### Key Fields
-
-**`BaseUser`**
-- `OriginalId` (Guid) — links to the Authentication service user
-- `IsTeacher` (bool) — denormalized flag for quick gRPC checks
-- `TeacherId?` / `StudentId?` — nullable FKs; only one is set at a time
-
-**`Teacher`**
-- `Degree` (string), `IsVerified` (bool) — teacher must be verified before joining universities
-
-**`EntryRequest`**
-- `SentByUniversity` (bool) — `true` = director invited user; `false` = user requested to join
-
-**`Address`** — owned entity embedded in both `BaseUser` and `University` (not a separate table)
-
----
-
-## Endpoints
-
-### `BaseUserController` — `api/u/user`
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/all` | List all usernames |
-| GET | `/{name}` | Get user details by username |
-| POST | `/update` | Update own profile (name, phone, address) |
-| GET | `/invites` | List pending university invitations (SentByUniversity=true) |
-| PUT | `/invites/{universityName}/accept` | Accept invitation → joins university |
-| DELETE | `/invites/{universityName}/reject` | Reject invitation |
-
-### `StudentController` — `api/u/student`
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/become` | Become a student (clears teacher role) |
-| GET | `/request/{universityName}` | Send join request to university (must be open) |
-| GET | `/entry/{universityName}` | Enter university directly (if open) or via invite |
-
-### `TeacherController` — `api/u/teacher`
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/become` | Become a teacher (clears student role) |
-| POST | `/verify` | Submit degree → sets IsVerified=true |
-| POST | `/request/{universityName}` | Request to join university (verified teachers only) |
-
-### `DirectorController` — `api/u/director`
-
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/invites/student` | Invite student to own university |
-| POST | `/invites/teacher` | Invite verified teacher to own university |
-| POST | `/invites/approve` | Approve a user's join request |
-| POST | `/invites/reject` | Reject a user's join request |
-| POST | `/update` | Update university description/address |
-
-### `UniversityController` — `api/u/university`
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/` | No | List all universities |
-| GET | `/{name}` | No | Get university details |
-| POST | `/` | Yes | Create university (caller becomes director) |
-| GET | `/{name}/teachers` | Yes (member only) | List teacher members |
-| GET | `/{name}/students` | Yes (member only) | List student members |
-
-### `GeneralinfoController` — `api/u/general`
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/{userEmail}` | No | Returns `{ isTeacher, isStudent }` flags |
-
----
-
-## Business Rules
-
-### Role Transitions
-- A user starts with no role (BaseUser only)
-- Calling `/become` on either student or teacher **clears the other** (`TeacherId` or `StudentId` set to null)
-- Teachers must call `/teacher/verify` (submit a degree) before they can request to join a university
-
-### University Entry — Four Paths
-
-| Scenario | Who initiates | How it resolves |
-|----------|--------------|-----------------|
-| Open university, user requests | Student/Teacher | `/student/request` or `/teacher/request` → Director approves via `/director/invites/approve` |
-| Open university, user enters directly | Student | `/student/entry` succeeds without approval |
-| Closed university, director invites | Director | `/director/invites/student` or `/teacher` → User accepts via `/user/invites/{name}/accept` |
-| User has existing invite | Student | `/student/entry` also works if invite exists |
-
-After a user joins, all related `EntryRequest` records for that user/university pair are cleaned up.
-
----
-
-## RabbitMQ Integration
-
-- **`MessageBusSubscriber`** — `BackgroundService`; connects on startup, declares fanout exchange `"trigger"`, listens for messages
-- **`EventProcessor`** (Singleton) — reads `GenericEventDto.Event` to route the message:
-  - `"BaseUser_Published"` → deserializes as `BaseUserPublishDto`, maps to `BaseUser`, inserts if `OriginalId` not already present
-- A new DI scope is created per message to resolve the `Transient` `IBaseRepository<BaseUser>`
-
----
-
-## gRPC Server
-
-**Port:** 666  
-**Service:** `GrpcUserinfoService` implements `GrpcUsers.GrpcUsersBase`
-
-| Method | Request | Response | Usage |
-|--------|---------|----------|-------|
-| `GetInfoForTopic` | `{ userEmail, universityName }` | `{ userId, universityId, isAllowed, isTeacher, isDirector }` | Courses/Forums check membership and write permissions |
-| `GetUniversityName` | `{ universityId }` | `{ universityName }` | Resolve university name |
-| `GetUserName` | `{ userId }` | `{ userName }` | Resolve username |
-
-Proto file served at: `GET /protos/userinfo.proto`
-
----
-
-## Configuration
-
-### Production (`appsettings.json`)
-```
-DB:       Server=mssql-users-clusterip-srv,1433; Initial Catalog=Data
-RabbitMQ: rabbitmq-clusterip-srv:5672
-gRPC:     http://users-clusterip-srv:666
-HTTP:     http://users-clusterip-srv:80
-JWT Key:  shared with all services
-```
-
-### Development (`appsettings.Development.json`)
-```
-DB:       Server=localhost,1434; Initial Catalog=Data
-RabbitMQ: localhost:5672
 ```
 
 ---
 
-## DI Lifetimes
+## Data Model (Current)
 
-| Service | Lifetime | Reason |
-|---------|----------|--------|
-| `IBaseRepository<T>` (×5) | Transient | Scoped to request, holds EF DbContext |
-| All domain services | Transient | Per-request |
-| `EventProcessor` | **Singleton** | Uses `IServiceScopeFactory` to create its own scopes per message |
-| `MessageBusSubscriber` | **HostedService** | Long-running background listener |
+### Core Entities
+
+- `BaseUser`
+  - Identity mirror from Authentication (`OriginalId`, `Email`, `Username`)
+  - Personal profile fields and owned `Address`
+  - Optional teacher link via `TeacherId`
+  - Navigation collections for `StudentEnrollments`, `TeacherEnrollments`, `EntryRequests`, and directed universities
+- `Teacher`
+  - One-to-one with `BaseUser`
+  - `Degree`, `IsVerified`
+- `University`
+  - `Name`, `Description`, `IsOpened`
+  - `DirectorId` (to `BaseUser`)
+  - Member collections (`StudentEnrollments`, `TeacherEnrollments`)
+- `EntryRequest`
+  - Request/invite between user and university
+  - `SentByUniversity` differentiates invite vs user request
+  - `InviteAsTeacher` differentiates teacher vs student invite intent
+- `StudentEnrollment`
+  - Join table for student membership (`BaseUserId`, `UniversityId`)
+- `TeacherEnrollment`
+  - Join table for teacher membership (`BaseUserId`, `UniversityId`)
+
+### Relationships in DbContext
+
+- `BaseUser` (1) -> (0..1) `Teacher`
+- `BaseUser` (1) -> (M) `EntryRequest`
+- `University` (1) -> (M) `EntryRequest` with delete restrict
+- `University` (1) -> (M) `StudentEnrollment` with unique `(BaseUserId, UniversityId)`
+- `University` (1) -> (M) `TeacherEnrollment` with unique `(BaseUserId, UniversityId)`
+- `University` -> `Director` (`BaseUser`) with delete restrict
+- `Address` is owned by both `BaseUser` and `University`
+
+---
+
+## External Services and Integrations
+
+## 1) Authentication / OpenID Connect JWT validation
+
+Configured in `Program.cs` via `AddAuthentication().AddJwtBearer(...)`.
+
+- Uses OpenID settings from config:
+  - `OpenId:Issuer`
+  - `OpenId:MetadataAddress`
+  - `OpenId:PublicKey` (fallback RSA key)
+- Controllers mostly require `[Authorize]` except selected anonymous actions.
+
+## 2) RabbitMQ
+
+- Hosted background worker: `MessageBusSubscriber`.
+- Connects to `RabbitMQHost` / `RabbitMQPort`.
+- Declares fanout exchange `trigger` and binds an auto-generated queue.
+- For each received message, calls `IEventProcessor.ProcessEvent`.
+
+## 3) Event Processing
+
+`EventProcessor` currently handles:
+
+- `BaseUser_Published`
+  - Deserializes `BaseUserPublishDto`
+  - Maps into `BaseUser` via AutoMapper
+  - Inserts only when `OriginalId` is not already present
+
+## 4) gRPC (for Courses and Forums)
+
+Service: `GrpcUserInfoService` (`GrpcUsers.GrpcUsersBase`)
+
+Methods:
+
+- `GetInfoForTopic`
+  - Input: user email + university name
+  - Output: userId, universityId, and membership flags
+- `GetUniversityName`
+  - Input: universityId
+  - Output: universityName
+- `GetUserName`
+  - Input: userId
+  - Output: username
+- `GetUserUniversityRole`
+  - Input: userId + universityId
+  - Output role string (`Manager`, `Teacher`, `Student`, or `Unknown`)
+
+Proto file is exposed at:
+
+- `GET /protos/userinfo.proto`
+
+---
+
+## HTTP API Functionality
+
+Base route prefixes:
+
+- `api/u/user`
+- `api/u/student`
+- `api/u/teacher`
+- `api/u/director`
+- `api/u/university`
+- `api/u/general`
+
+### Base User Operations
+
+- List users
+- Get user by username
+- Update own profile
+- View invites
+- Accept/reject invite
+- Leave university
+  - If leaver is director, university is deleted together with enrollments and requests
+
+### Student Operations
+
+- Become student (`POST become`)
+  - Clears teacher record and teacher enrollments
+  - Clears pending requests/invites for user
+- Request to join open university (`POST request/{universityName}`)
+- Direct entry (`POST entry/{universityName}`)
+  - Works for open universities
+  - For closed universities requires matching student invite
+
+### Teacher Operations
+
+- Become teacher (`POST become`)
+  - Clears student enrollments and pending requests
+  - Creates `Teacher` record
+- Verify teacher status (`POST verify` with degree)
+- Teacher self-request to university is currently disabled by business rule:
+  - returns message: teachers can join by invite only
+
+### Director Operations
+
+- Invite student (`POST invites/student`)
+- Invite verified teacher (`POST invites/teacher`)
+- Remove member (`DELETE members/remove`)
+- Update university info (`POST update`)
+
+### University Operations
+
+- Paged catalog (`GET /`, anonymous)
+- My universities (`GET /my`, auth)
+- Available catalog not yet joined/directed by caller (`GET /catalog/available`, auth)
+- Get university by name (`GET /{name}`, auth and membership required)
+- Create university (`POST /`, auth)
+- Paged teachers/students by university (`GET /{name}/teachers`, `GET /{name}/students`) for members only
+
+### General Info Operation
+
+- `GET /api/u/general/{userEmail}`
+  - Returns role flags model (`isTeacher`, `isStudent`)
+
+---
+
+## Key Business Rules
+
+- User may be teacher or non-teacher at a given moment (`TeacherId` controls teacher state).
+- Teacher enrollment and student enrollment are separate explicit tables.
+- Director is not represented in enrollment tables; director is linked by `University.DirectorId`.
+- Duplicate membership is prevented by unique indexes and service checks.
+- Requests and invites are cleaned up when membership is granted.
+- Invite direction:
+  - `SentByUniversity = true`: director invite
+  - `SentByUniversity = false`: user-originated request
+- Invite role intent:
+  - `InviteAsTeacher = true`: teacher invite
+  - `InviteAsTeacher = false`: student invite
+
+---
+
+## Dependency Injection and Runtime Wiring
+
+Configured in `Program.cs`:
+
+- Repositories (`Transient`):
+  - `University`, `BaseUser`, `Teacher`, `EntryRequest`, `StudentEnrollment`, `TeacherEnrollment`
+- Domain services (`Transient`):
+  - `IBaseUserService`, `IUniversityService`, `IStudentService`, `ITeacherService`, `IDirectorService`, `IGeneralInfoService`
+- Event processor (`Singleton`):
+  - `IEventProcessor`
+- Background subscriber (`HostedService`):
+  - `MessageBusSubscriber`
+- Database:
+  - SQL Server `DataContext`
+  - Migrations assembly: `Core.API`
+  - Auto-migrate on startup (`Database.Migrate()`)
+- Endpoints:
+  - HTTP API + gRPC (`http://+:666`), plus HTTP endpoint (`http://+:8080`) from Kestrel config
+
+---
+
+## Configuration Summary
+
+### Production (`Core.API/appsettings.json`)
+
+- SQL Server: `mssql-core-clusterip-srv:1433`
+- RabbitMQ: `rabbitmq-clusterip-srv:5672`
+- OpenID issuer/metadata: `auth-clusterip-srv`
+- Kestrel:
+  - gRPC on `:666` (HTTP/2)
+  - Web API on `:8080` (HTTP/1)
+
+### Development (`Core.API/appsettings.Development.json`)
+
+- SQL Server: `localhost:1434`
+- RabbitMQ: `localhost:5672`
+- OpenID issuer/metadata: `localhost:5000`
 
 ---
 
 ## Tests
 
-All tests use EF Core **in-memory database** — no mocks for repositories or services.  
-Mocks used only for `ServerCallContext` (gRPC) and `IServiceScopeFactory` (message bus).
+Current test projects validate:
 
-| Test Class | Covers |
-|------------|--------|
-| `BaseUserServiceTest` | GetUsers, GetUser, UpdateInfo, GetInvites, AcceptInvite, RejectInvite |
-| `UniversityServiceTests` | CreateUniversity, GetAll, GetUniversity, GetTeachers, GetStudents |
-| `StudentServiceTests` | BecomeStudent, SendRequest, EntryUniversity |
-| `TeacherServiceTest` | BecomeTeacher, VerifyStatus, SendRequest |
-| `DirectorServiceTests` | InviteStudent, InviteTeacher, AcceptRequest, RejectRequest, UpdateUniversity |
-| `GeneralUserInfoServiceTest` | GetRole — teacher-only, student-only, neither |
-| `MessageBusTests` | Event deserialization → BaseUser creation, duplicate prevention |
-| `GrpcServiceTest` | GetInfoForTopic, GetUniversityName, GetUserName |
+- Base user operations
+- Student and teacher role flows
+- Director invite/approval/removal flows
+- University listing/creation/membership visibility
+- General role info
+- RabbitMQ event processing behavior
+- gRPC lookups and role resolution
+
+This keeps Core behavior test-covered around its most critical orchestration paths.

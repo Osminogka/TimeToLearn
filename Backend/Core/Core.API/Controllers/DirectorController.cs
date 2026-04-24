@@ -57,44 +57,6 @@ namespace Core.API.Controllers
             }
         }
         
-        [HttpPost("invites/approve")]
-        public async Task<IActionResult> AcceptEntryRequestAsync([FromBody] EntryRequestModel model)
-        {
-            try
-            {
-                if (!ModelState.IsValid)
-                    return BadRequest("Invalid data");
-                var result = await _directorService.AcceptEntryRequestAsync(model, getUserEmail());
-                if (!result.Success)
-                    return BadRequest(result.Message);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex.Message);
-                return HandleException(ex);
-            }
-        }
-        
-        [HttpPost("invites/reject")]
-        public async Task<IActionResult> RejectEntryRequestAsync([FromBody] EntryRequestModel model)
-        {
-            try
-            {
-                if (!ModelState.IsValid)
-                    return BadRequest("Invalid data");
-                var result = await _directorService.RejectEntryRequestAsync(model, getUserEmail());
-                if (!result.Success)
-                    return BadRequest(result.Message);
-                return Ok(result);
-            }  
-            catch (Exception ex)
-            {
-                _logger.LogError(ex.Message);
-                return HandleException(ex);
-            }
-        }
-        
         [HttpDelete("members/remove")]
         public async Task<IActionResult> RemoveMemberFromUniversityAsync([FromBody] EntryRequestModel model)
         {

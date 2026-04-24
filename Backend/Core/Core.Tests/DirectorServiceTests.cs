@@ -121,55 +121,7 @@ namespace Users.Tests
             };
             context.Add(university);
 
-            // Entry request from user (implicit student) to join DKU
-            var entryRequest = new EntryRequest
-            {
-                BaseUserId = 1,
-                UniversityId = 1,
-                SentByUniversity = false
-            };
-            context.Add(entryRequest);
-
             context.SaveChanges();
-        }
-
-        [Fact]
-        public async Task AcceptEntryRequest_CreatesStudentEnrollmentTest()
-        {
-            var model = new EntryRequestModel()
-            {
-                Username = Username,
-                University = UniversityName
-            };
-
-            var result = await Service.AcceptEntryRequestAsync(model, DirectorEmail);
-
-            var response = Assert.IsType<ResponseMessage>(result);
-            Assert.True(response.Success);
-
-            // User has no TeacherId, so StudentEnrollment should be created
-            var enrollment = await StudentEnrollmentRepository.SingleOrDefaultAsync(
-                e => e.BaseUserId == 1 && e.UniversityId == 1);
-            Assert.NotNull(enrollment);
-        }
-
-        [Fact]
-        public async Task RejectEntryRequestTest()
-        {
-            var model = new EntryRequestModel()
-            {
-                Username = Username,
-                University = UniversityName
-            };
-
-            var result = await Service.RejectEntryRequestAsync(model, DirectorEmail);
-
-            var response = Assert.IsType<ResponseMessage>(result);
-            Assert.True(response.Success);
-
-            var enrollment = await StudentEnrollmentRepository.SingleOrDefaultAsync(
-                e => e.BaseUserId == 1 && e.UniversityId == 1);
-            Assert.Null(enrollment);
         }
 
         [Fact]
