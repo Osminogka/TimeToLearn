@@ -1,48 +1,53 @@
 # Authentication Service
 
-Handles user registration, login, and JWT issuance. Publishes new user events to RabbitMQ after registration so other services can create their own user records asynchronously.
+Authentication is responsible for account registration, login, token refresh, and JWT issuance. It signs tokens with RSA keys, publishes user-created events to RabbitMQ so other services can provision their user projections, and exposes OpenID discovery/JWKS endpoints for token verification.
 
 ---
 
 ## Project Structure
 
-```
+```text
 Authentication/
 ├── Authentication.API/
 │   ├── Controllers/
-│   │   ├── AuthenticationController.cs   # POST /login, POST /register
-│   │   └── BaseController.cs             # JWT claim helpers, exception → HTTP mapping
+│   │   ├── AuthenticationController.cs   # /login, /register, /refresh-token
+│   │   ├── BaseController.cs             # common claim helper + exception mapping
+│   │   └── WellKnownController.cs        # .well-known metadata and JWKS
 │   ├── AsyncDataService/
 │   │   ├── IMessageBusClient.cs
 │   │   └── MessageBusClient.cs           # RabbitMQ fanout publisher
 │   ├── Infrastructure/
-│   │   ├── Mapper.cs                     # AutoMapper: AppUser → BaseUserPublishDto
-│   │   └── PrepDb.cs                     # Runs migrations, seeds roles on startup
-│   ├── appsettings.json                  # Production config (K8S cluster endpoints)
-│   ├── appsettings.Development.json      # Local dev config (localhost)
-│   └── Program.cs                        # DI registration, middleware pipeline
+│   │   ├── CoreRoleClient.cs             # HTTP role lookup against Core service
+│   │   ├── Mapper.cs                     # AutoMapper: AppUser -> BaseUserPublishDto
+│   │   ├── PrepDb.cs                     # migrations + role seed at startup
+│   │   └── RsaKeyService.cs              # JWT signing/validation keys
+│   ├── appsettings.json
+│   ├── appsettings.Development.json
+│   └── Program.cs
 ├── Authentication.DL/
 │   ├── Services/
+│   │   ├── AuthService.cs
 │   │   ├── IAuthService.cs
-│   │   └── AuthService.cs                # Login/register logic, JWT generation
+│   │   ├── ICoreRoleClient.cs
+│   │   └── IRsaKeyService.cs
 │   └── Repositories/
-│       ├── IUsersRepository.cs
-│       └── UsersRepository.cs            # Wraps UserManager, SignInManager, RoleManager
+│       ├── IUserRepository.cs            # contains IUsersRepository interface
+│       └── UserRepository.cs
 ├── Authentication.DAL/
 │   ├── Contexts/
 │   │   └── IdentityContext.cs            # IdentityDbContext<AppUser>
-│   ├── Models/
-│   │   ├── AppUser.cs                    # Extends IdentityUser (no custom fields)
-│   │   └── Roles.cs                      # Constants: "Student", "Teacher"
 │   ├── Dtos/
-│   │   └── BaseUserPublishDto.cs         # Payload for RabbitMQ message
+│   │   └── BaseUserPublishDto.cs
+│   ├── Models/
+│   │   ├── AppUser.cs
+│   │   └── Roles.cs
 │   └── SideModels/
 │       ├── LoginRequestModel.cs
 │       ├── RegisterRequestModel.cs
-│       ├── ResponseMessage.cs            # Wraps JWT token or error in all responses
-│       └── TeacherModel.cs               # Unused — placeholder for future endpoint
+│       ├── ResponseMessage.cs
+│       └── TeacherModel.cs               # currently unused
 └── Authentication.Tests/
-    └── AuthenticationControllerTests.cs  # XUnit + Moq: tests register & login flows
+    └── AuthenticationControllerTests.cs
 ```
 
 ---
@@ -53,160 +58,201 @@ Authentication/
 
 | Layer | Responsibility |
 |-------|---------------|
-| **API** | HTTP routing, request/response mapping, RabbitMQ publishing, startup wiring |
-| **DL** | Business logic: credential validation, JWT generation, input validation |
-| **DAL** | EF Core entities, DbContext, ASP.NET Identity schema, DTOs, request models |
-| **Tests** | Unit tests with mocked repository and message bus, real service and mapper |
+| API | HTTP endpoints, middleware pipeline, publishing integration events, OpenID/JWKS metadata |
+| DL | Authentication business logic, JWT creation, claim composition |
+| DAL | Identity entities, EF context, DTOs/models used by API and DL |
+| Tests | Controller-level unit tests with mocked integrations |
 
-### Dependencies Between Layers
+### Dependency Direction
 
-```
+```text
 Authentication.API
-    └── Authentication.DL
-            └── Authentication.DAL
+    -> Authentication.DL
+        -> Authentication.DAL
 ```
 
-The API layer also references DAL directly for DTOs and models used in responses.
+API also references DAL directly for request/response models and event DTOs.
 
 ---
 
-## Endpoints
+## Services and Integrations Used
 
-Base route: `api/a/authentication`
+| Dependency | Purpose | Implementation |
+|------------|---------|----------------|
+| ASP.NET Core Identity | User management and credential verification | UserManager, SignInManager, RoleManager in UserRepository |
+| SQL Server | Identity persistence | IdentityContext (IdentityDbContext<AppUser>) |
+| RabbitMQ | Async user-created event publishing | MessageBusClient, fanout exchange trigger |
+| Core service (HTTP) | Source of authoritative current role (Teacher/Student) | CoreRoleClient -> GET /api/u/general/{email} |
+| RSA key material | JWT signing and validation | RsaKeyService + IRsaKeyService |
+| AutoMapper | AppUser -> BaseUserPublishDto mapping | MappingProfile |
 
-### `POST /login`
-
-**Request:** `LoginRequestModel { Email, Password }`
-
-**Flow:**
-1. Looks up user by email
-2. Validates password via `SignInManager.CheckPasswordSignInAsync`
-3. Generates JWT token with user claims
-
-**Response:** `ResponseMessage { Success, Message (JWT token) }`
+Role resolution is intentionally resilient: if Core is unavailable or user data has not synchronized yet, Authentication falls back to Student.
 
 ---
 
-### `POST /register`
+## HTTP Functionality
 
-**Request:** `RegisterRequestModel { Name, Email, Password }`
+Base auth route: api/a/authentication/
 
-**Flow:**
-1. Validates name and email are non-empty and ≤ 50 characters
-2. Checks email uniqueness
-3. Creates `AppUser`, automatically assigns `"Student"` role (done inside `UsersRepository.CreateAsync`)
-4. Generates JWT token
-5. **Controller** maps `AppUser` → `BaseUserPublishDto` and publishes to RabbitMQ
+### POST /login
 
-**Response:** `ResponseMessage { Success, Message (JWT token) }`
+Request: LoginRequestModel { Email, Password }
 
----
+Flow:
+1. Find user by email.
+2. Verify password via SignInManager.CheckPasswordSignInAsync.
+3. Build JWT with Name, Email, and Role claims.
 
-### `POST /refresh-token`
+Response: ResponseMessage { Success, Message } where Message is JWT when successful.
 
-**Auth:** Requires valid Bearer token.
+### POST /register
 
-**Request:** Empty body.
+Request: RegisterRequestModel { Name, Email, Password }
 
-**Flow:**
-1. Reads current user email from token claims
-2. Loads user from Identity store
-3. Generates a new JWT with latest role claim (from Core role lookup)
+Flow:
+1. Validate name/email are non-empty and <= 50 chars.
+2. Ensure email is unique.
+3. Create AppUser in Identity.
+4. Generate JWT.
+5. Map AppUser to BaseUserPublishDto, set Event = BaseUser_Published, publish to RabbitMQ.
 
-**Response:** `ResponseMessage { Success, Message (JWT token) }`
+Response: ResponseMessage { Success, Message }.
 
-Use this endpoint after role-changing actions so the frontend can update role-based UI immediately without forcing re-login.
+Notes:
+- Registration does not directly assign an Identity role in this service.
+- Role claim in issued token is still present because it is fetched from Core (or fallback Student).
 
-> Note: RabbitMQ publishing is done in the controller after the service returns — not inside `AuthService`.
+### POST /refresh-token
 
----
+Auth: Bearer token required.
 
-## JWT Tokens
+Flow:
+1. Extract email from ClaimTypes.Email.
+2. Load user from Identity.
+3. Issue a fresh JWT with latest role from Core lookup.
 
-- **Algorithm:** HMAC SHA256
-- **Expiry:** 30 days (hardcoded)
-- **Claims included:**
-  - `ClaimTypes.Name` = `UserName` (used by `BaseController.getUserEmail()`)
-  - `ClaimTypes.Email` = `Email`
-  - `ClaimTypes.Role` = each assigned role
-- **Signing key:** read from `Jwt:Key` in config; same key is shared across all services
-- Issuer and audience validation are disabled
+Response: ResponseMessage { Success, Message }.
 
 ---
 
-## RabbitMQ Integration
+## OpenID and JWKS Endpoints
 
-- **Exchange:** `"trigger"` (fanout)
-- **Message:** `BaseUserPublishDto` serialized to JSON
-  ```csharp
-  public class BaseUserPublishDto
-  {
-      public Guid OriginalId { get; set; }   // AppUser.Id cast to Guid
-      public string Username { get; set; }
-      public string Email { get; set; }
-      public string PhoneNumber { get; set; }
-      public string Event { get; set; }      // always "BaseUser_Published"
-  }
-  ```
-- `MessageBusClient` is registered as a **Singleton** (one long-lived AMQP connection per process)
-- Connection failure on publish is caught and logged — registration still succeeds if RabbitMQ is unavailable
+### GET /.well-known/jwks.json
+
+Returns public signing key in JWKS shape (kty/use/kid/alg/n/e).
+
+### GET /.well-known/openid-configuration
+
+Returns minimal OpenID metadata:
+- issuer
+- jwks_uri
+- token_endpoint
+- id_token_signing_alg_values_supported = [RS256]
+- response_types_supported = [token]
 
 ---
 
-## Database
+## JWT Details
 
-- Uses ASP.NET Core Identity schema via `IdentityDbContext<AppUser>`
-- No custom tables — all stored in standard Identity tables (`AspNetUsers`, `AspNetRoles`, `AspNetUserRoles`, `AspNetUserClaims`, etc.)
-- `AppUser` extends `IdentityUser` with no additional properties
-- EF migrations assembly is `Authentication.API`
-- Migrations run automatically on startup via `PrepDb.PrepMemberRoles()`
+- Algorithm: RS256 (RSA SHA-256)
+- Expiration: 30 days
+- Claims:
+  - ClaimTypes.Name = AppUser.UserName
+  - ClaimTypes.Email = AppUser.Email
+  - ClaimTypes.Role = role from CoreRoleClient
+- Issuer: OpenId:Issuer
+- Validation (API middleware):
+  - ValidateIssuerSigningKey = true
+  - ValidateIssuer = true
+  - ValidateAudience = false
+  - ValidateLifetime = true
 
-### Seeded Data (on startup)
-
-| Role | Description |
-|------|-------------|
-| `Student` | Default role assigned on registration |
-| `Teacher` | Available for future role-assignment endpoint |
+If RsaKeys are missing in config, RsaKeyService generates an ephemeral key pair at startup and logs warning/instructions. In that mode, tokens become invalid after restart.
 
 ---
 
-## Configuration
+## RabbitMQ Event Contract
 
-### Production (`appsettings.json`)
+Exchange: trigger (fanout)
+
+Payload:
+
+```csharp
+public class BaseUserPublishDto
+{
+    public Guid OriginalId { get; set; }
+    public string Username { get; set; }
+    public string Email { get; set; }
+    public string PhoneNumber { get; set; }
+    public string Event { get; set; }
+}
 ```
-DB:       Server=mssql-auth-clusterip-srv,1433; Initial Catalog=Accounts
-RabbitMQ: rabbitmq-clusterip-srv:5672
-JWT Key:  EUt719k5GENP1pWWhrmyDldHPaKXyIa9yImWhPuqHBUlgZ10Fk
-```
 
-### Development (`appsettings.Development.json`)
-```
-DB:       Server=localhost,1435; Initial Catalog=AccountsTest
-RabbitMQ: localhost:5672
-JWT Key:  same as above
-```
+Current event name on registration: BaseUser_Published.
+
+Publish failures are caught/logged and do not block successful registration responses.
+
+---
+
+## Startup Behavior
+
+Program.cs configures:
+- RSA key service singleton created early and reused by JWT config.
+- Identity with password policy:
+  - min length 6
+  - non-alphanumeric required
+  - lower/upper case required
+  - digit required
+  - unique email required
+- JwtBearer auth using RSA public key.
+- Typed HttpClient for Core role lookup (3s timeout).
+- Message bus singleton.
+
+On startup, PrepDb:
+1. Applies EF migrations.
+2. Ensures Identity roles Student and Teacher exist.
+
+---
+
+## Configuration Keys Used
+
+Production/appsettings.json and Development/appsettings.Development.json include:
+- ConnectionStrings:AccountConnectionString
+- RsaKeys:PrivateKey
+- RsaKeys:PublicKey
+- OpenId:Issuer
+- CoreServiceUrl
+- RabbitMQHost
+- RabbitMQPort
 
 ---
 
 ## DI Lifetimes
 
-| Service | Lifetime | Reason |
-|---------|----------|--------|
-| `IUsersRepository` | Transient | Per-request, holds EF DbContext |
-| `IAuthService` | Transient | Per-request |
-| `IMessageBusClient` | **Singleton** | Maintains persistent AMQP connection |
+| Service | Lifetime |
+|---------|----------|
+| IUsersRepository | Transient |
+| IAuthService | Transient |
+| ICoreRoleClient | Typed HttpClient |
+| IRsaKeyService | Singleton |
+| IMessageBusClient | Singleton |
 
 ---
 
 ## Tests
 
-**File:** `Authentication.Tests/AuthenticationControllerTests.cs`  
-**Framework:** XUnit + Moq
+File: Authentication.Tests/AuthenticationControllerTests.cs
 
-Mocked: `IUsersRepository`, `IMessageBusClient`  
-Real: `AuthService`, AutoMapper, `IConfiguration` (with hardcoded JWT key)
+Covered:
+- CanUserRegister() happy path
+- CanUserLogin() happy path
 
-| Test | Verifies |
-|------|---------|
-| `CanUserRegister()` | Register flow returns `Success = true` with a JWT token |
-| `CanUserLogin()` | Login flow returns `Success = true` with a JWT token |
+Test strategy:
+- Mocked: IUsersRepository, IMessageBusClient, ICoreRoleClient, IRsaKeyService
+- Real: AuthService, AutoMapper profile
+
+Not yet covered:
+- refresh-token endpoint behavior
+- .well-known endpoints
+- negative/validation/error paths
+- RabbitMQ failure behavior
