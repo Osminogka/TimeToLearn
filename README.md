@@ -12,6 +12,20 @@ The system is built around one central idea:
 
 ---
 
+## Documentation Index
+
+Use these links to quickly jump into the detailed docs for each bounded context and deployment layer:
+
+- Authentication service: [Backend/Authentication/AUTHENTICATION.md](Backend/Authentication/AUTHENTICATION.md)
+- Core service: [Backend/Core/CORE.md](Backend/Core/CORE.md)
+- Courses service: [Backend/Courses/COURSES.md](Backend/Courses/COURSES.md)
+- Forums service: [Backend/Forums/FORUMS.md](Backend/Forums/FORUMS.md)
+- Frontend architecture: [Frontend/FRONTEND.md](Frontend/FRONTEND.md)
+- Kubernetes manifests: [K8S](K8S)
+- Repository engineering notes: [CLAUDE.md](CLAUDE.md)
+
+---
+
 ## High-Level Architecture
 
 ```text
