@@ -11,7 +11,8 @@
       "Bash(grep:*)",
       "Bash(powershell.exe:*)",
       "Bash(cmd.exe:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(pwsh:*)"
     ]
   }
 }

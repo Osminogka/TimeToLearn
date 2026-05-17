@@ -1,8 +1,9 @@
-﻿using Forums.DAL.Context;
+using Forums.DAL.Context;
 using Forums.DAL.Models;
 using Forums.DL.Repositories;
 using Forums.DL.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Forums.DL.Grpc;
@@ -25,7 +26,9 @@ namespace Forums.Tests
         {
             var services = new ServiceCollection();
 
-            services.AddDbContext<DataContext>(options => options.UseInMemoryDatabase("TopicServiceTest"));
+            services.AddDbContext<DataContext>(options =>
+                options.UseInMemoryDatabase("TopicServiceTest")
+                       .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning)));
 
             services.AddTransient<IBaseRepository<Topic>, BaseRepository<Topic>>();
             services.AddTransient<IBaseRepository<Like>, BaseRepository<Like>>();
@@ -42,168 +45,106 @@ namespace Forums.Tests
 
             var mockGrpcClient = new Mock<IUserInfoClient>();
 
-            var reply1 = new UserInfoForTopic()
-            {
-                IsAllowed = true,
-                UserId = 1,
-                UniversityId = 1
-            };
-
-            var reply2 = new UserInfoForTopic()
-            {
-                IsAllowed = false,
-                UserId = 1,
-                UniversityId = 2
-            };
-
+            // UniversityId=1 → "DKU" → IsAllowed=true, UserId=1
+            // UniversityId=2 → "OtherUni" → IsAllowed=false
+            // UniversityId=3 → "" (empty) → university not found path
             mockGrpcClient
-                .Setup(client => client.GetUserInfoForTopic(
-                    It.IsAny<string>(),
-                    It.IsAny<string>()))
-                .ReturnsAsync((string universityName, string userEmail) =>
+                .Setup(client => client.GetUniversityName(It.IsAny<long>()))
+                .ReturnsAsync((long universityId) =>
                 {
-                    if (universityName == "DKU")
-                        return reply1;
-                    else
-                        return reply2;
+                    if (universityId == 1) return "DKU";
+                    if (universityId == 3) return string.Empty;
+                    return "OtherUni";
                 });
 
             mockGrpcClient
-                .Setup(client => client.GetUniversityName(
-                    It.IsAny<long>()))
-                .ReturnsAsync((long UniversityId) =>
+                .Setup(client => client.GetUserInfoForTopic(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync((string universityName, string userEmail) =>
                 {
-                    if (UniversityId == 1)
-                        return "DKU";
-                    else
-                        return "None";
+                    if (universityName == "DKU")
+                        return new UserInfoForTopic { IsAllowed = true, UserId = 1, UniversityId = 1 };
+                    return new UserInfoForTopic { IsAllowed = false, UserId = 0, UniversityId = 0 };
                 });
 
             mockGrpcClient
                 .Setup(client => client.GetUserName(It.IsAny<long>()))
                 .ReturnsAsync((long userId) => $"User{userId}");
 
+            mockGrpcClient
+                .Setup(client => client.GetUserUniversityRole(It.IsAny<long>(), It.IsAny<long>()))
+                .ReturnsAsync((long userId, long universityId) => "Student");
+
             Service = new TopicService(TopicRepository, LikeRepository, DislikeRepository, mockGrpcClient.Object);
 
             var context = TopicRepository.GetContext();
             context.Database.EnsureDeleted();
 
-            var topic1 = new Topic()
+            // Id=1: UniversityId=1 → accessible via "DKU"
+            context.Add(new Topic
             {
+                Id = 1,
                 UniversityId = 1,
                 CreatorId = 1,
                 TopicTitle = "Test Title",
                 TopicContent = "Test Content",
-            };
+                CreatedAt = DateTime.UtcNow
+            });
 
-            var topic2 = new Topic()
+            // Id=2: UniversityId=2 → GetUniversityName returns "OtherUni" → not allowed
+            context.Add(new Topic
             {
+                Id = 2,
                 UniversityId = 2,
                 CreatorId = 2,
                 TopicTitle = "Topic 2",
-                TopicContent = "Topic 2 Content"
-            };
+                TopicContent = "Topic 2 Content",
+                CreatedAt = DateTime.UtcNow
+            });
 
-            context.Add(topic1);
-            context.Add(topic2);
+            // Id=3: UniversityId=3 → GetUniversityName returns "" → university not found
+            context.Add(new Topic
+            {
+                Id = 3,
+                UniversityId = 3,
+                CreatorId = 3,
+                TopicTitle = "Topic 3",
+                TopicContent = "Topic 3 Content",
+                CreatedAt = DateTime.UtcNow
+            });
 
             context.SaveChanges();
         }
 
+        // --- GetUniversityTopicsAsync ---
+
         [Fact]
-        public async Task GetTopicsTest()
+        public async Task GetTopics_ValidRequest_ReturnsOnlyUniversityTopics()
         {
-            //Arrange
-            string userEmail = "tester@gmail.com";
-            string universityName = "DKU";
+            var result = await Service.GetUniversityTopicsAsync("DKU", "user@test.com", 0);
 
-            //Act
-            var result = await Service.GetUniversityTopicsAsync(universityName, userEmail, 0);
-
-            //Assert
             var response = Assert.IsType<ResponseArray<ReadTopicDto>>(result);
-
             Assert.True(response.Success);
+            Assert.Equal("You got some topics", response.Message);
             Assert.Single(response.Values);
+            Assert.Equal("Test Title", response.Values.First().TopicTitle);
         }
 
         [Fact]
-        public async Task CreateTopicTest()
+        public async Task GetTopics_EnrichesCreatorNameAndRole()
         {
-            //Arrange
-            var createTopicInfo = new CreateTopicDto()
-            {
-                UniversityName = "DKU",
-                TopicTitle = "Topic creation test",
-                TopicContent = "I want to test topic creation"
-            };
-            string creatorEmail = "tester@gmail.com";
-            string universityName = "DKU";
+            var result = await Service.GetUniversityTopicsAsync("DKU", "user@test.com", 0);
 
-            //Act
-            var result = await Service.CreateTopicAsync(createTopicInfo, creatorEmail);
-            var result2 = await Service.GetUniversityTopicsAsync(universityName, creatorEmail, 0);
-
-            //Assert
-            var response = Assert.IsType<ResponseMessage>(result);
-            var response2 = Assert.IsType<ResponseArray<ReadTopicDto>>(result2);
-
+            var response = Assert.IsType<ResponseArray<ReadTopicDto>>(result);
             Assert.True(response.Success);
-
-            Assert.True(response2.Success);
-            Assert.Equal(2, response2.Values.ToArray().Length);
+            var topic = response.Values.First();
+            Assert.Equal("User1", topic.CreatorName);
+            Assert.Equal("Student", topic.CreatorRole);
         }
-
-        [Fact]
-        public async Task LikeTopicTest()
-        {
-            //Arrange
-            string userEmail = "tester@gmail.com";
-            string universityName = "DKU";
-            long topicId = 1;
-
-            //Act
-            var result = await Service.LikeTopicAsync(topicId, userEmail);
-            var result2 = await Service.GetUniversityTopicsAsync(universityName, userEmail, 0);
-
-            //Assert
-            var response = Assert.IsType<ResponseMessage>(result);
-            var response2 = Assert.IsType<ResponseArray<ReadTopicDto>>(result2);
-
-            Assert.True(response.Success);
-
-            Assert.True(response2.Success);
-            Assert.Equal(1, response2.Values.FirstOrDefault().Likes);
-        }
-
-        [Fact]
-        public async Task DislikeTopicTest()
-        {
-            //Arrange
-            string userEmail = "tester@gmail.com";
-            string universityName = "DKU";
-            long topicId = 1;
-
-            //Act
-            var result = await Service.DislikeTopicAsync(topicId, userEmail);
-            var result2 = await Service.GetUniversityTopicsAsync(universityName, userEmail, 0);
-
-            //Assert
-            var response = Assert.IsType<ResponseMessage>(result);
-            var response2 = Assert.IsType<ResponseArray<ReadTopicDto>>(result2);
-
-            Assert.True(response.Success);
-
-            Assert.True(response2.Success);
-            Assert.Equal(1, response2.Values.FirstOrDefault().Dislikes);
-        }
-
-        // --- additional edge-case tests ---
 
         [Fact]
         public async Task GetTopics_NegativePage_Fails()
         {
-            var result = await Service.GetUniversityTopicsAsync("DKU", "tester@gmail.com", -1);
+            var result = await Service.GetUniversityTopicsAsync("DKU", "user@test.com", -1);
 
             var response = Assert.IsType<ResponseArray<ReadTopicDto>>(result);
             Assert.False(response.Success);
@@ -213,11 +154,44 @@ namespace Forums.Tests
         [Fact]
         public async Task GetTopics_NotAllowed_Fails()
         {
-            // Mock returns IsAllowed=false for any university name except "DKU"
-            var result = await Service.GetUniversityTopicsAsync("OtherUni", "tester@gmail.com", 0);
+            var result = await Service.GetUniversityTopicsAsync("OtherUni", "user@test.com", 0);
 
             var response = Assert.IsType<ResponseArray<ReadTopicDto>>(result);
             Assert.False(response.Success);
+            Assert.Equal("You don't have such rights", response.Message);
+        }
+
+        [Fact]
+        public async Task GetTopics_SecondPage_ReturnsEmpty()
+        {
+            // Only 1 topic for DKU; page 1 should return nothing
+            var result = await Service.GetUniversityTopicsAsync("DKU", "user@test.com", 1);
+
+            var response = Assert.IsType<ResponseArray<ReadTopicDto>>(result);
+            Assert.True(response.Success);
+            Assert.Empty(response.Values);
+        }
+
+        // --- CreateTopicAsync ---
+
+        [Fact]
+        public async Task CreateTopic_ValidRequest_CreatesTopicAndReturnsSuccess()
+        {
+            var dto = new CreateTopicDto
+            {
+                UniversityName = "DKU",
+                TopicTitle = "New Topic",
+                TopicContent = "New Content"
+            };
+
+            var result = await Service.CreateTopicAsync(dto, "user@test.com");
+
+            Assert.True(result.Success);
+            Assert.Equal("Topic created", result.Message);
+            var saved = await TopicRepository.SingleOrDefaultAsync(t => t.TopicTitle == "New Topic");
+            Assert.NotNull(saved);
+            Assert.Equal(1, saved.UniversityId);
+            Assert.Equal(1, saved.CreatorId);
         }
 
         [Fact]
@@ -230,7 +204,7 @@ namespace Forums.Tests
                 TopicContent = "Some content"
             };
 
-            var result = await Service.CreateTopicAsync(dto, "tester@gmail.com");
+            var result = await Service.CreateTopicAsync(dto, "user@test.com");
 
             Assert.False(result.Success);
             Assert.Equal("Topic title cannot be empty", result.Message);
@@ -246,74 +220,162 @@ namespace Forums.Tests
                 TopicContent = ""
             };
 
-            var result = await Service.CreateTopicAsync(dto, "tester@gmail.com");
+            var result = await Service.CreateTopicAsync(dto, "user@test.com");
 
             Assert.False(result.Success);
             Assert.Equal("Topic content cannot be empty", result.Message);
         }
 
         [Fact]
+        public async Task CreateTopic_NotAllowed_Fails()
+        {
+            var dto = new CreateTopicDto
+            {
+                UniversityName = "OtherUni",
+                TopicTitle = "Title",
+                TopicContent = "Content"
+            };
+
+            var result = await Service.CreateTopicAsync(dto, "user@test.com");
+
+            Assert.False(result.Success);
+            Assert.Equal("You don't have such rights", result.Message);
+        }
+
+        // --- LikeTopicAsync ---
+
+        [Fact]
+        public async Task LikeTopic_ValidRequest_LikesTopicAndIncrementsCounter()
+        {
+            var result = await Service.LikeTopicAsync(1, "user@test.com");
+
+            Assert.True(result.Success);
+            Assert.Equal("You liked the topic", result.Message);
+            var topic = await TopicRepository.SingleOrDefaultAsync(t => t.Id == 1);
+            Assert.Equal(1, topic!.LikesOverall);
+        }
+
+        [Fact]
         public async Task LikeTopic_TopicNotFound_Fails()
         {
-            var result = await Service.LikeTopicAsync(999, "tester@gmail.com");
+            var result = await Service.LikeTopicAsync(999, "user@test.com");
 
             Assert.False(result.Success);
             Assert.Equal("Such topic doesn't exist", result.Message);
         }
 
         [Fact]
-        public async Task LikeTopic_SecondLike_RemovesLike()
+        public async Task LikeTopic_UniversityNotFound_Fails()
         {
-            string userEmail = "tester@gmail.com";
+            // topic3 has UniversityId=3 → GetUniversityName returns ""
+            var result = await Service.LikeTopicAsync(3, "user@test.com");
 
-            // First like adds the vote
-            var first = await Service.LikeTopicAsync(1, userEmail);
-            Assert.True(first.Success);
+            Assert.False(result.Success);
+            Assert.Equal("University not found", result.Message);
+        }
 
-            // Second like on the same topic toggles it off
-            var second = await Service.LikeTopicAsync(1, userEmail);
+        [Fact]
+        public async Task LikeTopic_NotAllowed_Fails()
+        {
+            // topic2 has UniversityId=2 → GetUniversityName returns "OtherUni" → IsAllowed=false
+            var result = await Service.LikeTopicAsync(2, "user@test.com");
 
-            Assert.True(second.Success);
-            Assert.Equal("You removed your like", second.Message);
+            Assert.False(result.Success);
+            Assert.Equal("You don't have such rights", result.Message);
+        }
 
+        [Fact]
+        public async Task LikeTopic_SecondLike_RemovesLikeAndDecrementsCounter()
+        {
+            await Service.LikeTopicAsync(1, "user@test.com");
+
+            var result = await Service.LikeTopicAsync(1, "user@test.com");
+
+            Assert.True(result.Success);
+            Assert.Equal("You removed your like", result.Message);
             var topic = await TopicRepository.SingleOrDefaultAsync(t => t.Id == 1);
             Assert.Equal(0, topic!.LikesOverall);
         }
 
         [Fact]
-        public async Task DislikeTopic_SecondDislike_RemovesDislike()
+        public async Task LikeTopic_WhenAlreadyDisliked_RemovesDislikeAndAddsLike()
         {
-            string userEmail = "tester@gmail.com";
+            await Service.DislikeTopicAsync(1, "user@test.com");
 
-            var first = await Service.DislikeTopicAsync(1, userEmail);
-            Assert.True(first.Success);
+            var result = await Service.LikeTopicAsync(1, "user@test.com");
 
-            var second = await Service.DislikeTopicAsync(1, userEmail);
+            Assert.True(result.Success);
+            Assert.Equal("You liked the topic", result.Message);
+            var topic = await TopicRepository.SingleOrDefaultAsync(t => t.Id == 1);
+            Assert.Equal(1, topic!.LikesOverall);
+            Assert.Equal(0, topic.DislikesOverall);
+        }
 
-            Assert.True(second.Success);
-            Assert.Equal("You removed your dislike", second.Message);
+        // --- DislikeTopicAsync ---
 
+        [Fact]
+        public async Task DislikeTopic_ValidRequest_DislikesTopicAndIncrementsCounter()
+        {
+            var result = await Service.DislikeTopicAsync(1, "user@test.com");
+
+            Assert.True(result.Success);
+            Assert.Equal("You disliked the topic", result.Message);
+            var topic = await TopicRepository.SingleOrDefaultAsync(t => t.Id == 1);
+            Assert.Equal(1, topic!.DislikesOverall);
+        }
+
+        [Fact]
+        public async Task DislikeTopic_TopicNotFound_Fails()
+        {
+            var result = await Service.DislikeTopicAsync(999, "user@test.com");
+
+            Assert.False(result.Success);
+            Assert.Equal("Such topic doesn't exist", result.Message);
+        }
+
+        [Fact]
+        public async Task DislikeTopic_UniversityNotFound_Fails()
+        {
+            var result = await Service.DislikeTopicAsync(3, "user@test.com");
+
+            Assert.False(result.Success);
+            Assert.Equal("University not found", result.Message);
+        }
+
+        [Fact]
+        public async Task DislikeTopic_NotAllowed_Fails()
+        {
+            var result = await Service.DislikeTopicAsync(2, "user@test.com");
+
+            Assert.False(result.Success);
+            Assert.Equal("You don't have such rights", result.Message);
+        }
+
+        [Fact]
+        public async Task DislikeTopic_SecondDislike_RemovesDislikeAndDecrementsCounter()
+        {
+            await Service.DislikeTopicAsync(1, "user@test.com");
+
+            var result = await Service.DislikeTopicAsync(1, "user@test.com");
+
+            Assert.True(result.Success);
+            Assert.Equal("You removed your dislike", result.Message);
             var topic = await TopicRepository.SingleOrDefaultAsync(t => t.Id == 1);
             Assert.Equal(0, topic!.DislikesOverall);
         }
 
         [Fact]
-        public async Task LikeTopic_WhenAlreadyDisliked_SwitchesToLike()
+        public async Task DislikeTopic_WhenAlreadyLiked_RemovesLikeAndAddsDislike()
         {
-            string userEmail = "tester@gmail.com";
+            await Service.LikeTopicAsync(1, "user@test.com");
 
-            // First vote: dislike
-            await Service.DislikeTopicAsync(1, userEmail);
-
-            // Second vote: like — must remove the dislike and add a like
-            var result = await Service.LikeTopicAsync(1, userEmail);
+            var result = await Service.DislikeTopicAsync(1, "user@test.com");
 
             Assert.True(result.Success);
-            Assert.Equal("You liked the topic", result.Message);
-
+            Assert.Equal("You disliked the topic", result.Message);
             var topic = await TopicRepository.SingleOrDefaultAsync(t => t.Id == 1);
-            Assert.Equal(1, topic!.LikesOverall);
-            Assert.Equal(0, topic.DislikesOverall);
+            Assert.Equal(0, topic!.LikesOverall);
+            Assert.Equal(1, topic.DislikesOverall);
         }
     }
 }
