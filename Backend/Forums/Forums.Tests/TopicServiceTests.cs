@@ -197,5 +197,123 @@ namespace Forums.Tests
             Assert.True(response2.Success);
             Assert.Equal(1, response2.Values.FirstOrDefault().Dislikes);
         }
+
+        // --- additional edge-case tests ---
+
+        [Fact]
+        public async Task GetTopics_NegativePage_Fails()
+        {
+            var result = await Service.GetUniversityTopicsAsync("DKU", "tester@gmail.com", -1);
+
+            var response = Assert.IsType<ResponseArray<ReadTopicDto>>(result);
+            Assert.False(response.Success);
+            Assert.Equal("Invalid page number", response.Message);
+        }
+
+        [Fact]
+        public async Task GetTopics_NotAllowed_Fails()
+        {
+            // Mock returns IsAllowed=false for any university name except "DKU"
+            var result = await Service.GetUniversityTopicsAsync("OtherUni", "tester@gmail.com", 0);
+
+            var response = Assert.IsType<ResponseArray<ReadTopicDto>>(result);
+            Assert.False(response.Success);
+        }
+
+        [Fact]
+        public async Task CreateTopic_EmptyTitle_Fails()
+        {
+            var dto = new CreateTopicDto
+            {
+                UniversityName = "DKU",
+                TopicTitle = "   ",
+                TopicContent = "Some content"
+            };
+
+            var result = await Service.CreateTopicAsync(dto, "tester@gmail.com");
+
+            Assert.False(result.Success);
+            Assert.Equal("Topic title cannot be empty", result.Message);
+        }
+
+        [Fact]
+        public async Task CreateTopic_EmptyContent_Fails()
+        {
+            var dto = new CreateTopicDto
+            {
+                UniversityName = "DKU",
+                TopicTitle = "Valid title",
+                TopicContent = ""
+            };
+
+            var result = await Service.CreateTopicAsync(dto, "tester@gmail.com");
+
+            Assert.False(result.Success);
+            Assert.Equal("Topic content cannot be empty", result.Message);
+        }
+
+        [Fact]
+        public async Task LikeTopic_TopicNotFound_Fails()
+        {
+            var result = await Service.LikeTopicAsync(999, "tester@gmail.com");
+
+            Assert.False(result.Success);
+            Assert.Equal("Such topic doesn't exist", result.Message);
+        }
+
+        [Fact]
+        public async Task LikeTopic_SecondLike_RemovesLike()
+        {
+            string userEmail = "tester@gmail.com";
+
+            // First like adds the vote
+            var first = await Service.LikeTopicAsync(1, userEmail);
+            Assert.True(first.Success);
+
+            // Second like on the same topic toggles it off
+            var second = await Service.LikeTopicAsync(1, userEmail);
+
+            Assert.True(second.Success);
+            Assert.Equal("You removed your like", second.Message);
+
+            var topic = await TopicRepository.SingleOrDefaultAsync(t => t.Id == 1);
+            Assert.Equal(0, topic!.LikesOverall);
+        }
+
+        [Fact]
+        public async Task DislikeTopic_SecondDislike_RemovesDislike()
+        {
+            string userEmail = "tester@gmail.com";
+
+            var first = await Service.DislikeTopicAsync(1, userEmail);
+            Assert.True(first.Success);
+
+            var second = await Service.DislikeTopicAsync(1, userEmail);
+
+            Assert.True(second.Success);
+            Assert.Equal("You removed your dislike", second.Message);
+
+            var topic = await TopicRepository.SingleOrDefaultAsync(t => t.Id == 1);
+            Assert.Equal(0, topic!.DislikesOverall);
+        }
+
+        [Fact]
+        public async Task LikeTopic_WhenAlreadyDisliked_SwitchesToLike()
+        {
+            string userEmail = "tester@gmail.com";
+
+            // First vote: dislike
+            await Service.DislikeTopicAsync(1, userEmail);
+
+            // Second vote: like — must remove the dislike and add a like
+            var result = await Service.LikeTopicAsync(1, userEmail);
+
+            Assert.True(result.Success);
+            Assert.Equal("You liked the topic", result.Message);
+
+            var topic = await TopicRepository.SingleOrDefaultAsync(t => t.Id == 1);
+            Assert.Equal(1, topic!.LikesOverall);
+            Assert.Equal(0, topic.DislikesOverall);
+        }
     }
 }

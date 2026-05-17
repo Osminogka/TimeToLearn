@@ -247,5 +247,121 @@ namespace Forums.Tests
             Assert.True(result2.Success);
             Assert.Equal(1, response2.Values.FirstOrDefault().DislikesOverall);
         }
+
+        // --- additional edge-case tests ---
+
+        [Fact]
+        public async Task GetComments_NegativePage_Fails()
+        {
+            var result = await Service.GetCommentsAsync(true, 1, "tester@gmail.com", -1);
+
+            var response = Assert.IsType<ResponseArray<ReadCommentDto>>(result);
+            Assert.False(response.Success);
+            Assert.Equal("Invalid page number", response.Message);
+        }
+
+        [Fact]
+        public async Task GetComments_TopicNotFound_Fails()
+        {
+            var result = await Service.GetCommentsAsync(true, 999, "tester@gmail.com", 0);
+
+            var response = Assert.IsType<ResponseArray<ReadCommentDto>>(result);
+            Assert.False(response.Success);
+        }
+
+        [Fact]
+        public async Task CreateComment_EmptyContent_Fails()
+        {
+            var dto = new CreateCommentDto
+            {
+                UniversityName = "DKU",
+                CommentContent = "   ",
+                IsTopic = true,
+                PostId = 1
+            };
+
+            var result = await Service.CreateCommentAsync(dto, "tester@gmail.com");
+
+            Assert.False(result.Success);
+            Assert.Equal("Comment content cannot be empty", result.Message);
+        }
+
+        [Fact]
+        public async Task CreateComment_PostNotFound_Fails()
+        {
+            var dto = new CreateCommentDto
+            {
+                UniversityName = "DKU",
+                CommentContent = "Valid content",
+                IsTopic = true,
+                PostId = 999
+            };
+
+            var result = await Service.CreateCommentAsync(dto, "tester@gmail.com");
+
+            Assert.False(result.Success);
+            Assert.Equal("Such record doesn't exist", result.Message);
+        }
+
+        [Fact]
+        public async Task LikeComment_CommentNotFound_Fails()
+        {
+            var result = await Service.LikeCommentAsync(999, "tester@gmail.com");
+
+            Assert.False(result.Success);
+            Assert.Equal("Such comment doesn't exist", result.Message);
+        }
+
+        [Fact]
+        public async Task LikeComment_SecondLike_RemovesLike()
+        {
+            string userEmail = "tester@gmail.com";
+
+            var first = await Service.LikeCommentAsync(1, userEmail);
+            Assert.True(first.Success);
+
+            var second = await Service.LikeCommentAsync(1, userEmail);
+
+            Assert.True(second.Success);
+            Assert.Equal("You removed your like", second.Message);
+
+            var likeCount = await LikeRepository.Where(l => l.IsTopic == false && l.PostId == 1).CountAsync();
+            Assert.Equal(0, likeCount);
+        }
+
+        [Fact]
+        public async Task DislikeComment_SecondDislike_RemovesDislike()
+        {
+            string userEmail = "tester@gmail.com";
+
+            var first = await Service.DislikeCommentAsync(1, userEmail);
+            Assert.True(first.Success);
+
+            var second = await Service.DislikeCommentAsync(1, userEmail);
+
+            Assert.True(second.Success);
+            Assert.Equal("You removed your dislike", second.Message);
+
+            var dislikeCount = await DislikeRepository.Where(d => d.IsTopic == false && d.PostId == 1).CountAsync();
+            Assert.Equal(0, dislikeCount);
+        }
+
+        [Fact]
+        public async Task DislikeComment_WhenLiked_SwitchesToDislike()
+        {
+            string userEmail = "tester@gmail.com";
+
+            await Service.LikeCommentAsync(1, userEmail);
+
+            var result = await Service.DislikeCommentAsync(1, userEmail);
+
+            Assert.True(result.Success);
+            Assert.Equal("You disliked the comment", result.Message);
+
+            var likeCount = await LikeRepository.Where(l => l.IsTopic == false && l.PostId == 1).CountAsync();
+            var dislikeCount = await DislikeRepository.Where(d => d.IsTopic == false && d.PostId == 1).CountAsync();
+            Assert.Equal(0, likeCount);
+            Assert.Equal(1, dislikeCount);
+        }
     }
 }
