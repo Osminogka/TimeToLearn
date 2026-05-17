@@ -10,7 +10,8 @@
       "Bash(dotnet new:*)",
       "Bash(grep:*)",
       "Bash(powershell.exe:*)",
-      "Bash(cmd.exe:*)"
+      "Bash(cmd.exe:*)",
+      "Bash(dir:*)"
     ]
   }
 }

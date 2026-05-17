@@ -1,10 +1,2 @@
-namespace Courses.Tests;
-
-[TestClass]
-public class UnitTest1
-{
-    [TestMethod]
-    public void TestMethod1()
-    {
-    }
-}
+// Placeholder replaced by CourseServiceTests, LessonServiceTests,
+// ProgressServiceTests, and QuizServiceTests.
