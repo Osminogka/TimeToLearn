@@ -8,7 +8,9 @@
       "Bash(powershell:*)",
       "Bash(cd /tmp)",
       "Bash(dotnet new:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(powershell.exe:*)",
+      "Bash(cmd.exe:*)"
     ]
   }
 }

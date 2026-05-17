@@ -185,16 +185,17 @@ namespace Users.Tests
         }
 
         [Fact]
-        public async Task SendRequestToBecomeTeacherOfUniversityTest()
+        public async Task SendRequestToBecomeTeacherOfUniversity_IsDisabled_FailsTest()
         {
+            // Business rule: teachers can only join universities by director invite, not by self-request.
             var result = await Service.SendRequestToBecomeTeacherOfUniversity("DKU", VerifiedTeacher);
 
             var response = Assert.IsType<ResponseMessage>(result);
 
             var invite = await EntryRequestRepository.SingleOrDefaultAsync(obj => obj.BaseUser.Email == VerifiedTeacher && obj.SentByUniversity == false);
 
-            Assert.True(response.Success);
-            Assert.NotNull(invite);
+            Assert.False(response.Success);
+            Assert.Null(invite);
         }
     }
 }
