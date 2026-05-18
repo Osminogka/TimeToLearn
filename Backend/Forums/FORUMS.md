@@ -340,6 +340,68 @@ Testing characteristics:
 
 ---
 
+### Detailed Test Cases
+
+TopicServiceTests (selected test methods):
+
+- `GetTopics_ValidRequest_ReturnsOnlyUniversityTopics` — returns topics for a university when user is allowed.
+- `GetTopics_EnrichesCreatorNameAndRole` — ensures `CreatorName` and `CreatorRole` are populated from gRPC.
+- `GetTopics_NegativePage_Fails` — rejects negative page numbers.
+- `GetTopics_NotAllowed_Fails` — returns failure when user is not allowed to view the university.
+- `GetTopics_SecondPage_ReturnsEmpty` — verifies pagination returns empty for out-of-range pages.
+- `CreateTopic_ValidRequest_CreatesTopicAndReturnsSuccess` — creates a topic for valid requests.
+- `CreateTopic_EmptyTitle_Fails` — validation failure for empty title.
+- `CreateTopic_EmptyContent_Fails` — validation failure for empty content.
+- `CreateTopic_NotAllowed_Fails` — rejects creation when user lacks rights.
+- `LikeTopic_ValidRequest_LikesTopicAndIncrementsCounter` — adds a like and increments aggregate counter.
+- `LikeTopic_TopicNotFound_Fails` — handles missing topic.
+- `LikeTopic_UniversityNotFound_Fails` — handles missing university metadata.
+- `LikeTopic_NotAllowed_Fails` — rejects like when not allowed.
+- `LikeTopic_SecondLike_RemovesLikeAndDecrementsCounter` — toggles like off on second call.
+- `LikeTopic_WhenAlreadyDisliked_RemovesDislikeAndAddsLike` — handles switching from dislike to like.
+- `DislikeTopic_ValidRequest_DislikesTopicAndIncrementsCounter` — adds a dislike and increments counter.
+- `DislikeTopic_TopicNotFound_Fails` — handles missing topic for dislike.
+- `DislikeTopic_UniversityNotFound_Fails` — handles missing university for dislike.
+- `DislikeTopic_NotAllowed_Fails` — rejects dislike when not allowed.
+- `DislikeTopic_SecondDislike_RemovesDislikeAndDecrementsCounter` — toggles dislike off on second call.
+- `DislikeTopic_WhenAlreadyLiked_RemovesLikeAndAddsDislike` — handles switching from like to dislike.
+
+CommentServiceTests (selected test methods):
+
+- `GetComments_ForTopic_ReturnsTopicComments` — reads comments for a topic.
+- `GetComments_ForComment_ReturnsReplies` — reads replies for a comment.
+- `GetComments_EnrichesCreatorNameAndRole` — enriches comments with creator name and role.
+- `GetComments_CountsRepliesForEachComment` — computes `RepliesCount` correctly.
+- `GetComments_AfterLike_ShowsCorrectLikeCount` — reflects likes after toggling.
+- `GetComments_AfterDislike_ShowsCorrectDislikeCount` — reflects dislikes after toggling.
+- `GetComments_NegativePage_Fails` — rejects negative page numbers.
+- `GetComments_TopicNotFound_Fails` — handles missing topic.
+- `GetComments_CommentRecordNotFound_Fails` — handles missing comment record.
+- `GetComments_UniversityNotFound_Fails` — handles missing university metadata.
+- `GetComments_NotAllowed_Fails` — rejects read when user not allowed.
+- `GetComments_SecondPage_ReturnsEmpty` — pagination behavior for comments/replies.
+- `CreateComment_OnTopic_CreatesCommentAndReturnsSuccess` — creates comment on topic.
+- `CreateComment_AsReply_CreatesReplyAndReturnsSuccess` — creates reply to comment.
+- `CreateComment_EmptyContent_Fails` — validation failure for empty comment content.
+- `CreateComment_NotAllowed_Fails` — rejects creation when user lacks rights.
+- `CreateComment_TopicPostNotFound_Fails` — handles posting to missing topic.
+- `CreateComment_CommentPostNotFound_Fails` — handles replying to missing comment.
+- `CreateComment_UniversityIdMismatch_Fails` — rejects when university id mismatch detected.
+- `LikeComment_ValidRequest_LikesCommentAndReturnsSuccess` — likes a comment and persists vote row.
+- `LikeComment_CommentNotFound_Fails` — handles missing comment when liking.
+- `LikeComment_UniversityNotFound_Fails` — handles missing university when liking.
+- `LikeComment_NotAllowed_Fails` — rejects like when not allowed.
+- `LikeComment_SecondLike_RemovesLike` — toggles like off on second call.
+- `LikeComment_WhenAlreadyDisliked_RemovesDislikeAndAddsLike` — switches dislike→like.
+- `DislikeComment_ValidRequest_DislikesCommentAndReturnsSuccess` — dislikes a comment and persists vote row.
+- `DislikeComment_CommentNotFound_Fails` — handles missing comment for dislike.
+- `DislikeComment_UniversityNotFound_Fails` — handles missing university for dislike.
+- `DislikeComment_NotAllowed_Fails` — rejects dislike when not allowed.
+- `DislikeComment_SecondDislike_RemovesDislike` — toggles dislike off on second call.
+- `DislikeComment_WhenAlreadyLiked_RemovesLikeAndAddsDislike` — switches like→dislike.
+
+For the full test source, see `Forums.Tests/TopicServiceTests.cs` and `Forums.Tests/CommentServiceTests.cs`.
+
 ## Summary
 
 Forums is a focused discussion microservice with clear university scoping and centralized authorization delegated to Core via gRPC. It manages forum content and voting state, enriches responses with user metadata from Core, and persists domain data in its own SQL database. The architecture is cleanly layered, with the main operational dependency being Core service availability for both authorization and data enrichment.

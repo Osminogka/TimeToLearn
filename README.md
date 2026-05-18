@@ -193,6 +193,18 @@ For detailed test descriptions, see [Backend/Courses/COURSES.md](Backend/Courses
 
 ---
 
+### Forums Service Tests
+
+The Forums service includes unit tests for `TopicService` and `CommentService` (xUnit + Moq) located in `Backend/Forums/Forums.Tests`.
+
+- Test files: `TopicServiceTests.cs`, `CommentServiceTests.cs` (see `Backend/Forums/FORUMS.md` for detailed test case list).
+
+Run Forums tests:
+```bash
+dotnet test Backend/Forums/Forums.Tests/Forums.Tests.csproj
+```
+
+
 ## How Services Communicate
 
 ### Client-facing communication: REST via ingress
