@@ -40,8 +40,8 @@ NGINX ingress (path routing)
     |- /api/f -> Forums service
 
 Authentication --(RabbitMQ: BaseUser_Published)--> Core
-Courses ---------(gRPC user/university checks)----> Core
-Forums ----------(gRPC user/university checks)----> Core
+Courses ---------(gRPC access checks)-------------> Core
+Forums ----------(gRPC access checks)-------------> Core
 ```
 
 Main architecture style:
@@ -102,7 +102,7 @@ Key behavior:
 - Consumes `BaseUser_Published` events from RabbitMQ.
 - Exposes REST endpoints for profile, universities, invites, role transitions, member management.
 - Exposes gRPC methods used by Courses and Forums:
-  - membership/access check,
+  - membership/access check with teacher/director awareness,
   - user name lookup,
   - university name lookup,
   - user role in university lookup.

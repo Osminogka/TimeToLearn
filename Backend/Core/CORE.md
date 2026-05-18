@@ -204,7 +204,8 @@ Methods:
 
 - `GetInfoForTopic`
   - Input: user email + university name
-  - Output: userId, universityId, and membership flags
+  - Output: userId, universityId, and access flags
+  - `isDirector` marks the university owner/director as allowed alongside enrolled members
 - `GetUniversityName`
   - Input: universityId
   - Output: universityName
@@ -350,6 +351,6 @@ Current test projects validate:
 - University listing/creation/membership visibility
 - General role info
 - RabbitMQ event processing behavior
-- gRPC lookups and role resolution
+- gRPC lookups, director-aware access, and role resolution
 
 This keeps Core behavior test-covered around its most critical orchestration paths.

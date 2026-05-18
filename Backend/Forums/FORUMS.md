@@ -189,7 +189,8 @@ Authentication:
 Authorization strategy:
 
 - Controller-level `[Authorize]` by default
-- Business-level permission gate uses Core gRPC response (`UserInfoForTopic.IsAllowed`)
+- Business-level permission gate uses Core gRPC response (`GrpcTopicInfoModel.IsAllowed`)
+- The Core response is director-aware (`IsDirector`) so university owners can pass the same access gate as enrolled members
 - On denied access, services return unsuccessful response objects with domain message (usually not HTTP 403 directly)
 
 Identity source of truth:
@@ -202,7 +203,7 @@ Identity source of truth:
 
 `Forums.DL/Proto/userinfo.proto` defines client-side contract:
 
-- `GetInfoForTopic(GetInfoRequest)` -> `GrpcTopicInfoModel`
+- `GetInfoForTopic(GetInfoRequest)` -> `GrpcTopicInfoModel` (`userId`, `universityId`, `isAllowed`, `isTeacher`, `isDirector`)
 - `GetUniversityName(UniversityId)` -> `UniversityName`
 - `GetUserName(UserId)` -> `UserName`
 - `GetUserUniversityRole(UserUniversityRequest)` -> `UserUniversityRole`
