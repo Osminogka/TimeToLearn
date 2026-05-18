@@ -68,7 +68,10 @@ Courses/
 │       ├── ResponseWithValue.cs      # Success + Message + T?
 │       └── UserInfoForCourse.cs      # gRPC result: UserId, UniversityId, IsAllowed, IsTeacher, IsDirector
 └── Courses.Tests/
-    └── UnitTest1.cs                  # Empty placeholder — no tests implemented
+    ├── CourseServiceTests.cs         # Course CRUD + authorization tests
+    ├── LessonServiceTests.cs         # Lesson CRUD + resource + reordering tests
+    ├── ProgressServiceTests.cs       # Student progress + grading workflow tests
+    └── QuizServiceTests.cs           # Quiz creation + submission + attempt policy tests
 ```
 
 ---
@@ -266,10 +269,76 @@ RabbitMQ:    localhost:5672
 
 ---
 
+## Testing
+
+The Courses service has comprehensive unit test coverage using xUnit, Moq, and in-memory EF Core databases.
+
+### Test Projects
+
+| Test File | Focus | Test Count |
+|-----------|-------|------------|
+| `CourseServiceTests.cs` | Course lifecycle, authorization, partial updates | 7 |
+| `LessonServiceTests.cs` | Lesson CRUD, resource support, reordering validation | 5 |
+| `ProgressServiceTests.cs` | Student lesson completion, grading workflow, constraints | 6 |
+| `QuizServiceTests.cs` | Quiz authoring, submission, correctness tracking, attempt policy | 8 |
+
+**Total: 26 unit tests** covering happy path, error cases, authorization, and data validation.
+
+### CourseServiceTests
+
+1. **CreateCourse_Teacher_CreatesSuccessfully** — Teacher creates course; verified in DB
+2. **CreateCourse_EmptyTitle_FailsWithoutCallingGrpc** — Validation precedes gRPC calls
+3. **CreateCourse_EmptyDescription_FailsWithoutCallingGrpc** — Validation precedes gRPC calls
+4. **CreateCourse_Student_Fails** — Student creation is blocked
+5. **DeleteCourse_CourseNotFound_Fails** — Graceful 404 handling
+6. **DeleteCourse_Teacher_RemovesCourse** — Cascade delete works (lessons removed)
+7. **UpdateCourse_NullDescriptionInDto_PreservesExistingDescription** — Partial update logic
+
+### LessonServiceTests
+
+1. **CreateLesson_Teacher_CreatesSuccessfully** — Lesson created with OrderNumber
+2. **CreateLesson_EmptyTitle_Fails** — Title validation (before gRPC)
+3. **CreateLesson_EmptyContent_Fails** — Content validation (before gRPC)
+4. **CreateLesson_Student_Fails** — Student creation is blocked
+5. **ReorderLessons_CountMismatch_Fails** — Bulk reorder validates all lessons belong to course
+
+### ProgressServiceTests
+
+1. **CompleteLesson_Student_RecordsCompletion** — Student marks lesson done
+2. **CompleteLesson_Teacher_Blocked** — Only students can complete
+3. **CompleteLesson_AlreadyCompleted_ReturnsSuccessIdempotently** — Idempotent completion
+4. **AssignGrade_MarkOutOfRange_Fails** — Mark must be 1–10
+5. **AssignGrade_StudentMissingLessonCompletions_Fails** — Prerequisite enforcement
+6. **AssignGrade_AllLessonsCompleted_SavesGrade** — Happy path grading
+
+### QuizServiceTests
+
+1. **CreateLessonQuizQuestion_Teacher_CreatesQuestionAndOptions** — Teacher creates quiz + options
+2. **CreateLessonQuizQuestion_TooFewOptions_Fails** — Minimum 2 options required
+3. **CreateLessonQuizQuestion_MultipleCorrectOptions_Fails** — Exactly 1 correct option
+4. **SubmitLessonQuiz_Teacher_Blocked** — Only students can submit
+5. **SubmitLessonQuiz_Student_RecordsAnswerWithCorrectness** — Answer recorded with correctness flag
+6. **SubmitLessonQuiz_SingleAttemptPolicy_BlocksRetake** — `AttemptPolicy="single"` prevents second submission
+
+### Test Patterns
+
+- **In-memory database per test fixture** — isolated test state, no cleanup needed
+- **Mocked gRPC client** — `IUserInfoClient` mocked with teacher/student contexts
+- **Role-based setup helpers** — `SetupTeacher()` / `SetupStudent()` seed gRPC mocks
+- **Validation-first assertions** — tests verify early validation avoids unnecessary gRPC calls
+- **Authorization assertions** — tests confirm role checks are enforced before write operations
+
+### Running Tests
+
+```bash
+dotnet test Backend/Courses/Courses.Tests/Courses.Tests.csproj
+```
+
+---
+
 ## Key Implementation Notes
 
 - **No RabbitMQ usage** — connection strings are in config but nothing is published or consumed
-- **No tests implemented** — `Courses.Tests` contains only an empty placeholder class
 - **Pagination** — courses only; lessons are always returned in full ordered by `OrderNumber`
 - **Partial updates** — all `Update*Dto` fields are nullable; service only applies non-null values
 - **`UpdatedAt`** is set in the service layer on every update, not via EF interceptors

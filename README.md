@@ -169,6 +169,30 @@ Role in the platform:
 
 ---
 
+## Testing
+
+The platform includes comprehensive unit tests for business logic, authorization, and data validation:
+
+### Courses Service Tests
+
+The Courses service has **26 unit tests** across four test suites (xUnit + Moq):
+
+- **CourseServiceTests** (7 tests) — Course CRUD operations, authorization checks, partial updates
+- **LessonServiceTests** (5 tests) — Lesson creation/deletion, resource support, bulk reordering
+- **ProgressServiceTests** (6 tests) — Student lesson completion, prerequisite enforcement, grading constraints
+- **QuizServiceTests** (8 tests) — Quiz authoring, submission, correctness tracking, attempt policies
+
+All tests use in-memory EF Core databases for isolation and mock gRPC clients for external service calls.
+
+**Run tests:**
+```bash
+dotnet test Backend/Courses/Courses.Tests/Courses.Tests.csproj
+```
+
+For detailed test descriptions, see [Backend/Courses/COURSES.md](Backend/Courses/COURSES.md#testing).
+
+---
+
 ## How Services Communicate
 
 ### Client-facing communication: REST via ingress
