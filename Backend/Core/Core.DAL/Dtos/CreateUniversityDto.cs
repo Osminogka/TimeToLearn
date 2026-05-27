@@ -13,8 +13,7 @@ namespace Core.DAL.Dtos
         [MaxLength(500)]
         public string Description { get; set; }
 
-        [Required]
-        public Address Address { get; set; }
+        public Address? Address { get; set; }
 
         [Required]
         public bool IsOpened { get; set; }

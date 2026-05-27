@@ -18,8 +18,7 @@ namespace Core.DAL.Dtos
 
         public string DirectorUsername { get; set; } = string.Empty;
 
-        [Required]
-        public Address Address { get; set; }
+        public Address? Address { get; set; }
 
         [Required]
         public bool IsOpened { get; set; }

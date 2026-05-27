@@ -310,15 +310,16 @@ async function saveUniversitySettings() {
     clearMessages();
 
     try {
+        const country = manageForm.address.country.trim();
+        const city = manageForm.address.city.trim();
+        const street = manageForm.address.street.trim();
+        const address = country || city || street ? { country, city, street } : null;
+
         const response = await universityApi.updateUniversityInfo({
             name: universityName.value,
             description: manageForm.description.trim(),
             isOpened: manageForm.isOpened,
-            address: {
-                country: manageForm.address.country.trim(),
-                city: manageForm.address.city.trim(),
-                street: manageForm.address.street.trim(),
-            },
+            address,
         });
 
         actionMessage.value = response?.message || response?.Message || 'University info updated.';

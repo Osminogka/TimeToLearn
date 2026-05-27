@@ -35,10 +35,6 @@ function validateForm() {
         return 'University description is required.';
     }
 
-    if (!form.address.country.trim() || !form.address.city.trim() || !form.address.street.trim()) {
-        return 'Please fill in country, city, and street.';
-    }
-
     return '';
 }
 
@@ -59,15 +55,16 @@ async function submitCreateUniversity() {
     isSubmitting.value = true;
 
     try {
+        const country = form.address.country.trim();
+        const city = form.address.city.trim();
+        const street = form.address.street.trim();
+        const address = country || city || street ? { country, city, street } : null;
+
         const response = await universityApi.createUniversity({
             name: form.name.trim(),
             description: form.description.trim(),
             isOpened: form.isOpened,
-            address: {
-                country: form.address.country.trim(),
-                city: form.address.city.trim(),
-                street: form.address.street.trim(),
-            },
+            address,
         });
 
         successMessage.value = response.message || response.Message || 'University created successfully.';

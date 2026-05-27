@@ -138,6 +138,23 @@ public class UniversityServiceTests
     }
 
     [Fact]
+    public async Task CreateUniversity_WithoutAddressTest()
+    {
+        CreateUniversityDto universityDto = new CreateUniversityDto
+        {
+            Name = "NoAddressUniversity",
+            Description = "University without address",
+            IsOpened = true,
+        };
+
+        var result = await Service.CreateAsync(universityDto, Director.Email);
+
+        var response = Assert.IsType<ResponseWithValue<ReadUniversityDto>>(result);
+        Assert.True(response.Success);
+        Assert.Equal("NoAddressUniversity", response.Value.Name);
+    }
+
+    [Fact]
     public async Task CreateUniversity_DirectorCanCreateMultipleTest()
     {
         CreateUniversityDto universityDto = new CreateUniversityDto

@@ -15,8 +15,7 @@ namespace Core.DAL.Models
         [Required]
         public long DirectorId { get; set; }
 
-        [Required]
-        public Address Address { get; set; }
+        public Address? Address { get; set; }
 
         [Required]
         public bool IsOpened { get; set; }
